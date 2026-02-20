@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+# © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+
+resources:
+  - ../../base
+
+namespace: nova
+
+configMapGenerator:
+  - name: nova-backend-configs
+    envs:
+      - params.env
+
+patches:
+  - path: patches/service-account.yaml
+    target:
+      kind: ServiceAccount
+      name: nova-backend-sa
+  - path: patches/allow-ingress.yaml
+    target:
+      kind: AuthorizationPolicy
+
+labels:
+  - pairs:
+      env: staging
+
+images:
+  - name: nova-backend-image:template
+    newName: 503561419905.dkr.ecr.eu-west-2.amazonaws.com/nova/api
+    newTag: "1739959086"

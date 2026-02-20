@@ -1,0 +1,92 @@
+{
+    "categories": [
+        {
+            "name": "Environmentally protected sites",
+            "items": [
+                {
+                    "id": "areasOfOutstandingNaturalBeauty",
+                    "name": "Areas of Outstanding Natural Beauty (AONB)",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "description": "Set distance from AONB (km)",
+                            "defaultValue": 1,
+                            "valueType": "number",
+                            "maxValue": "10"
+                        }
+                    ]
+                },
+                {
+                    "id": "sitesOfSpecialScientificInterest",
+                    "name": "Sites of Special Scientific Interest (SSSI)",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "description": "Set distance from SSSI (km)",
+                            "defaultValue": 2,
+                            "valueType": "number",
+                            "maxValue": "10"
+                        }
+                    ]
+                },
+                {
+                    "active": true,
+                    "id": "specialAreasOfConservation",
+                    "name": "Special Areas of Conservation (SAC)",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "description": "Set distance from SAC (km)",
+                            "defaultValue": 2,
+                            "valueType": "number",
+                            "maxValue": "10"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Urban constraints",
+            "items": [
+                {
+                    "id": "builtUpAreas",
+                    "name": "Built-Up Areas (BUA)",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "description": "Set distance from BUA (km)",
+                            "defaultValue": 1,
+                            "valueType": "number",
+                            "maxValue": "10"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Weather",
+            "items": [
+                {
+                    "id": "windSpeed",
+                    "name": "Wind speed",
+                    "attributes": [
+                        {
+                            "id": "minSpeed",
+                            "description": "Set minimum wind speed (m/s)",
+                            "defaultValue": 4,
+                            "valueType": "number",
+                            "maxValue": "50"
+                        },
+                        {
+                            "id": "maxSpeed",
+                            "description": "Set maximum wind speed (m/s)",
+                            "defaultValue": 7.5,
+                            "valueType": "number",
+                            "maxValue": "100"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

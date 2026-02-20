@@ -1,0 +1,22 @@
+.DS_Store
+
+# Common backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+
+# Various IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+node_modules
+dist/
+/api/coverage/
+
+# Secrets
+*.env
+frontend/.env*
+!frontend/.env-example

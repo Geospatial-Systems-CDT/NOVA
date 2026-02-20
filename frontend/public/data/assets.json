@@ -1,0 +1,62 @@
+[
+    {
+        "id": "windTurbine",
+        "name": "Wind Turbine",
+        "variations": [
+            {
+                "name": "Vestas",
+                "image": "/images/turbine-one.png",
+                "icon": "/images/turbine-icon.png",
+                "specification": [
+                    { "name": "Model", "value": "v3" },
+                    { "name": "Rotor Diameter", "value": "40 m" },
+                    { "name": "Hub Height", "value": "150 m" },
+                    { "name": "Wind speed", "value": "3-20 m/s" },
+                    { "name": "Capacity (MW)", "value": "3.5 MW" }
+                ]
+            },
+            {
+                "name": "Siemens Gamesa",
+                "image": "/images/turbine-two.png",
+                "icon": "/images/turbine-icon.png",
+                "specification": [
+                  { "name": "Model", "value": "v5" },
+                  { "name": "Rotor Diameter", "value": "25 m" },
+                  { "name": "Hub Height", "value": "100 m" },
+                  { "name": "Wind speed", "value": "6-35 m/s" },
+                  { "name": "Capacity (MW)", "value": "5 MW" }
+                ]
+            }
+        ]
+    },
+    {
+        "id": "solarPanel",
+        "name": "Solar Panel",
+        "variations": [
+            {
+                "name": "Roof",
+                "image": "/images/solar-one.png",
+                "icon": "/images/solar-icon.png",
+                "specification": [
+                    { "name": "Model", "value": "v6" },
+                    { "name": "Wattage", "value": "250 W" },
+                    { "name": "Efficency", "value": "18%" },
+                    { "name": "Voltage", "value": "30 V" },
+                    { "name": "Current", "value": "8.3 A" }
+                ]
+            },
+            {
+                "name": "Farm",
+                "image": "/images/solar-two.png",
+                "icon": "/images/solar-icon.png",
+                "specification": [
+                    { "name": "Model", "value": "v2" },
+                    { "name": "Wattage", "value": "5 kW" },
+                    { "name": "Efficency", "value": "18%" },
+                    { "name": "Voltage", "value": "400 V" },
+                    { "name": "Current", "value": "72 A" }
+                ]
+            }
+        ]
+    }
+]

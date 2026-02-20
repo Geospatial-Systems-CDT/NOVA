@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  name: nova-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: nova-backend
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        io.kompose.service: nova-backend
+    spec:
+      serviceAccountName: nova-backend-sa
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: nova-backend-configs
+            - secretRef:
+                name: nova-backend-secrets
+          name: nova-backend
+          image: nova-backend-image:template
+          resources:
+            limits:
+              memory: "2Gi"
+            requests:
+              cpu: "0.5"
+              memory: "1Gi"
+              ephemeral-storage: "2Gi"
+          ports:
+            - containerPort: 80
+              protocol: TCP
+      restartPolicy: Always

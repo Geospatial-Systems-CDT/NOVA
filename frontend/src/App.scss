@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: Apache-2.0
+// © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+
+:root {
+    /* LAYOUT */
+
+    --header-height: 3rem;
+}
+
+#root {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-rows: max-content 1fr;
+}
+
+.maplibregl-popup-tip {
+    display: none;
+}
+
+/* Styling for layer selection control */
+
+.layer-panel-toggle {
+    position: absolute;
+    top: 80px;
+    left: 1rem;
+    z-index: 1100;
+
+    .MuiIconButton-root {
+        background-color: white;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        width: 50px;
+        height: 50px;
+
+        &:hover {
+            background-color: #d5d5d5;
+        }
+    }
+}
+
+.layer-panel {
+    position: absolute;
+    top: 80px;
+    left: 1rem;
+    width: 400px;
+    height: calc(100vh - 25vh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1000;
+}
+
+.layer-panel-header {
+    display: flex;
+    align-items: center;
+    height: 50px;
+    padding: 0 1rem;
+    background-color: #e8e8e8;
+    border-bottom: 1px solid #ddd;
+}
+
+.layer-panel-search {
+    padding: 1rem 1rem 0.5rem 1rem;
+}
+
+.layer-panel-selectable-layers {
+    padding: 0 0.5rem;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.layer-accordion {
+    background-color: transparent;
+    box-shadow: none !important;
+    margin-bottom: 0.5rem;
+
+    &::before {
+        display: none !important;
+    }
+}
+
+.layer-accordion-summary {
+    min-height: 40px;
+
+    .MuiAccordionSummary-content {
+        margin: 0;
+    }
+}
+
+.layer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 1rem 0.25rem 2rem;
+    border-left: 3px solid #e0e0e0;
+    cursor: pointer;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        cursor: pointer;
+    }
+}
+
+.layer-panel-footer {
+    padding: 0 1rem 1rem 1rem;
+    display: flex;
+    justify-content: center;
+}

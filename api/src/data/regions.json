@@ -1,0 +1,278 @@
+[
+    {
+      "name": "Greater London",
+      "latitude": 51.5074,
+      "longitude": -0.1278,
+      "zoom": 10
+    },
+    {
+      "name": "Greater Manchester",
+      "latitude": 53.4808,
+      "longitude": -2.2426,
+      "zoom": 10
+    },
+    {
+      "name": "West Midlands",
+      "latitude": 52.4862,
+      "longitude": -1.8904,
+      "zoom": 9
+    },
+    {
+      "name": "Merseyside",
+      "latitude": 53.4084,
+      "longitude": -2.9916,
+      "zoom": 9
+    },
+    {
+      "name": "South Yorkshire",
+      "latitude": 53.4807,
+      "longitude": -1.7886,
+      "zoom": 9
+    },
+    {
+      "name": "West Yorkshire",
+      "latitude": 53.8008,
+      "longitude": -1.5491,
+      "zoom": 9
+    },
+    {
+      "name": "Kent",
+      "latitude": 51.2787,
+      "longitude": 0.521,
+      "zoom": 8
+    },
+    {
+      "name": "Surrey",
+      "latitude": 51.3148,
+      "longitude": -0.5599,
+      "zoom": 9
+    },
+    {
+      "name": "Essex",
+      "latitude": 51.7762,
+      "longitude": 0.475,
+      "zoom": 8
+    },
+    {
+      "name": "Lancashire",
+      "latitude": 53.7632,
+      "longitude": -2.7044,
+      "zoom": 8
+    },
+    {
+      "name": "Hampshire",
+      "latitude": 51.0577,
+      "longitude": -1.3081,
+      "zoom": 8
+    },
+    {
+      "name": "Devon",
+      "latitude": 50.7156,
+      "longitude": -3.5309,
+      "zoom": 7
+    },
+    {
+      "name": "Cornwall",
+      "latitude": 50.5036,
+      "longitude": -4.6521,
+      "zoom": 8
+    },
+    {
+      "name": "Isle of Wight",
+      "latitude": 50.6938,
+      "longitude": -1.3047,
+      "zoom": 10
+    },
+    {
+      "name": "Aberdeen City",
+      "latitude": 57.1497,
+      "longitude": -2.0943,
+      "zoom": 10
+    },
+    {
+      "name": "Edinburgh",
+      "latitude": 55.9533,
+      "longitude": -3.1883,
+      "zoom": 10
+    },
+    {
+      "name": "Glasgow City",
+      "latitude": 55.8642,
+      "longitude": -4.2518,
+      "zoom": 10
+    },
+    {
+      "name": "Cardiff",
+      "latitude": 51.4816,
+      "longitude": -3.1791,
+      "zoom": 10
+    },
+    {
+      "name": "Swansea",
+      "latitude": 51.6214,
+      "longitude": -3.9436,
+      "zoom": 10
+    },
+    {
+      "name": "Belfast",
+      "latitude": 54.5973,
+      "longitude": -5.9301,
+      "zoom": 10
+    },
+    {
+      "name": "Antrim and Newtownabbey",
+      "latitude": 54.7175,
+      "longitude": -6.2167,
+      "zoom": 9
+    },
+    {
+      "name": "Armagh City, Banbridge and Craigavon",
+      "latitude": 54.35,
+      "longitude": -6.45,
+      "zoom": 8
+    },
+    {
+      "name": "Fermanagh and Omagh",
+      "latitude": 54.4167,
+      "longitude": -7.6333,
+      "zoom": 8
+    },
+    {
+      "name": "Highland",
+      "latitude": 57.4778,
+      "longitude": -4.2247,
+      "zoom": 7
+    },
+    {
+      "name": "North Yorkshire",
+      "latitude": 54.2326,
+      "longitude": -1.2923,
+      "zoom": 8
+    },
+    {
+      "name": "East Sussex",
+      "latitude": 50.9252,
+      "longitude": 0.2514,
+      "zoom": 9
+    },
+    {
+      "name": "West Sussex",
+      "latitude": 50.928,
+      "longitude": -0.487,
+      "zoom": 9
+    },
+    {
+      "name": "Norfolk",
+      "latitude": 52.6369,
+      "longitude": 1.2923,
+      "zoom": 8
+    },
+    {
+      "name": "Suffolk",
+      "latitude": 52.1872,
+      "longitude": 0.9692,
+      "zoom": 8
+    },
+    {
+      "name": "Northumberland",
+      "latitude": 55.208,
+      "longitude": -1.6969,
+      "zoom": 8
+    },
+    {
+      "name": "Tyne and Wear",
+      "latitude": 54.972,
+      "longitude": -1.6174,
+      "zoom": 9
+    },
+    {
+      "name": "Lincolnshire",
+      "latitude": 53.2307,
+      "longitude": -0.5406,
+      "zoom": 8
+    },
+    {
+      "name": "Nottinghamshire",
+      "latitude": 53.1004,
+      "longitude": -1.04,
+      "zoom": 8
+    },
+    {
+      "name": "Leicestershire",
+      "latitude": 52.6369,
+      "longitude": -1.1398,
+      "zoom": 9
+    },
+    {
+      "name": "Derbyshire",
+      "latitude": 53.122,
+      "longitude": -1.556,
+      "zoom": 8
+    },
+    {
+      "name": "Staffordshire",
+      "latitude": 52.806,
+      "longitude": -2.1204,
+      "zoom": 8
+    },
+    {
+      "name": "Cambridgeshire",
+      "latitude": 52.2053,
+      "longitude": 0.1218,
+      "zoom": 8
+    },
+    {
+      "name": "Cheshire",
+      "latitude": 53.2326,
+      "longitude": -2.6103,
+      "zoom": 8
+    },
+    {
+      "name": "Worcestershire",
+      "latitude": 52.1936,
+      "longitude": -2.2216,
+      "zoom": 8
+    },
+    {
+      "name": "Warwickshire",
+      "latitude": 52.2671,
+      "longitude": -1.4728,
+      "zoom": 8
+    },
+    {
+      "name": "Oxfordshire",
+      "latitude": 51.752,
+      "longitude": -1.2577,
+      "zoom": 8
+    },
+    {
+      "name": "Northamptonshire",
+      "latitude": 52.2405,
+      "longitude": -0.9027,
+      "zoom": 8
+    },
+    {
+      "name": "Bedfordshire",
+      "latitude": 52.1386,
+      "longitude": -0.4667,
+      "zoom": 8
+    },
+    {
+      "name": "Hertfordshire",
+      "latitude": 51.833,
+      "longitude": -0.2087,
+      "zoom": 9
+    },
+    {
+      "name": "Buckinghamshire",
+      "latitude": 51.807,
+      "longitude": -0.8129,
+      "zoom": 8
+    },
+    {
+      "name": "Berkshire",
+      "latitude": 51.4543,
+      "longitude": -1.0124,
+      "zoom": 9
+    }
+  ]

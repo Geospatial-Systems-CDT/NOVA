@@ -1,0 +1,56 @@
+[
+  {
+    "id": "windTurbine",
+    "name": "Wind Turbine",
+    "variations": [
+      {
+        "name": "Vestas",
+        "image": "https://via.placeholder.com/300/D93535/FFFFFF?text=Vestas",
+        "specification": [
+          { "name": "Model", "value": "V150-6.0" },
+          { "name": "Rated Power", "value": "6000 KW" },
+          { "name": "Cut-in speed", "value": "3 m/s" },
+          { "name": "Cut-out speed", "value": "25 m/s" },
+          { "name": "Rotor diameter", "value": "150 m" },
+          { "name": "Min hub height", "value": "105 m" },
+          { "name": "Max hub height", "value": "166 m" }
+        ]
+      },
+      {
+        "name": "Siemens Gamesa",
+        "image": "https://via.placeholder.com/300/35D976/FFFFFF?text=Siemens",
+        "specification": [
+          { "name": "Model", "value": "SG 5.0-145 (2.0)" },
+          { "name": "Rated Power", "value": "5000 KW" },
+          { "name": "Cut-in speed", "value": "3 m/s" },
+          { "name": "Cut-out speed", "value": "20 m/s" },
+          { "name": "Rotor diameter", "value": "45 m" },
+          { "name": "Min hub height", "value": "90 m" },
+          { "name": "Max hub height", "value": "127 m" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "solarPanel",
+    "name": "Solar Panel",
+    "variations": [
+      {
+        "name": "Roof",
+        "image": "https://via.placeholder.com/300/3576D9/FFFFFF?text=Roof",
+        "specification": [
+          { "name": "Model", "value": "R-100" },
+          { "name": "Capacity", "value": "350 Wp" }
+        ]
+      },
+      {
+        "name": "Farm",
+        "image": "https://via.placeholder.com/300/D9C635/FFFFFF?text=Farm",
+        "specification": [
+          { "name": "Model", "value": "F-500" },
+          { "name": "Capacity", "value": "500 Wp" }
+        ]
+      }
+    ]
+  }
+]

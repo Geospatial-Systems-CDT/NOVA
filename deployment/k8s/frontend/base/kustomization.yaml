@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+
+resources:
+  - ../base/istio/authorizationpolicy/allow-ingress-authorization-policy.yaml
+  - service-account.yaml
+  - deployment.yaml
+  - service.yaml
+
+labels:
+  - pairs:
+      app: nova-frontend
+      env: ENV_PLACEHOLDER
+      app.kubernetes.io/name: nova-frontend

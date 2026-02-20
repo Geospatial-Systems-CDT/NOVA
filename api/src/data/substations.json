@@ -1,0 +1,55 @@
+[
+
+  {
+    "location": {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "coordinates": [
+              -1.27261982530257,
+              50.687008153603784
+            ],
+            "type": "Point"
+          }
+        }
+      ]
+    },
+    "name": "Penn",
+    "distance": 1000
+  },
+  {
+    "location": {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          -1.3241305830391639,
+          50.6854290157537
+        ],
+        "type": "Point"
+      }
+    },
+    "name": "Abham",
+    "distance": 8000
+  },
+  {
+    "location": {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          -1.2965058621560672,
+          50.71134647017655
+        ],
+        "type": "Point"
+      }
+    },
+    "name": "Axminster",
+    "distance": 5000
+  }
+
+
+]

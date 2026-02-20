@@ -1,0 +1,214 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity. -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>NOVA ML Demo</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; }
+        #map { height: 100%; width: 75%; }
+        #sidebar { width: 25%; padding: 15px; box-sizing: border-box; overflow-y: auto; background: #f9f9f9; }
+        h2, h3 { color: #333; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
+        select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; margin: 15px 2px 5px 2px; cursor: pointer; border-radius: 4px; font-size: 14px; width: calc(50% - 4px); }
+        button:hover { background-color: #0056b3; }
+        button.delete { background-color: #dc3545; }
+        button.delete:hover { background-color: #c82333; }
+        button.popup-delete-btn { background-color: #dc3545; color: white; border: none; padding: 5px 10px; margin-top: 8px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        #results { margin-top: 20px; }
+        .result-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 4px; background: #fff; }
+        .rag-score { padding: 2px 8px; color: white; text-align: center; border-radius: 4px; font-weight: bold; display: inline-block; }
+        .result-item p { margin: 5px 0; font-size: 13px; line-height: 1.4; }
+        .result-item h4 { margin-bottom: 8px; }
+        .comparison-value { font-weight: bold; color: #0056b3; }
+        .coords { font-family: monospace; font-size: 12px; color: #555; }
+        .reasoning-list { list-style-type: none; padding-left: 0; font-size: 12px; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>NOVA Wind Turbine Location Optimisation using ML </h2>
+        <p>1. Draw a polygon.</p>
+        <p>2. Click inside to add turbines.</p>
+        <p>3. Select an algorithm and run.</p>
+        
+        <label for="algorithm-select">Optimisation Algorithm:</label>
+        <select id="algorithm-select">
+            <option value="clpso">Comprehensive Learning Particle Swarm (CLPSO)</option>
+            <option value="pso">Particle Swarm (PSO)</option>
+            <option value="de">Differential Evolution (DE)</option>
+            <option value="ga">Genetic Algorithm (GA)</option>
+            <option value="aco">Ant Colony </option>
+            <option value="grid_search">Grid Search </option>
+        </select>
+        
+        <div style="display: flex;">
+            <button id="optimiseBtn">Optimise</button>
+            <button id="deleteBtn" class="delete">Delete All</button>
+        </div>
+
+        <hr>
+        <h3>Polygon Info</h3>
+        <div id="infoPanel">
+             <!-- Spans for intersection counts -->
+            <p><strong>Turbines Added:</strong> <span id="info-turbines">0</span></p>
+            <p><strong>Protected Areas Intersected:</strong> <span id="info-protected">0</span></p>
+            <p><strong>Residential Areas Intersected:</strong> <span id="info-residential">0</span></p>
+            <p><strong>Grid Points Intersected:</strong> <span id="info-grid">0</span></p>
+        </div>
+        <div id="export-panel" style="display: none;">
+             <button onclick="exportPolygon('geojson')">Export Polygon (GeoJSON)</button>
+             <button onclick="exportPolygon('csv')">Export Polygon (CSV)</button>
+        </div>
+
+        <hr>
+        <h3>Optimisation Results</h3>
+        <div id="results"><p>No results yet.</p></div>
+    </div>
+
+    <div id="map"></div>
+
+<script>
+    const map = L.map('map').setView([57.0, -4.5], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    let drawnItems = new L.FeatureGroup().addTo(map);
+    let turbineLayer = new L.FeatureGroup().addTo(map);
+    let optimisedLayer = new L.FeatureGroup().addTo(map);
+    
+    // Create separate layers for each data type
+    const layerGroups = {
+        protected: L.geoJSON(null, { style: { color: "red", weight: 1, opacity: 0.8, fillOpacity: 0.3 } }),
+        residential: L.geoJSON(null, { style: { color: "orange", weight: 1, opacity: 0.8, fillOpacity: 0.3 } }),
+        grid: L.geoJSON(null, { pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 5, fillColor: "blue", color: "#000", weight: 1, opacity: 1, fillOpacity: 0.8 }) }),
+        wind: L.geoJSON(null, { pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 2, fillColor: "purple", color: "#000", weight: 1, opacity: 1, fillOpacity: 0.8 }) })
+    };
+
+    // --- Load Data ---
+    fetch('/get_data').then(res => res.json()).then(data => { 
+        if(data.error) { alert(`Error loading data: ${data.error}`); return; }
+        
+        // Add data to each respective layer group
+        for (const layerName in data) {
+            if (layerGroups[layerName]) {
+                const geojsonData = data[layerName];
+                layerGroups[layerName].addData(geojsonData);
+                
+                // Bind tooltips to each feature in the layer
+                layerGroups[layerName].eachLayer(layer => {
+                    if (layer.feature.properties && layer.feature.properties.name) {
+                        layer.bindTooltip(layer.feature.properties.name);
+                    }
+                });
+                
+                layerGroups[layerName].addTo(map);
+            }
+        }
+    });
+    
+    map.addControl(new L.Control.Draw({ edit: { featureGroup: drawnItems }, draw: { polygon: true, polyline: false, marker: false, circle: false, circlemarker: false, rectangle: false } }));
+    
+    // Update info when a polygon is created or edited
+    map.on(L.Draw.Event.CREATED, e => {
+        drawnItems.clearLayers(); turbineLayer.clearLayers(); optimisedLayer.clearLayers();
+        drawnItems.addLayer(e.layer);
+        updatePolygonInfo();
+    });
+    map.on(L.Draw.Event.EDITED, () => updatePolygonInfo());
+    map.on(L.Draw.Event.DELETED, () => updatePolygonInfo());
+
+    map.on('click', e => { if (drawnItems.getLayers().length > 0 && isMarkerInsidePolygon(e.latlng, drawnItems.getLayers()[0])) { addTurbineMarker(e.latlng); } });
+    function addTurbineMarker(latlng) {
+        const marker = L.marker(latlng).addTo(turbineLayer);
+        const markerId = marker._leaflet_id;
+        marker.bindPopup(`<b>Original Turbine</b><br>Location: ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}<br><button class="popup-delete-btn" onclick="deleteTurbine(${markerId})">Delete</button>`);
+        updatePolygonInfo();
+    }
+    window.deleteTurbine = function(markerId) { turbineLayer.removeLayer(markerId); map.closePopup(); updatePolygonInfo(); }
+
+    document.getElementById('optimiseBtn').addEventListener('click', runOptimisation);
+    document.getElementById('deleteBtn').addEventListener('click', () => { drawnItems.clearLayers(); turbineLayer.clearLayers(); optimisedLayer.clearLayers(); updatePolygonInfo(); document.getElementById('results').innerHTML = '<p>No results yet.</p>'; });
+
+    // --- Core Info Panel Function ---
+    function updatePolygonInfo() {
+        document.getElementById('info-turbines').innerText = turbineLayer.getLayers().length;
+        
+        if (drawnItems.getLayers().length === 0) {
+            document.getElementById('export-panel').style.display = 'none';
+            document.getElementById('info-protected').innerText = 0;
+            document.getElementById('info-residential').innerText = 0;
+            document.getElementById('info-grid').innerText = 0;
+            return;
+        }
+
+        document.getElementById('export-panel').style.display = 'block';
+        const drawnPolygon = drawnItems.getLayers()[0];
+        let protectedCount = 0, residentialCount = 0, gridCount = 0;
+
+        // Count intersections for each layer
+        layerGroups.protected.eachLayer(layer => {
+            if (drawnPolygon.getBounds().intersects(layer.getBounds())) { protectedCount++; }
+        });
+        layerGroups.residential.eachLayer(layer => {
+            if (drawnPolygon.getBounds().intersects(layer.getBounds())) { residentialCount++; }
+        });
+        layerGroups.grid.eachLayer(layer => {
+            if (drawnPolygon.getBounds().contains(layer.getLatLng()) && isMarkerInsidePolygon(layer.getLatLng(), drawnPolygon)) {
+                gridCount++;
+            }
+        });
+
+        document.getElementById('info-protected').innerText = protectedCount;
+        document.getElementById('info-residential').innerText = residentialCount;
+        document.getElementById('info-grid').innerText = gridCount;
+    }
+
+    async function runOptimisation() {
+        if (drawnItems.getLayers().length === 0 || turbineLayer.getLayers().length === 0) { alert('Please draw a polygon and add at least one turbine.'); return; }
+        const algorithm = document.getElementById('algorithm-select').value;
+        document.getElementById('results').innerHTML = `<p>Running ${algorithm.toUpperCase()}... this may take a moment.</p>`;
+        const response = await fetch('/optimise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ polygon: drawnItems.toGeoJSON().features[0], turbines: turbineLayer.toGeoJSON(), algorithm: algorithm }) });
+        const result = await response.json();
+        if (!response.ok) { document.getElementById('results').innerHTML = `<p style="color: red;"><b>Error:</b> ${result.error || 'An unknown error occurred.'}</p>`; return; }
+        displayOptimisationResults(result);
+    }
+    
+    let optimisationResultData;
+
+    function displayOptimisationResults(result) {
+        optimisationResultData = result.optimised_locations;
+        optimisedLayer.clearLayers();
+        let html = `<div class="result-item"><strong>Overall Solution Score:</strong> ${result.overall_probability} <br><br><button onclick="exportOptimisationResults('csv')" class="half-width">Export CSV</button> <button onclick="exportOptimisationResults('geojson')" class="half-width">Export GeoJSON</button></div>`;
+        result.optimised_locations.forEach((loc, index) => {
+            const newLat = loc.new_coords[0], newLon = loc.new_coords[1];
+            const popupContent = `<b>Optimised Turbine ${index + 1}</b><br>Score: ${loc.probability}<br>Location: ${newLat.toFixed(4)}, ${newLon.toFixed(4)}`;
+            L.marker(loc.new_coords, { icon: L.icon({ iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', iconSize: [25, 41], iconAnchor: [12, 41] }) }).addTo(optimisedLayer).bindPopup(popupContent);
+            L.polyline([loc.original_coords, loc.new_coords], {color: 'blue', dashArray: '5, 5'}).addTo(optimisedLayer);
+            let reasoningHtml = '<ul class="reasoning-list">';
+            loc.reasoning.forEach(reason => { reasoningHtml += `<li>${reason}</li>`; });
+            reasoningHtml += '</ul>';
+            html += `<div class="result-item"><h4>Turbine ${index + 1} <span class="rag-score" style="background-color:${loc.rag_color};">${loc.probability * 10}</span></h4><p><strong>Score:</strong> ${loc.probability}</p><p><strong>Coords (Lat, Lon):</strong><br><span class="coords">Original: ${loc.original_coords[0].toFixed(4)}, ${loc.original_coords[1].toFixed(4)}</span><br><span class="coords comparison-value">Optimised: ${newLat.toFixed(4)}, ${newLon.toFixed(4)}</span></p><p><strong>Wind:</strong> ${loc.original_wind_speed} m/s -> <span class="comparison-value">${loc.optimised_wind_speed} m/s</span></p><p><strong>Grid Dist:</strong> ${loc.original_dist_grid_m} m -> <span class="comparison-value">${loc.optimised_dist_grid_m} m</span></p><p><strong>Protected Dist:</strong> ${loc.original_dist_protected_m} m -> <span class="comparison-value">${loc.optimised_dist_protected_m} m</span></p><p><strong>Residential Dist:</strong> ${loc.original_dist_residential_m} m -> <span class="comparison-value">${loc.optimised_dist_residential_m} m</span></p><hr style="border: 0; border-top: 1px solid #eee; margin: 8px 0;"><strong>Constraint Analysis:</strong>${reasoningHtml}</div>`;
+        //     html += `<div class="result-item"><h4>Turbine ${index + 1} <span class="rag-score" style="background-color:${loc.rag_color};">${loc.rag_score}</span></h4><p><strong>Score:</strong> ${loc.probability}</p><p><strong>Coords (Lat, Lon):</strong><br><span class="coords">Original: ${loc.original_coords[0].toFixed(4)}, ${loc.original_coords[1].toFixed(4)}</span><br><span class="coords comparison-value">Optimised: ${newLat.toFixed(4)}, ${newLon.toFixed(4)}</span></p><p><strong>Wind:</strong> ${loc.original_wind_speed} m/s -> <span class="comparison-value">${loc.optimised_wind_speed} m/s</span></p><p><strong>Grid Dist:</strong> ${loc.original_dist_grid_m} m -> <span class="comparison-value">${loc.optimised_dist_grid_m} m</span></p><p><strong>Protected Dist:</strong> ${loc.original_dist_protected_m} m -> <span class="comparison-value">${loc.optimised_dist_protected_m} m</span></p><p><strong>Residential Dist:</strong> ${loc.original_dist_residential_m} m -> <span class="comparison-value">${loc.optimised_dist_residential_m} m</span></p><hr style="border: 0; border-top: 1px solid #eee; margin: 8px 0;"><strong>Constraint Analysis:</strong>${reasoningHtml}</div>`;
+         });
+        document.getElementById('results').innerHTML = html;
+    }
+    
+    function exportOptimisationResults(format) { if (!optimisationResultData) { alert("No optimisation data to export."); return; } const dataToExport = optimisationResultData.map(loc => ({ ...loc, new_lat: loc.new_coords[0], new_lon: loc.new_coords[1], original_lat: loc.original_coords[0], original_lon: loc.original_coords[1] })); fetch('/export_optimisation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ format: format, data: dataToExport }) }).then(res => res.blob()).then(blob => { const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = url; a.download = `optimised_locations.${format}`; document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url); }).catch(() => alert('Could not export data.')); }
+    function exportPolygon(format) { if (drawnItems.getLayers().length === 0) { alert('Please draw a polygon first.'); return; } const polygonLayer = drawnItems.getLayers()[0]; const allFeatures = []; const drawnPolygonGeoJSON = polygonLayer.toGeoJSON(); drawnPolygonGeoJSON.properties = { type: 'drawn_area' }; allFeatures.push(drawnPolygonGeoJSON); turbineLayer.eachLayer(t => { const g = t.toGeoJSON(); g.properties = { type: 'added_turbine' }; allFeatures.push(g); }); Object.values(layerGroups).forEach(group => { group.eachLayer(layer => { let inside = false; if (layer.feature.geometry.type.includes('Polygon')) { if (polygonLayer.getBounds().intersects(layer.getBounds())) inside = true; } else { if (polygonLayer.getBounds().contains(layer.getLatLng()) && isMarkerInsidePolygon(layer.getLatLng(), polygonLayer)) inside = true; } if (inside) allFeatures.push(layer.feature); }); }); const featureCollection = { type: "FeatureCollection", features: allFeatures }; fetch('/export_polygon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ format: format, geojson: featureCollection }) }).then(res => res.blob()).then(blob => { const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = url; a.download = `polygon_export.${format}`; document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url); }).catch(() => alert('Could not export data.')); }
+    function isMarkerInsidePolygon(latlng, poly) { let pts = poly.getLatLngs()[0], x = latlng.lng, y = latlng.lat, inside = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { let xi = pts[i].lng, yi = pts[i].lat; let xj = pts[j].lng, yj = pts[j].lat; let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi); if (intersect) inside = !inside; } return inside; }
+    
+    updatePolygonInfo();
+</script>
+</body>
+</html>
