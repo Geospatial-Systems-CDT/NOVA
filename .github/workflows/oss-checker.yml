@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Fetch GitHub App token for target repo
         id: target_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
         with:
           app-id: ${{ secrets.OSPO_WORKFLOW_APP_ID }}
           private-key: ${{ secrets.OSPO_WORKFLOW_PRIVATE_KEY }}
@@ -37,7 +37,7 @@ jobs:
 
       - name: Fetch GitHub App token for OSPO source repo (read-only)
         id: ospo_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
         with:
           app-id: ${{ secrets.OSPO_WORKFLOW_APP_ID }}
           private-key: ${{ secrets.OSPO_WORKFLOW_PRIVATE_KEY }}
@@ -449,7 +449,7 @@ jobs:
 
       - name: Upload OSS result artifacts
         if: ${{ steps.summarise_results.outputs.hasResults == 'true' }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: oss-checks-${{ github.run_id }}
           retention-days: 30
