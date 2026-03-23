@@ -223,6 +223,89 @@ describe('MapVisualHelper', () => {
         expect(addTo).toHaveBeenCalledWith(map);
     });
 
+    it('_getHighestPriorityIssues keeps only the highest severity issue per topic', () => {
+        const features = [
+            {
+                properties: {
+                    issue: 'Close to special areas of conservation - <= 1.5km',
+                    suitability: 'amber',
+                },
+            },
+            {
+                properties: {
+                    issue: 'Too close to special areas of conservation - <= 1km',
+                    suitability: 'red',
+                },
+            },
+            {
+                properties: {
+                    issue: 'Special area of conservation',
+                    suitability: 'darkRed',
+                },
+            },
+            {
+                properties: {
+                    issue: 'Too close to sites of special scientific interest - <= 1km',
+                    suitability: 'red',
+                },
+            },
+        ];
+
+        const result = (MapVisualHelper as any)._getHighestPriorityIssues(features);
+
+        expect(result).toContain('Special area of conservation');
+        expect(result).toContain('Too close to sites of special scientific interest - <= 1km');
+        expect(result).not.toContain('Too close to special areas of conservation - <= 1km');
+        expect(result).not.toContain('Close to special areas of conservation - <= 1.5km');
+    });
+
+    it('_handleHeatmapLayerClick popup suppresses lower severity duplicates for the same topic', () => {
+        const addTo = vi.fn().mockReturnThis();
+        const setHTML = vi.fn().mockReturnValue({ addTo });
+        const setLngLat = vi.fn().mockReturnValue({ setHTML });
+
+        vi.spyOn(Popup.prototype, 'setLngLat').mockImplementation(setLngLat as any);
+        vi.spyOn(Popup.prototype, 'setHTML').mockImplementation(setHTML as any);
+        vi.spyOn(Popup.prototype, 'addTo').mockImplementation(addTo as any);
+
+        const event = {
+            lngLat: { lng: 0, lat: 0 },
+            features: [
+                {
+                    properties: {
+                        issue: 'Close to special areas of conservation - <= 1.5km',
+                        suitability: 'amber',
+                    },
+                    layer: { id: 'heatmap-layer' },
+                },
+                {
+                    properties: {
+                        issue: 'Too close to special areas of conservation - <= 1km',
+                        suitability: 'red',
+                    },
+                    layer: { id: 'heatmap-layer' },
+                },
+                {
+                    properties: {
+                        issue: 'Special area of conservation',
+                        suitability: 'darkRed',
+                    },
+                    layer: { id: 'heatmap-layer' },
+                },
+            ],
+            target: map,
+            defaultPrevented: false,
+            originalEvent: { target: { tagName: 'DIV' } },
+        };
+
+        (MapVisualHelper as any)._handleHeatmapLayerClick(event);
+
+        const html = (setHTML as any).mock.calls[0][0];
+        expect(html).toContain('Special area of conservation');
+        expect(html).not.toContain('Too close to special areas of conservation - <= 1km');
+        expect(html).not.toContain('Close to special areas of conservation - <= 1.5km');
+    });
+
     it('visualiseAssetsIn3d logs and skips if marker is null', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         await MapVisualHelper.visualiseAssetsIn3d(map, null, null, null);
