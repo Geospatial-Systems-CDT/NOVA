@@ -85,6 +85,19 @@
                             "maxValue": "100"
                         }
                     ]
+                },
+                {
+                    "id": "solarPotential",
+                    "name": "Photovoltaic potential",
+                    "attributes": [
+                        {
+                            "id": "minPotential",
+                            "description": "Set minimum PV potential (kWh/kWp/year)",
+                            "defaultValue": 900,
+                            "valueType": "number",
+                            "maxValue": "1300"
+                        }
+                    ]
                 }
             ]
         }

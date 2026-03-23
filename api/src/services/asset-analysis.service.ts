@@ -98,6 +98,26 @@ export class AssetAnalysisService {
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(windspeedBadLayerData, location, 'red', `Bad windspeed - < ${minSpeed}m/s or > ${maxSpeed}m/s`)
                 );
+            } else if (dataLayer.id === 'solarPotential') {
+                const minPotential =
+                    dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minPotential')?.value || 900;
+                const solarPotentialLayer = this.dataProviderUtils.getSolarPotentialLayerData();
+                const solarPotentialBadLayerData: FeatureCollection<MultiPolygon> = {
+                    type: 'FeatureCollection',
+                    features: solarPotentialLayer.features.filter((feature) => {
+                        const value = Number(feature.properties?.pv_annual_kwh_kwp);
+                        return !Number.isFinite(value) || value < minPotential;
+                    }),
+                };
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        solarPotentialBadLayerData,
+                        location,
+                        'red',
+                        `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`
+                    )
+                );
             } else if (dataLayer.id === 'specialAreasOfConservation') {
                 const minDistance: number =
                     dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minDistance')?.value || 1;
