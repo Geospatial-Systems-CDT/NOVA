@@ -11,6 +11,7 @@ import { substationService } from '../src/services/substation.service';
 import { DataProviderUtils, dataProviderUtils } from '../src/utils/data-provider.utils';
 import { AssetLocationRequestDto } from '../src/models/asset-location-request.model';
 import { AssetAnalysisService } from '../src/services/asset-analysis.service';
+import { ReportService } from '../src/services/report.service';
 
 // Mock dataProviderUtils
 jest.mock('../src/utils/data-provider.utils');
@@ -37,7 +38,8 @@ describe('UIController', () => {
     let res: Partial<Response>;
 
     beforeEach(() => {
-        controller = new UIController(new AssetAnalysisService(new DataProviderUtils()));
+        const assetService = new AssetAnalysisService(new DataProviderUtils());
+        controller = new UIController(assetService, new ReportService());
 
         // Setup request and response objects
         req = {

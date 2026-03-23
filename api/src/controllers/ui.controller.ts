@@ -10,6 +10,7 @@ import { substationService } from '../services/substation.service';
 import { GeoJSON } from 'geojson';
 import { AssetLocationRequestDto } from '../models/asset-location-request.model';
 import { AssetAnalysisService } from '../services/asset-analysis.service';
+import { ReportService } from '../services/report.service';
 
 /**
  * Controller for UI-related endpoints
@@ -18,7 +19,10 @@ export class UIController {
     /**
      * Constructor for UIController
      */
-    constructor(private readonly assetAnalysisService: AssetAnalysisService) {}
+    constructor(
+        private readonly assetAnalysisService: AssetAnalysisService,
+        private readonly reportService: ReportService
+    ) {}
 
     /**
      * @swagger
@@ -238,7 +242,7 @@ export class UIController {
      *       500:
      *         description: Internal server error.
      */
-    public getSubstationGeoJSON(req: Request, res:Response): void {
+    public getSubstationGeoJSON(req: Request, res: Response): void {
         const geoJsonData = dataProviderUtils.readGridSupplyPointData();
         res.status(200).json(geoJsonData);
     }
@@ -259,7 +263,7 @@ export class UIController {
      *       500:
      *         description: Internal server error.
      */
-    public getPowerLineGeoJSON(req: Request, res:Response): void {
+    public getPowerLineGeoJSON(req: Request, res: Response): void {
         const geoJsonData = dataProviderUtils.readPowerLineData();
         res.status(200).json(geoJsonData);
     }
@@ -269,7 +273,11 @@ export class UIController {
      * /api/ui/location/analyse:
      *   post:
      *     summary: Analyse location data for a specific asset type
-     *     description: Accepts GeoJSON of the selected area, layers configuration, and asset to analyze, returns an array of GeoJSON objects.
+     *     description: |
+     *       Accepts GeoJSON of the selected area, layers configuration, and asset to analyze.
+     *       Returns `{ heatmap, report }` where `heatmap` is the full suitability FeatureCollection
+     *       and `report` contains candidate regions filtered to at most `maxIssues` distinct issue types
+     *       (null when `maxIssues` is not supplied).
      *     tags:
      *       - UI
      *     requestBody:
@@ -302,10 +310,10 @@ export class UIController {
                 return;
             }
 
-            const geoJsonData = this.assetAnalysisService.analyzeLocation(analysisRequest);
+            const heatmap = this.assetAnalysisService.analyzeLocation(analysisRequest);
+            const report = analysisRequest.maxIssues !== undefined ? this.reportService.generateReport(heatmap, analysisRequest.maxIssues) : null;
 
-            // Return an array with the sample GeoJSON
-            res.status(200).json(geoJsonData);
+            res.status(200).json({ heatmap, report });
         } catch (error) {
             console.error(`Error analysing location data: ${error}`);
             res.status(500).json({ error: 'Failed to analyse location data' });
@@ -430,4 +438,6 @@ export class UIController {
     }
 }
 
-export const uiController = new UIController(new AssetAnalysisService(new DataProviderUtils()));
+const assetAnalysisService = new AssetAnalysisService(new DataProviderUtils());
+export const reportService = new ReportService();
+export const uiController = new UIController(assetAnalysisService, reportService);

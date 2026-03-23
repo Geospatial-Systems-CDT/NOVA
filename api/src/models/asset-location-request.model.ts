@@ -7,4 +7,5 @@ import { FeatureCollection, Polygon } from 'geojson';
 export interface AssetLocationRequestDto {
     location: FeatureCollection<Polygon>;
     dataLayers: DataLayerDto[];
+    maxIssues?: number;
 }
