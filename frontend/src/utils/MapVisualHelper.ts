@@ -554,6 +554,72 @@ export class MapVisualHelper {
     }
 
     /**
+     * Maps suitability values to hierarchy scores so only the highest-priority issue
+     * per topic is shown in the popup.
+     */
+    private static _getSuitabilityScore(suitability: unknown): number {
+        if (suitability === 'darkRed') return 3;
+        if (suitability === 'red') return 2;
+        if (suitability === 'amber') return 1;
+        return 0;
+    }
+
+    /**
+     * Normalizes issue strings into a stable topic key so related "close / too close / present"
+     * variants can be compared by severity.
+     */
+    private static _getIssueTopicKey(issue: string): string {
+        const normalizedIssue = issue.toLowerCase();
+
+        if (normalizedIssue.includes('special area of conservation') || normalizedIssue.includes('special areas of conservation')) {
+            return 'special-areas-of-conservation';
+        }
+
+        if (
+            normalizedIssue.includes('site of special scientific interest') ||
+            normalizedIssue.includes('sites of special scientific interest')
+        ) {
+            return 'sites-of-special-scientific-interest';
+        }
+
+        if (normalizedIssue.includes('built up area') || normalizedIssue.includes('built up areas')) {
+            return 'built-up-areas';
+        }
+
+        if (normalizedIssue.includes('area of outstanding natural beauty') || normalizedIssue.includes('areas of outstanding natural beauty')) {
+            return 'areas-of-outstanding-natural-beauty';
+        }
+
+        if (normalizedIssue.includes('windspeed')) {
+            return 'windspeed';
+        }
+
+        return normalizedIssue;
+    }
+
+    /**
+     * Returns at most one issue per topic, preferring darkRed over red over amber.
+     */
+    private static _getHighestPriorityIssues(features: Feature[]): string[] {
+        const issuesByTopic = new Map<string, { issue: string; score: number }>();
+
+        features.forEach((feature) => {
+            const issue = feature.properties?.issue;
+            if (!issue) return;
+
+            const score = this._getSuitabilityScore(feature.properties?.suitability);
+            const topicKey = this._getIssueTopicKey(issue);
+            const existing = issuesByTopic.get(topicKey);
+
+            if (!existing || score > existing.score) {
+                issuesByTopic.set(topicKey, { issue, score });
+            }
+        });
+
+        return Array.from(issuesByTopic.values()).map((entry) => entry.issue);
+    }
+
+    /**
      * Shows a popup when a polygon on the heatmap is clicked, listing all issues.
      *
      * @param e - Click event with feature context
@@ -579,12 +645,8 @@ export class MapVisualHelper {
             return;
         }
 
-        // Collect and flatten all issues from every relevant feature, then de-duplicate.
-        const allIssues = features
-            .filter((feature) => (feature as MapGeoJSONFeature).layer?.id === MapVisualHelper.heatmapLayerId)
-            .flatMap((feature) => MapVisualHelper._parseIssueFromFeature(feature));
-
-        const uniqueIssues = Array.from(new Set(allIssues));
+        const heatmapFeatures = features.filter((feature) => (feature as MapGeoJSONFeature).layer?.id === MapVisualHelper.heatmapLayerId);
+        const uniqueIssues = MapVisualHelper._getHighestPriorityIssues(heatmapFeatures);
         const count = uniqueIssues.length;
 
         const html = `
