@@ -275,6 +275,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         const payload = {
             location: featureCollection,
             dataLayers,
+            maxIssues: 1,
         };
 
         setLoading(true);
@@ -291,10 +292,11 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                 throw new Error('Failed to submit analysis request');
             }
 
-            const geojson = await response.json();
+            const { heatmap, report } = await response.json();
 
-            setCachedHeatmap(geojson);
-            MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, geojson);
+            console.log('[Report]', report);
+            setCachedHeatmap(heatmap);
+            MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, heatmap);
             setLayersPanelOpen(false);
         } catch (err) {
             console.error('Analysis request failed', err);
