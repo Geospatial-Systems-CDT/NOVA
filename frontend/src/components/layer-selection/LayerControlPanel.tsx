@@ -18,6 +18,7 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
+import area from '@turf/area';
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import type MapboxDraw from '@mapbox/mapbox-gl-draw';
@@ -375,7 +376,53 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
     const isVisible = polygonStatus === 'confirmed';
     if (!isVisible) return null;
-
+    const handleGenerateReport = () => {
+        if (!drawRef.current) {
+            alert('No polygon selected.');
+            return;
+        }
+        const polygon = MapVisualHelper.getFirstPolygon(drawRef.current);
+        if (!polygon) {
+            alert('No polygon selected.');
+            return;
+        }
+        let areaSqMeters = 0;
+        try {
+            // @ts-ignore: turf/area expects a GeoJSON geometry
+            areaSqMeters = area({ type: 'Feature', geometry: polygon, properties: {} });
+        } catch (e) {
+            alert('Could not calculate area.');
+            return;
+        }
+        const areaSqKm = areaSqMeters / 1e6;
+        const htmlContent = `
+            <html>
+            <head>
+                <title>Layer Report</title>
+                <meta charset="UTF-8" />
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 2rem; }
+                    h1 { color: #1976d2; }
+                    .area { font-size: 1.2rem; margin-top: 1rem; }
+                </style>
+            </head>
+            <body>
+                <h1>Layer Report</h1>
+                <div class="area">
+                    <strong>Total Area:</strong> ${areaSqKm.toLocaleString(undefined, { maximumFractionDigits: 3 })} km²
+                </div>
+            </body>
+            </html>
+        `;
+        const reportWindow = window.open('', '_blank');
+        if (reportWindow) {
+            reportWindow.document.open();
+            reportWindow.document.write(htmlContent);
+            reportWindow.document.close();
+        } else {
+            alert('Unable to open report window. Please allow pop-ups.');
+        }
+    };
     return (
         <>
             <Box className="layer-panel-toggle" sx={{ left: layersPanelOpen ? '430px' : '1rem' }}>
@@ -432,12 +479,15 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                     </Box>
 
                     <Divider sx={{ my: 2, opacity: 0.3 }} />
-
-                    <Box className="layer-panel-footer">
+                    <Box className="layer-panel-footer" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <Button variant="contained" onClick={handleApply} sx={{ px: 4 }}>
                             APPLY
                         </Button>
+                        <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
+                            Generate Report
+                        </Button>
                     </Box>
+
                 </Paper>
             )}
 
