@@ -91,6 +91,66 @@ describe('analyzeLocation', () => {
         ],
     };
 
+    const mockSolarPotentialLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: { pv_annual_kwh_kwp: 850 },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.3353644688831992, 50.70823856465367],
+                                [-1.3353644688831992, 50.685261264837806],
+                                [-1.2646063737671227, 50.685261264837806],
+                                [-1.2646063737671227, 50.70823856465367],
+                                [-1.3353644688831992, 50.70823856465367],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+            {
+                type: 'Feature',
+                properties: { pv_annual_kwh_kwp: 950 },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.3011395290153018, 50.69104609243263],
+                                [-1.3011395290153018, 50.66841263464531],
+                                [-1.2418094343717598, 50.66841263464531],
+                                [-1.2418094343717598, 50.69104609243263],
+                                [-1.3011395290153018, 50.69104609243263],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.3010647701177902, 50.691902878625484],
+                                [-1.2425384679944784, 50.691902878625484],
+                                [-1.2425384679944784, 50.70709380802265],
+                                [-1.3010647701177902, 50.70709380802265],
+                                [-1.3010647701177902, 50.691902878625484],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     const mockSpecialAreasOfConvservationLayerData = {
         type: 'FeatureCollection',
         features: [
@@ -369,6 +429,7 @@ describe('analyzeLocation', () => {
         assetAnalysisService = new AssetAnalysisService(dataProviderUtils);
 
         (dataProviderUtils.getWindspeedLayerData as jest.Mock).mockImplementation(() => mockWindspeedLayerData);
+        (dataProviderUtils.getSolarPotentialLayerData as jest.Mock).mockImplementation(() => mockSolarPotentialLayerData);
         (dataProviderUtils.getSpecialAreasOfConservationLayerData as jest.Mock).mockImplementation(() => mockSpecialAreasOfConvservationLayerData);
         (dataProviderUtils.getSpecialAreasOfConservation1KmLayerData as jest.Mock).mockImplementation(() => mockSpecialAreasOfConservation1KmLayerData);
         (dataProviderUtils.getSitesOfSpecialScientificInterestLayerData as jest.Mock).mockImplementation(() => mockSitesOfSpecialScientificInterestLayerData);
@@ -1942,5 +2003,58 @@ describe('analyzeLocation', () => {
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
         expect(result).toEqual(expectedResult);
+    });
+
+    it('returns red matched polygons for low photovoltaic potential when only solar potential is analyzed', () => {
+        const solarDataLayers: DataLayerDto[] = [
+            {
+                id: 'solarPotential',
+                attributes: [
+                    {
+                        id: 'minPotential',
+                        value: 900,
+                    },
+                ],
+                analyze: true,
+            },
+        ];
+
+        const requestDto: AssetLocationRequestDto = {
+            location: drawnLocation,
+            dataLayers: solarDataLayers,
+        };
+
+        const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
+        const redSolarPolygons = result.features.filter(
+            (feature) =>
+                (feature.properties as GeoJsonProperties)?.suitability === 'red' &&
+                ((feature.properties as GeoJsonProperties)?.issue as string)?.includes('Low photovoltaic potential')
+        );
+
+        expect(dataProviderUtils.getSolarPotentialLayerData).toHaveBeenCalled();
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(redSolarPolygons.length).toBeGreaterThan(0);
+    });
+
+    it('defaults to 900 kWh/kWp/year when minPotential is not provided', () => {
+        const solarDataLayers: DataLayerDto[] = [
+            {
+                id: 'solarPotential',
+                attributes: [],
+                analyze: true,
+            },
+        ];
+
+        const requestDto: AssetLocationRequestDto = {
+            location: drawnLocation,
+            dataLayers: solarDataLayers,
+        };
+
+        const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
+        const issues = result.features
+            .map((feature) => (feature.properties as GeoJsonProperties)?.issue as string | undefined)
+            .filter((issue): issue is string => Boolean(issue));
+
+        expect(issues.some((issue) => issue.includes('Low photovoltaic potential - < 900 kWh/kWp/year'))).toBe(true);
     });
 });

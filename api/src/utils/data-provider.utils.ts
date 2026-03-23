@@ -22,6 +22,7 @@ export class DataProviderUtils {
     private readonly powerLineDataFilePath: string;
     private readonly regionsDataFilePath: string;
     private readonly windspeedLayerDataFilePath: string;
+    private readonly solarPotentialLayerDataFilePath: string;
     private readonly specialAreasOfConservationLayerDataFilePath: string;
     private readonly specialAreasOfConservation1KmLayerDataFilePath: string;
     private readonly sitesOfSpecialScientificInterestLayerDataFilePath: string;
@@ -44,6 +45,7 @@ export class DataProviderUtils {
         this.gridSupplyPointDataFilePath = path.join(__dirname, '../data/grid-supply-points.geojson');
         this.powerLineDataFilePath = path.join(__dirname, '../data/main-power-lines.geojson');
         this.windspeedLayerDataFilePath = path.join(__dirname, '../data/windspeed.geojson');
+        this.solarPotentialLayerDataFilePath = path.join(__dirname, '../data/pvout.geojson');
         this.specialAreasOfConservationLayerDataFilePath = path.join(__dirname, '../data/sac.geojson');
         this.specialAreasOfConservation1KmLayerDataFilePath = path.join(__dirname, '../data/sac-1km.geojson');
         this.sitesOfSpecialScientificInterestLayerDataFilePath = path.join(__dirname, '../data/sssi.geojson');
@@ -136,6 +138,12 @@ export class DataProviderUtils {
 
     public getWindspeedLayerData(): FeatureCollection<MultiPolygon> {
         const fileContent = fs.readFileSync(this.windspeedLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+    }
+
+    public getSolarPotentialLayerData(): FeatureCollection<MultiPolygon> {
+        const fileContent = fs.readFileSync(this.solarPotentialLayerDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
     }
