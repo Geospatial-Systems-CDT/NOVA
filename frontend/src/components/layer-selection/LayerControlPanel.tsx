@@ -79,12 +79,8 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const [layersLoaded, setLayersLoaded] = useState(false);
     const [loadError, setLoadError] = useState(false);
     const setCachedHeatmap = useMapStore((s) => s.setCachedHeatmap);
-<<<<<<< HEAD
     const [tempLayerSettings, setTempLayerSettings] = useState<Record<string, Record<string, AttributeValue>>>({});
-=======
     const setCachedReport = useMapStore((s) => s.setCachedReport);
-    const [tempLayerSettings, setTempLayerSettings] = useState<Record<string, Record<string, number>>>({});
->>>>>>> main
 
     const fetchLayers = async () => {
         try {
