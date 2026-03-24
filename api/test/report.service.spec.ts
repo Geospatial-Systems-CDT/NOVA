@@ -203,10 +203,11 @@ describe('ReportService', () => {
                 getSpecialAreasOfConservationLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getBuiltupAreasLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getAreasOfNaturalBeautyLayerData: () => ({ type: 'FeatureCollection', features: [] }),
+                getAgriculturalLandClassificationData: () => makeMultiPolygonFC({ ALC_GRADE: 'Grade 3' }),
             } as unknown as DataProviderUtils;
         }
 
-        it('returns a layerValue entry for each active layer', () => {
+        it('returns a layerValue entry for each active layer plus ALC grade', () => {
             const serviceWithData = new ReportService(makeMockDataProviderUtils());
             const activeLayers = [
                 { id: 'windSpeed', analyze: true, attributes: [] },
@@ -215,8 +216,8 @@ describe('ReportService', () => {
 
             const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, activeLayers);
 
-            expect(regions[0].layerValues).toHaveLength(2);
-            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual(['windSpeed', 'solarPotential']);
+            expect(regions[0].layerValues).toHaveLength(3);
+            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual(['agriculturalLandClassification', 'windSpeed', 'solarPotential']);
         });
 
         it('returns the correct wind speed value when the centroid falls within a grid cell', () => {
@@ -241,12 +242,14 @@ describe('ReportService', () => {
             expect(sssiEntry?.unit).toBe('km');
         });
 
-        it('returns layerValues: [] when activeDataLayers is empty even with a data provider', () => {
+        it('returns only the ALC grade when activeDataLayers is empty', () => {
             const serviceWithData = new ReportService(makeMockDataProviderUtils());
 
             const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, []);
 
-            expect(regions[0].layerValues).toEqual([]);
+            expect(regions[0].layerValues).toHaveLength(1);
+            expect(regions[0].layerValues[0].layerId).toBe('agriculturalLandClassification');
+            expect(regions[0].layerValues[0].value).toBe('Grade 3');
         });
     });
 });

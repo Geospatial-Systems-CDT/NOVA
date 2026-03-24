@@ -77,6 +77,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const [layersLoaded, setLayersLoaded] = useState(false);
     const [loadError, setLoadError] = useState(false);
     const setCachedHeatmap = useMapStore((s) => s.setCachedHeatmap);
+    const setCachedReport = useMapStore((s) => s.setCachedReport);
     const [tempLayerSettings, setTempLayerSettings] = useState<Record<string, Record<string, number>>>({});
 
     const fetchLayers = async () => {
@@ -293,9 +294,10 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
             }
 
             const { heatmap, report } = await response.json();
+            console.log('[REPORT]', report);
 
-            console.log('[Report]', report);
             setCachedHeatmap(heatmap);
+            setCachedReport(report);
             MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, heatmap);
             setLayersPanelOpen(false);
         } catch (err) {

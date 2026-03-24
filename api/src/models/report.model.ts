@@ -41,9 +41,12 @@ export interface ReportIssueDTO {
  *           type: string
  *           description: Human-readable label for the layer value.
  *         value:
- *           type: number
- *           nullable: true
- *           description: The computed value (wind speed, solar potential, or distance to nearest boundary). Null when the value cannot be determined for this region.
+ *           oneOf:
+ *             - type: number
+ *               nullable: true
+ *             - type: string
+ *               nullable: true
+ *           description: The computed value (wind speed, solar potential, distance to nearest boundary, or text grade such as ALC grade). Null when the value cannot be determined for this region.
  *         unit:
  *           type: string
  *           description: Unit of the value (e.g. "m/s", "kWh/kWp/year", "km").
@@ -59,7 +62,7 @@ export interface ReportRegionLayerValueDTO {
     /** Human-readable label, e.g. "Wind speed" */
     label: string;
     /** Computed value, or null when it cannot be determined */
-    value: number | null;
+    value: string | number | null;
     /** Unit string, e.g. "m/s", "kWh/kWp/year", "km" */
     unit: string;
 }
