@@ -6,21 +6,29 @@ import 'reveal.js/reveal.css';
 import 'reveal.js/theme/black.css';
 
 const ReportPage = () => {
+    const isPrintView = new URLSearchParams(window.location.search).has('print-pdf');
+
+    const openPrintView = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('print-pdf', '');
+        window.open(url.toString(), '_blank');
+    };
+
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <h1>Report Page</h1>
-        <Deck>
-            <Slide>
-                <h1>Hello</h1>
-                <p>My first Reveal deck in React.</p>
-            </Slide>
-            <Slide background="#111827">
-                <h2>Second slide</h2>
-            </Slide>
-        </Deck>            
+            <div className={isPrintView ? undefined : 'report-page'}>
+                <Deck>
+                    <Slide>
+                        <p>My first Reveal deck in React.</p>
+                        {!isPrintView && <button onClick={openPrintView}>Open Print View</button>}
+                    </Slide>
+                    <Slide background="#111827">
+                        <h2>Second slide</h2>
+                    </Slide>
+                </Deck>
+            </div>
         </ThemeProvider>
-
     );
 };
 
