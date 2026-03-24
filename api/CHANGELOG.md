@@ -55,6 +55,29 @@ Docs:
 - Added and expanded the user guide method note with equations, constants, assumptions, and limitations.
 - Documented data-source precedence (solar/wind lookup first, heuristic fallback second).
 
+Additional updates (terrain suitability):
+- Added new terrain resource layers for suitability analysis:
+  - `Aspect_WGS84.geojson`
+  - `Slopes_WGS84.geojson`
+- Added `Terrain` category to layer metadata (`layers.json`) with:
+  - `Slope` layer and configurable `maxSlope` threshold (default: 30 degrees)
+  - `Aspect` layer (categorical classes)
+- Extended `DataProviderUtils` with terrain loaders:
+  - `getAspectLayerData()`
+  - `getSlopesLayerData()`
+- Implemented terrain suitability logic in `AssetAnalysisService`:
+  - Slope rule: red when slope exceeds configured `maxSlope`
+  - Aspect rule for solar suitability:
+    - amber for East/West classes (3, 7)
+    - red for North/North-East/North-West classes (1, 2, 8)
+- Updated issue topic normalization in frontend popup handling to include terrain topics (`slope`, `aspect`) so duplicate issue variants are still collapsed by severity.
+- Refined terrain issue wording for clarity:
+  - aspect messages now focus on aspect-only reasoning (no implied slope status)
+  - slope message explicitly states unfavourable solar terrain due to steep slope
+- Added/updated API tests for:
+  - terrain data loading in `data-provider.utils.spec.ts`
+  - slope/aspect suitability behavior in `asset-analysis.service.spec.ts`
+
 ### Notes
 - This change affects issue text shown in the frontend popup.
 - Geometry layer generation/order from the API was not changed in this update.
