@@ -322,6 +322,12 @@ export class AssetAnalysisService {
                         `Agricultural land classification at the selected grade (${selectedClassification}) and better`
                     )
                 );
+            } else if (dataLayer.id === 'ancientWoodlands') {
+                const ancientWoodlandsLayerData = this.dataProviderUtils.getAncientWoodlandsLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(ancientWoodlandsLayerData, location, 'darkRed', 'Ancient woodland')
+                );
             } else if (dataLayer.id === 'fuelPoverty') {
                 const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
                 const povertyPercentages = fuelPovertyLayerData.features

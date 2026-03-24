@@ -42,6 +42,11 @@
                             "maxValue": "10"
                         }
                     ]
+                },
+                {
+                    "id": "ancientWoodlands",
+                    "name": "Ancient woodland",
+                    "attributes": []
                 }
             ]
         },

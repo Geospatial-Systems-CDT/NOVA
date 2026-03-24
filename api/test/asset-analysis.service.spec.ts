@@ -423,6 +423,28 @@ describe('analyzeLocation', () => {
         ],
     };
 
+    const mockAncientWoodlandsLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [
+                        [
+                            [-1.342, 50.712],
+                            [-1.342, 50.704],
+                            [-1.33, 50.704],
+                            [-1.33, 50.712],
+                            [-1.342, 50.712],
+                        ],
+                    ],
+                },
+            },
+        ],
+    };
+
     const drawnLocation: FeatureCollection<Polygon> = {
         type: 'FeatureCollection',
         features: [
@@ -516,6 +538,11 @@ describe('analyzeLocation', () => {
             attributes: [],
             analyze: false,
         },
+        {
+            id: 'ancientWoodlands',
+            attributes: [],
+            analyze: false,
+        },
     ];
 
     beforeEach(() => {
@@ -537,6 +564,7 @@ describe('analyzeLocation', () => {
         (dataProviderUtils.getAreasOfNaturalBeauty1KmLayerData as jest.Mock).mockImplementation(() => mockAreasOfNaturalBeauty1KmLayerData);
         (dataProviderUtils.getIoWPalLayerData as jest.Mock).mockImplementation(() => mockIoWPalLayerData);
         (dataProviderUtils.getFuelPovertyLayerData as jest.Mock).mockImplementation(() => mockFuelPovertyLayerData);
+        (dataProviderUtils.getAncientWoodlandsLayerData as jest.Mock).mockImplementation(() => mockAncientWoodlandsLayerData);
     });
 
     it('returns only the good layer when no data layers are provided for analysis', () => {
@@ -2359,5 +2387,31 @@ describe('analyzeLocation', () => {
         expect(dataProviderUtils.getFuelPovertyLayerData).toHaveBeenCalled();
         expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
         expect(fuelPovertyIssues.length).toBeGreaterThan(0);
+    });
+
+    it('flags polygons inside ancient woodland as an issue when the layer is analyzed', () => {
+        const ancientWoodlandsDataLayers: DataLayerDto[] = [
+            {
+                id: 'ancientWoodlands',
+                attributes: [],
+                analyze: true,
+            },
+        ];
+
+        const requestDto: AssetLocationRequestDto = {
+            location: drawnLocation,
+            dataLayers: ancientWoodlandsDataLayers,
+        };
+
+        const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
+        const ancientWoodlandIssues = result.features.filter(
+            (feature) =>
+                (feature.properties as GeoJsonProperties)?.suitability === 'darkRed' &&
+                (feature.properties as GeoJsonProperties)?.issue === 'Ancient woodland'
+        );
+
+        expect(dataProviderUtils.getAncientWoodlandsLayerData).toHaveBeenCalled();
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(ancientWoodlandIssues.length).toBeGreaterThan(0);
     });
 });

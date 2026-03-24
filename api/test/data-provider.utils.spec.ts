@@ -340,6 +340,32 @@ describe('DataProviderUtils', () => {
         ],
     };
 
+    const mockAncientWoodlandsLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    THEME: 'ancient woodland',
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.34, 50.71],
+                                [-1.34, 50.705],
+                                [-1.333, 50.705],
+                                [-1.333, 50.71],
+                                [-1.34, 50.71],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     beforeEach(() => {
         // Reset all mocks
         jest.resetAllMocks();
@@ -564,6 +590,17 @@ describe('DataProviderUtils', () => {
 
             expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Fuel_Poverty_WGS84.geojson'), 'utf8');
             expect(result).toEqual(mockFuelPovertyLayerData);
+        });
+    });
+
+    describe('getAncientWoodlandsLayerData', () => {
+        it('should read and parse the ancient woodlands layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockAncientWoodlandsLayerData));
+
+            const result = dataProviderUtils.getAncientWoodlandsLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('AncientWoodlands_IOW.geojson'), 'utf8');
+            expect(result).toEqual(mockAncientWoodlandsLayerData);
         });
     });
 });
