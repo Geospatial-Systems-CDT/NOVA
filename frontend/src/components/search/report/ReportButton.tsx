@@ -31,13 +31,9 @@ const StyledContainer = styled(Box)({
 
 const ReportButton = ( ) => {
     const cachedHeatmap = useMapStore((s) => s.cachedHeatmap);
-    const [isReportOpen, setIsReportOpen] = useState(false);
-    const handleTogglePanel = () => {
-        setIsReportOpen(!isReportOpen);
-    };
 
-    const handleClosePanel = () => {
-        setIsReportOpen(false);
+    const openReportPage = () => {
+        window.open('/report', '_blank', 'noopener,noreferrer');
     };
 
     if (!cachedHeatmap) return null;
@@ -45,15 +41,13 @@ const ReportButton = ( ) => {
     return (
         <StyledContainer style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
             <ControlButton
-                onClick={handleTogglePanel}
+                onClick={openReportPage}
                 aria-label="Report"
-                isActive={isReportOpen}
             >
                 <span style={{ marginRight: '8px' }}>Report</span>
                 {/* Fallback to add.svg icon for now */}
-                <img src={isReportOpen ? '/icons/report_white.svg' : '/icons/report_black.svg'} alt="Report" width={18} height={18} />
+                <img src={'/icons/report_black.svg'} alt="Report" width={18} height={18} />
             </ControlButton>
-            {isReportOpen && <ReportPanel onClose={handleClosePanel} onSelect={() => {}} />}
         </StyledContainer>
     );
 };
