@@ -1,0 +1,203 @@
+//
+//
+
+import type { Variation } from '../components/search/add-asset/AddAsset';
+import type { Substation } from '../components/map-substations-list/SubstationsList';
+
+const HOURS_PER_YEAR = 8760;
+
+export const ENERGY_ASSUMPTIONS = {
+    availabilityFactor: 0.97,
+    lossesFactor: 0.12,
+    defaultCapacityFactor: {
+        wind: 0.34,
+        solar: 0.14,
+        unknown: 0.22,
+    },
+    defaultInstalledCapacityMW: {
+        wind: 5,
+        solar: 1,
+        unknown: 2,
+    },
+    assumedSubstationHeadroomMW: 60,
+    assumedLocalDemandMW: 8,
+} as const;
+
+export type AssetTechnology = 'wind' | 'solar' | 'unknown';
+
+export interface EstimatedAssetStats {
+    assetId: string;
+    technology: AssetTechnology;
+    location: string;
+    connectedSubstation: string;
+    connectionDistanceKm: number;
+    outputMWh: number;
+    outputMW: number;
+    gridSupportMW: number;
+    boostPercent: number;
+    localBoostPercent: number;
+    maxOutputMWh: number;
+    maxOutputMW: number;
+    maxGridSupportMW: number;
+    maxBoostPercent: number;
+    maxLocalBoostPercent: number;
+}
+
+interface EstimationInput {
+    variant: Variation | null;
+    selectedSubstation: Substation;
+    latitude: number;
+    longitude: number;
+    solarPotentialKwhPerKwp?: number | null;
+}
+
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const roundTo = (value: number, decimals: number): number => {
+    const p = 10 ** decimals;
+    return Math.round(value * p) / p;
+};
+
+const parseFirstNumber = (raw: unknown): number | null => {
+    if (raw === null || raw === undefined) return null;
+    const text = String(raw);
+    const match = text.match(/-?\d+(\.\d+)?/);
+    if (!match) return null;
+    const parsed = Number.parseFloat(match[0]);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parsePowerToMW = (rawValue: string): number | null => {
+    const n = parseFirstNumber(rawValue);
+    if (n === null) return null;
+
+    const value = rawValue.toLowerCase();
+    if (value.includes('gw')) return n * 1000;
+    if (value.includes('mw')) return n;
+    if (value.includes('kw')) return n / 1000;
+    if (value.includes('wp') || value.includes(' w')) return n / 1_000_000;
+
+    return null;
+};
+
+const parseDistanceKm = (distanceText: unknown): number => {
+    const parsed = parseFirstNumber(distanceText);
+    if (parsed === null) return 0;
+    return Math.max(parsed, 0);
+};
+
+export const getTechnologyFromVariant = (variant: Variation | null): AssetTechnology => {
+    if (!variant) return 'unknown';
+
+    const searchable = [
+        variant.name,
+        variant.image,
+        variant.icon,
+        ...variant.specification.map((s) => s.name),
+        ...variant.specification.map((s) => s.value),
+    ]
+        .join(' ')
+        .toLowerCase();
+
+    if (searchable.includes('wind') || searchable.includes('turbine') || searchable.includes('rotor') || searchable.includes('hub')) {
+        return 'wind';
+    }
+
+    if (searchable.includes('solar') || searchable.includes('panel') || searchable.includes('irradiance') || searchable.includes('wp')) {
+        return 'solar';
+    }
+
+    return 'unknown';
+};
+
+export const getInstalledCapacityMW = (variant: Variation | null): number => {
+    const technology = getTechnologyFromVariant(variant);
+    if (!variant) return ENERGY_ASSUMPTIONS.defaultInstalledCapacityMW[technology];
+
+    const capacityLikeSpec = variant.specification.find((spec) => {
+        const key = spec.name.toLowerCase();
+        return key.includes('capacity') || key.includes('rated power') || key.includes('wattage');
+    });
+
+    const parsedMW = capacityLikeSpec ? parsePowerToMW(capacityLikeSpec.value) : null;
+
+    // Small W/Wp entries typically represent module-level values; use scenario-scale fallback.
+    if (parsedMW !== null && parsedMW >= 0.05) {
+        return parsedMW;
+    }
+
+    if (technology === 'solar') {
+        const label = variant.name.toLowerCase();
+        if (label.includes('farm')) return 5;
+        if (label.includes('roof')) return 0.35;
+    }
+
+    return ENERGY_ASSUMPTIONS.defaultInstalledCapacityMW[technology];
+};
+
+const getResourceAdjustedCapacityFactor = (technology: AssetTechnology, latitude: number): number => {
+    const base = ENERGY_ASSUMPTIONS.defaultCapacityFactor[technology];
+
+    if (technology === 'solar') {
+        const solarLatAdjustment = 1 - Math.max(0, latitude - 50) * 0.006;
+        return clamp(base * solarLatAdjustment, 0.08, 0.25);
+    }
+
+    if (technology === 'wind') {
+        const windLatAdjustment = 1 + (latitude - 54) * 0.004;
+        return clamp(base * windLatAdjustment, 0.2, 0.6);
+    }
+
+    return clamp(base, 0.1, 0.4);
+};
+
+const getCapacityFactorFromSolarPotential = (solarPotentialKwhPerKwp: number | null | undefined): number | null => {
+    if (!Number.isFinite(solarPotentialKwhPerKwp)) return null;
+
+    const value = Number(solarPotentialKwhPerKwp);
+    if (value <= 0) return null;
+
+    return clamp(value / HOURS_PER_YEAR, 0.08, 0.25);
+};
+
+export const estimateAssetStats = ({ variant, selectedSubstation, latitude, longitude, solarPotentialKwhPerKwp }: EstimationInput): EstimatedAssetStats => {
+    const technology = getTechnologyFromVariant(variant);
+    const installedCapacityMW = getInstalledCapacityMW(variant);
+    const connectionDistanceKm = parseDistanceKm(selectedSubstation.distanceFromTurbine);
+
+    const solarCapacityFactor = technology === 'solar' ? getCapacityFactorFromSolarPotential(solarPotentialKwhPerKwp) : null;
+    const capacityFactor = solarCapacityFactor ?? getResourceAdjustedCapacityFactor(technology, latitude);
+    const grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
+    const availableAnnualMWh = grossAnnualMWh * ENERGY_ASSUMPTIONS.availabilityFactor;
+    const netAnnualMWh = availableAnnualMWh * (1 - ENERGY_ASSUMPTIONS.lossesFactor);
+
+    const deliveryFactor = clamp(1 - connectionDistanceKm * 0.004, 0.75, 1);
+    const deliveredMWh = netAnnualMWh * deliveryFactor;
+
+    const outputMW = deliveredMWh / HOURS_PER_YEAR;
+    const gridSupportFactor = clamp(1 - connectionDistanceKm * 0.012, 0.35, 1);
+    const gridSupportMW = outputMW * gridSupportFactor;
+
+    const boostPercent = clamp((gridSupportMW / ENERGY_ASSUMPTIONS.assumedSubstationHeadroomMW) * 100, 0, 100);
+    const localBoostPercent = clamp((outputMW / ENERGY_ASSUMPTIONS.assumedLocalDemandMW) * 100, 0, 100);
+
+    const idPrefix = technology === 'wind' ? 'WT' : technology === 'solar' ? 'SP' : 'AS';
+
+    return {
+        assetId: `${idPrefix}-${selectedSubstation.id}`,
+        technology,
+        location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        connectedSubstation: selectedSubstation.name,
+        connectionDistanceKm,
+        outputMWh: roundTo(deliveredMWh, 0),
+        outputMW: roundTo(outputMW, 2),
+        gridSupportMW: roundTo(gridSupportMW, 2),
+        boostPercent: roundTo(boostPercent, 1),
+        localBoostPercent: roundTo(localBoostPercent, 1),
+        maxOutputMWh: Math.max(roundTo(deliveredMWh * 1.35, 0), 1000),
+        maxOutputMW: Math.max(roundTo(outputMW * 1.4, 2), 1),
+        maxGridSupportMW: Math.max(roundTo(gridSupportMW * 1.4, 2), 1),
+        maxBoostPercent: 100,
+        maxLocalBoostPercent: 100,
+    };
+};
