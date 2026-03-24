@@ -15,10 +15,11 @@
     "test:coverage": "jest --collect-coverage"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "@turf/turf": "7.2.0",
+    "cors": "^2.8.5",
     "express": "5.1.0",
-    "fuse.js": "7.1.0"
+    "fuse.js": "7.1.0",
+    "proj4": "^2.20.4"
   },
   "devDependencies": {
     "@eslint/js": "9.29.0",

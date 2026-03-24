@@ -118,6 +118,18 @@ export class AssetAnalysisService {
                         `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`
                     )
                 );
+            } else if (dataLayer.id === 'roadBuffer') {
+                const roadBufferLayerData = this.dataProviderUtils.getRoadBufferLayerData();
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(roadBufferLayerData, location, 'red', 'Too close to road - <= 10m')
+                );
+            } else if (dataLayer.id === 'railBuffer') {
+                const railBufferLayerData = this.dataProviderUtils.getRailBufferLayerData();
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 10m')
+                );
             } else if (dataLayer.id === 'specialAreasOfConservation') {
                 const minDistance: number =
                     dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minDistance')?.value || 1;

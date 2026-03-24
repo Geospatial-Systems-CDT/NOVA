@@ -586,6 +586,14 @@ export class MapVisualHelper {
             return 'built-up-areas';
         }
 
+        if (normalizedIssue.includes('road')) {
+            return 'road';
+        }
+
+        if (normalizedIssue.includes('railway')) {
+            return 'railway';
+        }
+
         if (normalizedIssue.includes('area of outstanding natural beauty') || normalizedIssue.includes('areas of outstanding natural beauty')) {
             return 'areas-of-outstanding-natural-beauty';
         }

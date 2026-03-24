@@ -343,6 +343,54 @@ describe('analyzeLocation', () => {
         ],
     };
 
+    const mockRoadBufferLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.3205, 50.701],
+                                [-1.3205, 50.6965],
+                                [-1.3135, 50.6965],
+                                [-1.3135, 50.701],
+                                [-1.3205, 50.701],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
+    const mockRailBufferLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.334, 50.709],
+                                [-1.334, 50.7045],
+                                [-1.328, 50.7045],
+                                [-1.328, 50.709],
+                                [-1.334, 50.709],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     const drawnLocation: FeatureCollection<Polygon> = {
         type: 'FeatureCollection',
         features: [
@@ -421,6 +469,16 @@ describe('analyzeLocation', () => {
             ],
             analyze: true,
         },
+        {
+            id: 'roadBuffer',
+            attributes: [],
+            analyze: false,
+        },
+        {
+            id: 'railBuffer',
+            attributes: [],
+            analyze: false,
+        },
     ];
 
     beforeEach(() => {
@@ -440,6 +498,28 @@ describe('analyzeLocation', () => {
         (dataProviderUtils.getBuiltupAreas1KmLayerData as jest.Mock).mockImplementation(() => mockBuiltupAreas1KmLayerData);
         (dataProviderUtils.getAreasOfNaturalBeautyLayerData as jest.Mock).mockImplementation(() => mockAreasOfOutstandingNaturalBeautyLayerData);
         (dataProviderUtils.getAreasOfNaturalBeauty1KmLayerData as jest.Mock).mockImplementation(() => mockAreasOfNaturalBeauty1KmLayerData);
+        (dataProviderUtils.getRoadBufferLayerData as jest.Mock).mockImplementation(() => mockRoadBufferLayerData);
+        (dataProviderUtils.getRailBufferLayerData as jest.Mock).mockImplementation(() => mockRailBufferLayerData);
+    });
+
+    it('returns road and railway proximity warnings when transport buffers overlap the location', () => {
+        const transportOnlyLayers = dataLayers.map((dataLayer) => ({
+            ...dataLayer,
+            analyze: dataLayer.id === 'roadBuffer' || dataLayer.id === 'railBuffer',
+        }));
+
+        const requestDto: AssetLocationRequestDto = {
+            location: drawnLocation,
+            dataLayers: transportOnlyLayers,
+        };
+
+        const result: FeatureCollection<Geometry, GeoJsonProperties> = assetAnalysisService.analyzeLocation(requestDto);
+        const issues = result.features.map((feature) => feature.properties?.issue).filter(Boolean);
+
+        expect(issues).toContain('Too close to road - <= 10m');
+        expect(issues).toContain('Too close to railway - <= 10m');
+        expect(dataProviderUtils.getRoadBufferLayerData).toHaveBeenCalled();
+        expect(dataProviderUtils.getRailBufferLayerData).toHaveBeenCalled();
     });
 
     it('returns only the good layer when no data layers are provided for analysis', () => {

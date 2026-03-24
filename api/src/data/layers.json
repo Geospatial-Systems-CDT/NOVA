@@ -64,6 +64,21 @@
             ]
         },
         {
+            "name": "Transport constraints",
+            "items": [
+                {
+                    "id": "roadBuffer",
+                    "name": "Road buffer (10 m)",
+                    "attributes": []
+                },
+                {
+                    "id": "railBuffer",
+                    "name": "Railway buffer (10 m)",
+                    "attributes": []
+                }
+            ]
+        },
+        {
             "name": "Weather",
             "items": [
                 {

@@ -288,6 +288,54 @@ describe('DataProviderUtils', () => {
         ],
     };
 
+    const mockProjectedRoadBufferLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'MultiPolygon',
+                    coordinates: [
+                        [
+                            [
+                                [498000, 100000],
+                                [498020, 100000],
+                                [498020, 100020],
+                                [498000, 100020],
+                                [498000, 100000],
+                            ],
+                        ],
+                    ],
+                },
+            },
+        ],
+    };
+
+    const mockProjectedRailBufferLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'MultiPolygon',
+                    coordinates: [
+                        [
+                            [
+                                [493400, 99420],
+                                [493420, 99420],
+                                [493420, 99440],
+                                [493400, 99440],
+                                [493400, 99420],
+                            ],
+                        ],
+                    ],
+                },
+            },
+        ],
+    };
+
     beforeEach(() => {
         // Reset all mocks
         jest.resetAllMocks();
@@ -485,6 +533,36 @@ describe('DataProviderUtils', () => {
 
             // Verify the result
             expect(result).toEqual(mockBuiltupAreas1KmLayerData);
+        });
+    });
+
+    describe('getRoadBufferLayerData', () => {
+        it('should read the road buffer layer data and normalize projected coordinates to WGS84', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockProjectedRoadBufferLayerData));
+
+            const result = dataProviderUtils.getRoadBufferLayerData();
+            const [longitude, latitude] = result.features[0].geometry.coordinates[0][0][0];
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('road_10m_buffer.geojson'), 'utf8');
+            expect(longitude).toBeGreaterThan(-10);
+            expect(longitude).toBeLessThan(5);
+            expect(latitude).toBeGreaterThan(45);
+            expect(latitude).toBeLessThan(65);
+        });
+    });
+
+    describe('getRailBufferLayerData', () => {
+        it('should read the rail buffer layer data and normalize projected coordinates to WGS84', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockProjectedRailBufferLayerData));
+
+            const result = dataProviderUtils.getRailBufferLayerData();
+            const [longitude, latitude] = result.features[0].geometry.coordinates[0][0][0];
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('rail_10m_buffer.geojson'), 'utf8');
+            expect(longitude).toBeGreaterThan(-10);
+            expect(longitude).toBeLessThan(5);
+            expect(latitude).toBeGreaterThan(45);
+            expect(latitude).toBeLessThan(65);
         });
     });
 });
