@@ -28,6 +28,33 @@ Updated asset-analysis.service.ts to:
   1.Highest-priority selection per issue topic.
   2.Suppression of lower-priority duplicate issue messages in popup content.
 
+#### Changes from features/solar_data
+Add solar potential and windspeed resource integration to analysis and MVP output estimation.
+
+Introduce a backend-first, deterministic screening estimator across API and frontend.
+
+Backend:
+- Added `EnergyEstimationService` with deterministic, assumption-based screening logic.
+- Added spatial resource lookups using `DataProviderUtils` + Turf point-in-polygon:
+  - Solar: `pvout.geojson` (`pv_annual_kwh_kwp`) to derive solar capacity factor.
+  - Wind: `windspeed.geojson` seasonal values (`ws_spring1`, `ws_summer1`, `ws_autumn1`, `ws_winter1`) to derive wind capacity factor.
+- Added estimation DTOs: `asset-estimation-request` and `asset-estimation-response`.
+- Added/updated UI endpoints:
+  - `GET /api/ui/solar-potential`
+  - `POST /api/ui/asset/estimate`
+- Wired estimator service into `UIController` and routes.
+- Updated API tests to construct `UIController` with the new estimator dependency.
+
+Frontend:
+- Integrated backend estimation in `GridConnectFooterPanel` using `POST /api/ui/asset/estimate`.
+- Kept client-side estimation as fallback when backend estimation is unavailable.
+- Added helper clients: `assetEstimationApi` and `solarPotentialApi`.
+- Added unit tests for frontend energy estimation utility behavior.
+
+Docs:
+- Added and expanded the user guide method note with equations, constants, assumptions, and limitations.
+- Documented data-source precedence (solar/wind lookup first, heuristic fallback second).
+
 ### Notes
 - This change affects issue text shown in the frontend popup.
 - Geometry layer generation/order from the API was not changed in this update.
