@@ -68,7 +68,7 @@
             "items": [
                 {
                     "id": "windSpeed",
-                    "name": "Wind speed",
+                    "name": "Wind Speed",
                     "attributes": [
                         {
                             "id": "minSpeed",
@@ -88,7 +88,7 @@
                 },
                 {
                     "id": "solarPotential",
-                    "name": "Photovoltaic potential",
+                    "name": "Photovoltaic Potential",
                     "attributes": [
                         {
                             "id": "minPotential",
