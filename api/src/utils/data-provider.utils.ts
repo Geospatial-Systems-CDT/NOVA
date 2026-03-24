@@ -63,6 +63,8 @@ export class DataProviderUtils {
     public readLayersData(): LayersDTO {
         const fileContent = fs.readFileSync(this.layersDataFilePath, 'utf8');
         const layersData = JSON.parse(fileContent) as LayersDTO;
+        console.log('Layers data categories:', layersData.categories.map(c => ({ name: c.name, itemsCount: c.items.length })));
+        console.log('Weather items:', layersData.categories.find(c => c.name === 'Weather')?.items.map(i => i.name));
         return layersData;
     }
 
