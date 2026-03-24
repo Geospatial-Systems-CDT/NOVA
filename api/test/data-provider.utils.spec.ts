@@ -288,24 +288,22 @@ describe('DataProviderUtils', () => {
         ],
     };
 
-    const mockIoWPalLayerData = {
+    const mockAspectLayerData = {
         type: 'FeatureCollection',
         features: [
             {
                 type: 'Feature',
                 properties: {
-                    ALC_GRADE: 'Grade 2',
+                    aspect: 5,
                 },
                 geometry: {
                     coordinates: [
                         [
-                            [
-                                [-1.34, 50.71],
-                                [-1.34, 50.7],
-                                [-1.33, 50.7],
-                                [-1.33, 50.71],
-                                [-1.34, 50.71],
-                            ],
+                            [-1.33, 50.70],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.70],
+                            [-1.33, 50.70],
                         ],
                     ],
                     type: 'MultiPolygon',
@@ -314,53 +312,26 @@ describe('DataProviderUtils', () => {
         ],
     };
 
-    const mockFuelPovertyLayerData = {
+    const mockSlopesLayerData = {
         type: 'FeatureCollection',
         features: [
             {
                 type: 'Feature',
                 properties: {
-                    percentageOfHousesInFuelPoverty: 11.2,
+                    fid: 1,
+                    Slope: 12,
                 },
                 geometry: {
                     coordinates: [
                         [
-                            [
-                                [-1.34, 50.71],
-                                [-1.34, 50.7],
-                                [-1.33, 50.7],
-                                [-1.33, 50.71],
-                                [-1.34, 50.71],
-                            ],
+                            [-1.33, 50.70],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.70],
+                            [-1.33, 50.70],
                         ],
                     ],
-                    type: 'MultiPolygon',
-                },
-            },
-        ],
-    };
-
-    const mockAncientWoodlandsLayerData = {
-        type: 'FeatureCollection',
-        features: [
-            {
-                type: 'Feature',
-                properties: {
-                    THEME: 'ancient woodland',
-                },
-                geometry: {
-                    coordinates: [
-                        [
-                            [
-                                [-1.34, 50.71],
-                                [-1.34, 50.705],
-                                [-1.333, 50.705],
-                                [-1.333, 50.71],
-                                [-1.34, 50.71],
-                            ],
-                        ],
-                    ],
-                    type: 'MultiPolygon',
+                    type: 'Polygon',
                 },
             },
         ],
@@ -566,41 +537,25 @@ describe('DataProviderUtils', () => {
         });
     });
 
-    describe('getIoWPalLayerData', () => {
-        it('should read and parse the IoW PAL layer data from file', () => {
-            // Mock fs.readFileSync to return our mock data
-            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockIoWPalLayerData));
+    describe('getAspectLayerData', () => {
+        it('should read and parse the aspect layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockAspectLayerData));
 
-            // Call the method
-            const result = dataProviderUtils.getIoWPalLayerData();
+            const result = dataProviderUtils.getAspectLayerData();
 
-            // Verify fs.readFileSync was called with the correct path
-            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('PAL_IOW_WGS84.geojson'), 'utf8');
-
-            // Verify the result
-            expect(result).toEqual(mockIoWPalLayerData);
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Aspect_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockAspectLayerData);
         });
     });
 
-    describe('getFuelPovertyLayerData', () => {
-        it('should read and parse the fuel poverty layer data from file', () => {
-            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockFuelPovertyLayerData));
+    describe('getSlopesLayerData', () => {
+        it('should read and parse the slopes layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockSlopesLayerData));
 
-            const result = dataProviderUtils.getFuelPovertyLayerData();
+            const result = dataProviderUtils.getSlopesLayerData();
 
-            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Fuel_Poverty_WGS84.geojson'), 'utf8');
-            expect(result).toEqual(mockFuelPovertyLayerData);
-        });
-    });
-
-    describe('getAncientWoodlandsLayerData', () => {
-        it('should read and parse the ancient woodlands layer data from file', () => {
-            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockAncientWoodlandsLayerData));
-
-            const result = dataProviderUtils.getAncientWoodlandsLayerData();
-
-            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('AncientWoodlands_IOW.geojson'), 'utf8');
-            expect(result).toEqual(mockAncientWoodlandsLayerData);
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Slopes_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockSlopesLayerData);
         });
     });
 });

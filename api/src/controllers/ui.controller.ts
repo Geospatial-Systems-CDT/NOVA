@@ -11,6 +11,9 @@ import { GeoJSON } from 'geojson';
 import { AssetLocationRequestDto } from '../models/asset-location-request.model';
 import { AssetAnalysisService } from '../services/asset-analysis.service';
 import { ReportService } from '../services/report.service';
+import * as turf from '@turf/turf';
+import { EnergyEstimationService } from '../services/energy-estimation.service';
+import { AssetEstimationRequestDto } from '../models/asset-estimation-request.model';
 
 /**
  * Controller for UI-related endpoints
@@ -21,7 +24,8 @@ export class UIController {
      */
     constructor(
         private readonly assetAnalysisService: AssetAnalysisService,
-        private readonly reportService: ReportService
+        private readonly reportService: ReportService,
+        private readonly energyEstimationService: EnergyEstimationService
     ) {}
 
     /**
@@ -268,6 +272,63 @@ export class UIController {
         res.status(200).json(geoJsonData);
     }
 
+    public getSolarPotentialAtLocation(req: Request, res: Response): void {
+        const longitude = Number(req.query.longitude);
+        const latitude = Number(req.query.latitude);
+
+        if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+            res.status(400).json({ error: 'longitude and latitude query params are required numbers' });
+            return;
+        }
+
+        try {
+            const solarPotentialLayer = dataProviderUtils.getSolarPotentialLayerData();
+            const targetPoint = turf.point([longitude, latitude]);
+
+            let pvAnnualKwhPerKwp: number | null = null;
+
+            for (const feature of solarPotentialLayer.features) {
+                for (const coordinates of feature.geometry.coordinates) {
+                    const polygon = turf.polygon(coordinates);
+                    if (turf.booleanPointInPolygon(targetPoint, polygon)) {
+                        const value = Number(feature.properties?.pv_annual_kwh_kwp);
+                        pvAnnualKwhPerKwp = Number.isFinite(value) ? value : null;
+                        break;
+                    }
+                }
+
+                if (pvAnnualKwhPerKwp !== null) break;
+            }
+
+            res.status(200).json({ pvAnnualKwhPerKwp });
+        } catch (error) {
+            console.error(`Error retrieving solar potential data: ${error}`);
+            res.status(500).json({ error: 'Failed to retrieve solar potential data' });
+        }
+    }
+
+    public estimateAssetContribution(req: Request, res: Response): void {
+        try {
+            const estimationRequest = req.body as AssetEstimationRequestDto;
+
+            if (
+                !estimationRequest ||
+                !estimationRequest.selectedSubstation ||
+                !Number.isFinite(estimationRequest.latitude) ||
+                !Number.isFinite(estimationRequest.longitude)
+            ) {
+                res.status(400).json({ error: 'Invalid estimation request payload' });
+                return;
+            }
+
+            const estimation = this.energyEstimationService.estimateAssetContribution(estimationRequest);
+            res.status(200).json(estimation);
+        } catch (error) {
+            console.error(`Error estimating asset contribution: ${error}`);
+            res.status(500).json({ error: 'Failed to estimate asset contribution' });
+        }
+    }
+
     /**
      * @swagger
      * /api/ui/location/analyse:
@@ -446,5 +507,6 @@ export class UIController {
 }
 
 const assetAnalysisService = new AssetAnalysisService(new DataProviderUtils());
+const energyEstimationService = new EnergyEstimationService(new DataProviderUtils());
 export const reportService = new ReportService(new DataProviderUtils());
-export const uiController = new UIController(assetAnalysisService, reportService);
+export const uiController = new UIController(assetAnalysisService, reportService, energyEstimationService);

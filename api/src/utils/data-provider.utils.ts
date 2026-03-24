@@ -31,6 +31,8 @@ export class DataProviderUtils {
     private readonly builtupAreas1KmLayerDataFilePath: string;
     private readonly areasOfNaturalBeautyLayerDataFilePath: string;
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
+    private readonly aspectLayerDataFilePath: string;
+    private readonly slopesLayerDataFilePath: string;
     private readonly iowPalLayerDataFilePath: string;
     private readonly fuelPovertyLayerDataFilePath: string;
     private readonly ancientWoodlandsLayerDataFilePath: string;
@@ -58,6 +60,8 @@ export class DataProviderUtils {
         this.builtupAreas1KmLayerDataFilePath = path.join(__dirname, '../data/bua-1km.geojson');
         this.areasOfNaturalBeautyLayerDataFilePath = path.join(__dirname, '../data/areanb.geojson');
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
+        this.aspectLayerDataFilePath = path.join(__dirname, '../data/Aspect_WGS84.geojson');
+        this.slopesLayerDataFilePath = path.join(__dirname, '../data/Slopes_WGS84.geojson');
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
@@ -204,12 +208,21 @@ export class DataProviderUtils {
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
     }
 
+    public getAspectLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.aspectLayerDataFilePath, 'utf8');
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
     public getIoWPalLayerData(): FeatureCollection<MultiPolygon | Polygon> {
         const fileContent = fs.readFileSync(this.iowPalLayerDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }
 
+    public getSlopesLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.slopesLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
     public getFuelPovertyLayerData(): FeatureCollection<MultiPolygon | Polygon> {
         const fileContent = fs.readFileSync(this.fuelPovertyLayerDataFilePath, 'utf8');
 

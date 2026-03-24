@@ -13,6 +13,16 @@ import { DataLayerDto } from '../models/data-layer.model';
 export class AssetAnalysisService {
     constructor(private readonly dataProviderUtils: DataProviderUtils) {}
 
+    private getNumericProperty(properties: GeoJsonProperties | null | undefined, candidates: string[]): number | null {
+        if (!properties) return null;
+
+        for (const candidate of candidates) {
+            const value = Number(properties[candidate]);
+            if (Number.isFinite(value)) return value;
+        }
+
+        return null;
+    }
     private getAttributeValue(dataLayer: DataLayerDto, attributeId: string): number | string | undefined {
         return dataLayer.attributes.find((attribute) => attribute.id === attributeId)?.value;
     }
@@ -146,6 +156,55 @@ export class AssetAnalysisService {
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
+                );
+            } else if (dataLayer.id === 'slope') {
+                const maxSlope = dataLayer.attributes.filter((attribute) => (Number(attribute.value) >= 0)).find((attribute) => attribute.id === 'maxSlope')?.value || 30;
+                const slopesLayer = this.dataProviderUtils.getSlopesLayerData();
+                const slopesBadLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                    type: 'FeatureCollection',
+                    features: slopesLayer.features.filter((feature) => {
+                        const slope = Number(this.getNumericProperty(feature.properties, ['Slope', 'slope']));
+                        return !isNaN(slope) && slope > (Number(maxSlope));
+                    }),
+                };
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        slopesBadLayerData,
+                        location,
+                        'red',
+                        `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`
+                    )
+                );
+            } else if (dataLayer.id === 'aspect') {
+                const aspectLayer = this.dataProviderUtils.getAspectLayerData();
+                const amberAspect = new Set([3, 7]);
+                const redAspect = new Set([1, 2, 8]);
+                const amberAspectIssue = 'Moderate solar terrain suitability - aspect category East/West (3 or 7)';
+                const redAspectIssue =
+                    'Unfavourable solar terrain suitability - north-facing aspect category (North/North-East/North-West; 1, 2, 8)';
+
+                const aspectAmberLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                    type: 'FeatureCollection',
+                    features: aspectLayer.features.filter((feature) => {
+                        const aspect = this.getNumericProperty(feature.properties, ['aspect', 'Aspect']);
+                        return aspect !== null && amberAspect.has(Math.round(aspect));
+                    }),
+                };
+
+                const aspectRedLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                    type: 'FeatureCollection',
+                    features: aspectLayer.features.filter((feature) => {
+                        const aspect = this.getNumericProperty(feature.properties, ['aspect', 'Aspect']);
+                        return aspect !== null && redAspect.has(Math.round(aspect));
+                    }),
+                };
+
+                cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(aspectAmberLayerData, location, 'amber', amberAspectIssue)
+                );
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(aspectRedLayerData, location, 'red', redAspectIssue)
                 );
             } else if (dataLayer.id === 'specialAreasOfConservation') {
                 const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);

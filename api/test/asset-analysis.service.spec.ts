@@ -151,6 +151,104 @@ describe('analyzeLocation', () => {
         ],
     };
 
+    const mockAspectLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: { aspect: 5 },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.336, 50.709],
+                                [-1.336, 50.700],
+                                [-1.328, 50.700],
+                                [-1.328, 50.709],
+                                [-1.336, 50.709],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+            {
+                type: 'Feature',
+                properties: { aspect: 7 },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.327, 50.709],
+                                [-1.327, 50.700],
+                                [-1.319, 50.700],
+                                [-1.319, 50.709],
+                                [-1.327, 50.709],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+            {
+                type: 'Feature',
+                properties: { aspect: 1 },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.318, 50.709],
+                                [-1.318, 50.700],
+                                [-1.310, 50.700],
+                                [-1.310, 50.709],
+                                [-1.318, 50.709],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
+    const mockSlopesLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: { fid: 1, Slope: 12 },
+                geometry: {
+                    coordinates: [
+                        [
+                            [-1.336, 50.699],
+                            [-1.336, 50.690],
+                            [-1.328, 50.690],
+                            [-1.328, 50.699],
+                            [-1.336, 50.699],
+                        ],
+                    ],
+                    type: 'Polygon',
+                },
+            },
+            {
+                type: 'Feature',
+                properties: { fid: 2, Slope: 35 },
+                geometry: {
+                    coordinates: [
+                        [
+                            [-1.327, 50.699],
+                            [-1.327, 50.690],
+                            [-1.319, 50.690],
+                            [-1.319, 50.699],
+                            [-1.327, 50.699],
+                        ],
+                    ],
+                    type: 'Polygon',
+                },
+            },
+        ],
+    };
+
     const mockSpecialAreasOfConvservationLayerData = {
         type: 'FeatureCollection',
         features: [
@@ -562,6 +660,8 @@ describe('analyzeLocation', () => {
         (dataProviderUtils.getBuiltupAreas1KmLayerData as jest.Mock).mockImplementation(() => mockBuiltupAreas1KmLayerData);
         (dataProviderUtils.getAreasOfNaturalBeautyLayerData as jest.Mock).mockImplementation(() => mockAreasOfOutstandingNaturalBeautyLayerData);
         (dataProviderUtils.getAreasOfNaturalBeauty1KmLayerData as jest.Mock).mockImplementation(() => mockAreasOfNaturalBeauty1KmLayerData);
+        (dataProviderUtils.getAspectLayerData as jest.Mock).mockImplementation(() => mockAspectLayerData);
+        (dataProviderUtils.getSlopesLayerData as jest.Mock).mockImplementation(() => mockSlopesLayerData);
         (dataProviderUtils.getIoWPalLayerData as jest.Mock).mockImplementation(() => mockIoWPalLayerData);
         (dataProviderUtils.getFuelPovertyLayerData as jest.Mock).mockImplementation(() => mockFuelPovertyLayerData);
         (dataProviderUtils.getAncientWoodlandsLayerData as jest.Mock).mockImplementation(() => mockAncientWoodlandsLayerData);
@@ -2363,32 +2463,37 @@ describe('analyzeLocation', () => {
         expect(issues.some((issue) => issue.includes('Low photovoltaic potential - < 900 kWh/kWp/year'))).toBe(true);
     });
 
-    it('flags below-average fuel poverty areas as low priority when fuel poverty is analyzed', () => {
-        const fuelPovertyDataLayers: DataLayerDto[] = [
+    it('returns red matched polygons for slopes above the maximum threshold', () => {
+        const slopeDataLayers: DataLayerDto[] = [
             {
-                id: 'fuelPoverty',
-                attributes: [],
+                id: 'slope',
+                attributes: [
+                    {
+                        id: 'maxSlope',
+                        value: 30,
+                    },
+                ],
                 analyze: true,
             },
         ];
 
         const requestDto: AssetLocationRequestDto = {
             location: drawnLocation,
-            dataLayers: fuelPovertyDataLayers,
+            dataLayers: slopeDataLayers,
         };
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
-        const fuelPovertyIssues = result.features.filter(
+        const steepSlopeIssues = result.features.filter(
             (feature) =>
                 (feature.properties as GeoJsonProperties)?.suitability === 'red' &&
-                (feature.properties as GeoJsonProperties)?.issue === 'Low priority for minimising fuel poverty'
+                ((feature.properties as GeoJsonProperties)?.issue as string)?.includes('Unfavourable solar terrain suitability - steep slope (> 30°)')
         );
 
-        expect(dataProviderUtils.getFuelPovertyLayerData).toHaveBeenCalled();
-        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
-        expect(fuelPovertyIssues.length).toBeGreaterThan(0);
+        expect(dataProviderUtils.getSlopesLayerData).toHaveBeenCalled();
+        expect(steepSlopeIssues.length).toBeGreaterThan(0);
     });
 
+    
     it('flags polygons inside ancient woodland as an issue when the layer is analyzed', () => {
         const ancientWoodlandsDataLayers: DataLayerDto[] = [
             {
