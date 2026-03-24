@@ -9,6 +9,8 @@ import { create } from 'zustand';
 import { MarkerStatus } from '../components/asset-marker/AssetMarkerStatus';
 import type { Substation } from '../components/map-substations-list/SubstationsList';
 import type { Asset, Variation } from '../components/search/add-asset/AddAsset';
+import type { ReportDTO } from '../types/report';
+import { CACHED_REPORT_STORAGE_KEY } from '../types/report';
 
 export type PolygonStatus = 'none' | 'drawing' | 'editing' | 'pendingConfirmation' | 'confirmed';
 
@@ -41,6 +43,9 @@ export interface MapState {
 
     cachedHeatmap: FeatureCollection | null;
     setCachedHeatmap: (featureCollection: FeatureCollection | null) => void;
+
+    cachedReport: ReportDTO | null;
+    setCachedReport: (report: ReportDTO | null) => void;
 
     gridConnectViewActive: boolean;
     setGridConnectViewActive: (active: boolean) => void;
@@ -106,6 +111,16 @@ export const useMapStore = create<MapState>((set, get) => ({
 
     cachedHeatmap: null,
     setCachedHeatmap: (featureCollection) => set({ cachedHeatmap: featureCollection }),
+
+    cachedReport: null,
+    setCachedReport: (report) => {
+        if (report) {
+            localStorage.setItem(CACHED_REPORT_STORAGE_KEY, JSON.stringify(report));
+        } else {
+            localStorage.removeItem(CACHED_REPORT_STORAGE_KEY);
+        }
+        set({ cachedReport: report });
+    },
 
     cachedAssets: null,
     setCachedAssets: (assets) => set({ cachedAssets: assets }),
