@@ -343,6 +343,48 @@ describe('analyzeLocation', () => {
         ],
     };
 
+    const mockIoWPalLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: { ALC_GRADE: 'Grade 2' },
+                geometry: {
+                    type: 'MultiPolygon',
+                    coordinates: [
+                        [
+                            [
+                                [-1.334, 50.711],
+                                [-1.334, 50.705],
+                                [-1.327, 50.705],
+                                [-1.327, 50.711],
+                                [-1.334, 50.711],
+                            ],
+                        ],
+                    ],
+                },
+            },
+            {
+                type: 'Feature',
+                properties: { ALC_GRADE: 'Grade 4' },
+                geometry: {
+                    type: 'MultiPolygon',
+                    coordinates: [
+                        [
+                            [
+                                [-1.332, 50.709],
+                                [-1.332, 50.703],
+                                [-1.325, 50.703],
+                                [-1.325, 50.709],
+                                [-1.332, 50.709],
+                            ],
+                        ],
+                    ],
+                },
+            },
+        ],
+    };
+
     const drawnLocation: FeatureCollection<Polygon> = {
         type: 'FeatureCollection',
         features: [
@@ -421,6 +463,16 @@ describe('analyzeLocation', () => {
             ],
             analyze: true,
         },
+        {
+            id: 'agriculturalLandClassification',
+            attributes: [
+                {
+                    id: 'classificationThreshold',
+                    value: 'Grade 3',
+                },
+            ],
+            analyze: false,
+        },
     ];
 
     beforeEach(() => {
@@ -440,6 +492,7 @@ describe('analyzeLocation', () => {
         (dataProviderUtils.getBuiltupAreas1KmLayerData as jest.Mock).mockImplementation(() => mockBuiltupAreas1KmLayerData);
         (dataProviderUtils.getAreasOfNaturalBeautyLayerData as jest.Mock).mockImplementation(() => mockAreasOfOutstandingNaturalBeautyLayerData);
         (dataProviderUtils.getAreasOfNaturalBeauty1KmLayerData as jest.Mock).mockImplementation(() => mockAreasOfNaturalBeauty1KmLayerData);
+        (dataProviderUtils.getIoWPalLayerData as jest.Mock).mockImplementation(() => mockIoWPalLayerData);
     });
 
     it('returns only the good layer when no data layers are provided for analysis', () => {
@@ -618,6 +671,186 @@ describe('analyzeLocation', () => {
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
         expect(result).toEqual(expectedResult);
+    });
+
+    it('returns an issue when land classification is above the chosen threshold', () => {
+        const locationForAgriculturalCheck: FeatureCollection<Polygon> = {
+            type: 'FeatureCollection',
+            features: [
+                {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [
+                            [
+                                [-1.34, 50.712],
+                                [-1.34, 50.702],
+                                [-1.323, 50.702],
+                                [-1.323, 50.712],
+                                [-1.34, 50.712],
+                            ],
+                        ],
+                    },
+                },
+            ],
+        };
+
+        const dataLayersAgriculturalOnly = dataLayers.map((dataLayer) => {
+            const mappedDataLayer = { ...dataLayer, analyze: dataLayer.id === 'agriculturalLandClassification' };
+
+            if (mappedDataLayer.id === 'agriculturalLandClassification') {
+                mappedDataLayer.attributes = [{ id: 'classificationThreshold', value: 'Grade 3' }];
+            }
+
+            return mappedDataLayer;
+        });
+
+        const requestDto: AssetLocationRequestDto = {
+            location: locationForAgriculturalCheck,
+            dataLayers: dataLayersAgriculturalOnly,
+        };
+
+        const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
+
+        expect(result.features[0].properties?.suitability).toEqual('green');
+
+        const agriculturalIssues = result.features.filter(
+            (feature) => feature.properties?.issue === 'Agricultural land classification at or above Grade 3'
+        );
+
+        expect(agriculturalIssues).toHaveLength(1);
+        expect(agriculturalIssues[0].properties?.suitability).toEqual('red');
+    });
+
+    it('includes selected and better grades for agricultural threshold (Grade 4 includes Grades 1-4, excludes Grade 5)', () => {
+        const locationForAgriculturalCheck: FeatureCollection<Polygon> = {
+            type: 'FeatureCollection',
+            features: [
+                {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [
+                            [
+                                [-1.34, 50.712],
+                                [-1.34, 50.702],
+                                [-1.323, 50.702],
+                                [-1.323, 50.712],
+                                [-1.34, 50.712],
+                            ],
+                        ],
+                    },
+                },
+            ],
+        };
+
+        const mockIoWPalLayerDataForThreshold4 = {
+            type: 'FeatureCollection',
+            features: [
+                {
+                    type: 'Feature',
+                    properties: { ALC_GRADE: 'Grade 1' },
+                    geometry: {
+                        type: 'MultiPolygon',
+                        coordinates: [
+                            [
+                                [
+                                    [-1.3395, 50.7115],
+                                    [-1.3395, 50.7085],
+                                    [-1.3365, 50.7085],
+                                    [-1.3365, 50.7115],
+                                    [-1.3395, 50.7115],
+                                ],
+                            ],
+                        ],
+                    },
+                },
+                {
+                    type: 'Feature',
+                    properties: { ALC_GRADE: 'Grade 2' },
+                    geometry: {
+                        type: 'MultiPolygon',
+                        coordinates: [
+                            [
+                                [
+                                    [-1.336, 50.711],
+                                    [-1.336, 50.708],
+                                    [-1.333, 50.708],
+                                    [-1.333, 50.711],
+                                    [-1.336, 50.711],
+                                ],
+                            ],
+                        ],
+                    },
+                },
+                {
+                    type: 'Feature',
+                    properties: { ALC_GRADE: 'Grade 4' },
+                    geometry: {
+                        type: 'MultiPolygon',
+                        coordinates: [
+                            [
+                                [
+                                    [-1.332, 50.709],
+                                    [-1.332, 50.706],
+                                    [-1.329, 50.706],
+                                    [-1.329, 50.709],
+                                    [-1.332, 50.709],
+                                ],
+                            ],
+                        ],
+                    },
+                },
+                {
+                    type: 'Feature',
+                    properties: { ALC_GRADE: 'Grade 5' },
+                    geometry: {
+                        type: 'MultiPolygon',
+                        coordinates: [
+                            [
+                                [
+                                    [-1.328, 50.7075],
+                                    [-1.328, 50.7045],
+                                    [-1.325, 50.7045],
+                                    [-1.325, 50.7075],
+                                    [-1.328, 50.7075],
+                                ],
+                            ],
+                        ],
+                    },
+                },
+            ],
+        };
+
+        (dataProviderUtils.getIoWPalLayerData as jest.Mock).mockImplementationOnce(() => mockIoWPalLayerDataForThreshold4);
+
+        const dataLayersAgriculturalOnly = dataLayers.map((dataLayer) => {
+            const mappedDataLayer = { ...dataLayer, analyze: dataLayer.id === 'agriculturalLandClassification' };
+
+            if (mappedDataLayer.id === 'agriculturalLandClassification') {
+                mappedDataLayer.attributes = [{ id: 'classificationThreshold', value: 'Grade 4' }];
+            }
+
+            return mappedDataLayer;
+        });
+
+        const requestDto: AssetLocationRequestDto = {
+            location: locationForAgriculturalCheck,
+            dataLayers: dataLayersAgriculturalOnly,
+        };
+
+        const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
+
+        const agriculturalIssues = result.features.filter(
+            (feature) => feature.properties?.issue === 'Agricultural land classification at or above Grade 4'
+        );
+
+        expect(agriculturalIssues).toHaveLength(3);
+        agriculturalIssues.forEach((issueFeature) => {
+            expect(issueFeature.properties?.suitability).toEqual('red');
+        });
     });
 
     it('returns the special areas of conservation matched polygons when only the special areas of conservation data layer is set to analyze', () => {

@@ -288,6 +288,32 @@ describe('DataProviderUtils', () => {
         ],
     };
 
+    const mockIoWPalLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    ALC_GRADE: 'Grade 2',
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.34, 50.71],
+                                [-1.34, 50.7],
+                                [-1.33, 50.7],
+                                [-1.33, 50.71],
+                                [-1.34, 50.71],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     beforeEach(() => {
         // Reset all mocks
         jest.resetAllMocks();
@@ -485,6 +511,22 @@ describe('DataProviderUtils', () => {
 
             // Verify the result
             expect(result).toEqual(mockBuiltupAreas1KmLayerData);
+        });
+    });
+
+    describe('getIoWPalLayerData', () => {
+        it('should read and parse the IoW PAL layer data from file', () => {
+            // Mock fs.readFileSync to return our mock data
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockIoWPalLayerData));
+
+            // Call the method
+            const result = dataProviderUtils.getIoWPalLayerData();
+
+            // Verify fs.readFileSync was called with the correct path
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('PAL_IOW_WGS84.geojson'), 'utf8');
+
+            // Verify the result
+            expect(result).toEqual(mockIoWPalLayerData);
         });
     });
 });

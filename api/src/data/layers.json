@@ -64,6 +64,30 @@
             ]
         },
         {
+            "name": "Rural constraints",
+            "items": [
+                {
+                    "id": "agriculturalLandClassification",
+                    "name": "Agricultural Land Classification (ALC)",
+                    "attributes": [
+                        {
+                            "id": "classificationThreshold",
+                            "description": "Set minimum land classification",
+                            "defaultValue": "Grade 3",
+                            "valueType": "string",
+                            "options": [
+                                "Grade 1",
+                                "Grade 2",
+                                "Grade 3",
+                                "Grade 4",
+                                "Grade 5"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
             "name": "Weather",
             "items": [
                 {

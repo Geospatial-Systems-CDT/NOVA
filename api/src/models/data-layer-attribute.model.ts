@@ -3,5 +3,5 @@
 
 export interface DataLayerAttribute {
     id: string;
-    value: number;
+    value: number | string;
 }
