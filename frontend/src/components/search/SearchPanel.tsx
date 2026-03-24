@@ -9,6 +9,7 @@ import { usePolygonHandlers } from '../../hooks/usePolygonHandlers';
 import { useMapStore } from '../../stores/useMapStore';
 import { MapVisualHelper } from '../../utils/MapVisualHelper';
 import AddAssetButton from './add-asset/AddAssetButton';
+import ReportButton from './report/ReportButton';
 import DeletePolygonButton from './delete-polygon/DeletePolygonButton';
 import DrawPolygonButton from './draw-polygon/DrawPolygonButton';
 import EditPolygonButton from './edit-polygon/EditPolygonButton';
@@ -109,6 +110,10 @@ const SearchPanel = ({ drawRef, mapRef, isPanelOpen, setIsPanelOpen, onPolygonDe
             <SearchGroup>
                 <AddAssetButton isPanelOpen={isPanelOpen} setIsPanelOpen={setIsPanelOpen} />
             </SearchGroup>
+
+            <SearchGroup>
+                <ReportButton />
+            </SearchGroup>            
         </SearchContainer>
     );
 };

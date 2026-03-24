@@ -34,6 +34,7 @@ export class DataProviderUtils {
     private readonly iowPalLayerDataFilePath: string;
     private readonly fuelPovertyLayerDataFilePath: string;
     private readonly ancientWoodlandsLayerDataFilePath: string;
+    private readonly agriculturalLandClassificationDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
 
     /**
@@ -60,6 +61,7 @@ export class DataProviderUtils {
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
+        this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
     }
 
     /**
@@ -218,6 +220,11 @@ export class DataProviderUtils {
         const fileContent = fs.readFileSync(this.ancientWoodlandsLayerDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+    public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
+        const fileContent = fs.readFileSync(this.agriculturalLandClassificationDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
     }
 }
 

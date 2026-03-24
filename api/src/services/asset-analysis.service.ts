@@ -42,14 +42,22 @@ export class AssetAnalysisService {
     }
 
     /*
-     * A helper method to get the polygons for the provided feature that have a buffer equivalent to the provided min distance in kilometers. If the min distance is > 1 then 2 polygons are returned one with a buffer of equal to the min distance and the other one with a buffer of min distance + 0.5. If the min distance is < 1 then 2 polygons are returned where the first one has no buffer applied and the second one has a buffer of 0.5 km.
+     * A helper method to get the polygons for the provided feature that have a buffer equivalent to the provided min distance in kilometers.
+     * Returns two disjoint zones:
+     *   [0] inner (bad)    - the full disc up to minDistance (or the raw 1km pre-buffer when minDistance <= 1)
+     *   [1] outer (caution) - an annulus from minDistance to minDistance+0.5km (inner disc subtracted out)
+     * The annulus ensures the two zones do not overlap, which allows the report service to produce
+     * single-issue candidate regions for each zone independently.
      */
     private getBufferedPolygonsForFeature(feature: Feature<MultiPolygon>, minDistance: number): Feature<MultiPolygon | Polygon, GeoJsonProperties>[] {
         const bufferDistance = minDistance - 1;
         const bufferedFeature = minDistance > 1 ? turf.buffer(feature, bufferDistance, { units: 'kilometers' }) : feature;
         const bufferedFeature500M = turf.buffer(feature, minDistance > 1 ? bufferDistance + 0.5 : 0.5, { units: 'kilometers' });
 
-        return [bufferedFeature!, bufferedFeature500M!];
+        // Subtract the inner buffer from the outer to produce a non-overlapping annulus.
+        const annulus = turf.difference(turf.featureCollection([bufferedFeature500M!, bufferedFeature!]));
+
+        return [bufferedFeature!, annulus ?? bufferedFeature500M!];
     }
 
     /*
@@ -137,12 +145,7 @@ export class AssetAnalysisService {
                 };
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        solarPotentialBadLayerData,
-                        location,
-                        'red',
-                        `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`
-                    )
+                    this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
                 );
             } else if (dataLayer.id === 'specialAreasOfConservation') {
                 const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
