@@ -14,6 +14,7 @@ import { ReportService } from '../services/report.service';
 import * as turf from '@turf/turf';
 import { EnergyEstimationService } from '../services/energy-estimation.service';
 import { AssetEstimationRequestDto } from '../models/asset-estimation-request.model';
+import { performance } from 'perf_hooks';
 
 /**
  * Controller for UI-related endpoints
@@ -362,16 +363,23 @@ export class UIController {
      *         description: Internal server error.
      */
     public analyseLocation(req: Request, res: Response): void {
+        const _tTotal = performance.now();
         try {
             const analysisRequest = req.body as AssetLocationRequestDto;
 
             // Validate that the geoJson is a valid GeoJSON object
+            const _tValidate = performance.now();
             if (!isValidGeoJSON(analysisRequest.location)) {
                 res.status(400).json({ error: 'Invalid GeoJSON data' });
                 return;
             }
+            console.debug(`[analyseLocation] isValidGeoJSON: ${(performance.now() - _tValidate).toFixed(1)}ms`);
 
+            const _tAnalyze = performance.now();
             const heatmap = this.assetAnalysisService.analyzeLocation(analysisRequest);
+            console.debug(`[analyseLocation] analyzeLocation: ${(performance.now() - _tAnalyze).toFixed(1)}ms`);
+
+            const _tReport = performance.now();
             const report =
                 analysisRequest.maxIssues !== undefined
                     ? this.reportService.generateReport(
@@ -380,7 +388,9 @@ export class UIController {
                           analysisRequest.dataLayers.filter((l) => l.analyze)
                       )
                     : null;
+            console.debug(`[analyseLocation] generateReport: ${(performance.now() - _tReport).toFixed(1)}ms`);
 
+            console.debug(`[analyseLocation] total: ${(performance.now() - _tTotal).toFixed(1)}ms`);
             res.status(200).json({ heatmap, report });
         } catch (error) {
             console.error(`Error analysing location data: ${error}`);

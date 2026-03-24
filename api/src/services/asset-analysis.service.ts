@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { FeatureCollection, Feature, Polygon, MultiPolygon, GeoJsonProperties, Geometry } from 'geojson';
+import { FeatureCollection, Feature, Polygon, MultiPolygon, GeoJsonProperties, Geometry, BBox } from 'geojson';
 import { AssetLocationRequestDto } from '../models/asset-location-request.model';
 import { DataProviderUtils } from '../utils/data-provider.utils';
 import * as turf from '@turf/turf';
 import { DataLayerDto } from '../models/data-layer.model';
+import { performance } from 'perf_hooks';
 
 /*
  * A service which provides access to analysis operations like location and suitability for different assets.
@@ -51,6 +52,17 @@ export class AssetAnalysisService {
         return ranking[classification] ?? Number.POSITIVE_INFINITY;
     }
 
+    /** Returns true when two [west,south,east,north] bounding boxes overlap. */
+    private static bboxesOverlap(a: BBox, b: BBox): boolean {
+        return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+    }
+
+    /** Expands a bbox outward by `km` in all directions (uses 1° ≈ 111 km). */
+    private static expandBbox(bbox: BBox, km: number): BBox {
+        const delta = km / 111;
+        return [bbox[0] - delta, bbox[1] - delta, bbox[2] + delta, bbox[3] + delta];
+    }
+
     /*
      * A helper method to get the polygons for the provided feature that have a buffer equivalent to the provided min distance in kilometers.
      * Returns two disjoint zones:
@@ -80,9 +92,27 @@ export class AssetAnalysisService {
         issue?: string
     ): Feature<Polygon | MultiPolygon, GeoJsonProperties>[] {
         const matchedPolygons: Feature<Polygon | MultiPolygon, GeoJsonProperties>[] = [];
+        const locationBbox = turf.bbox(location);
         layer.features.forEach((layerFeature) => {
+            // Feature-level bbox check – skips features that cannot possibly intersect
+            if (!AssetAnalysisService.bboxesOverlap(locationBbox, turf.bbox(layerFeature))) return;
+
             if (layerFeature.geometry.type === 'MultiPolygon') {
                 layerFeature.geometry.coordinates.forEach((position) => {
+                    // Per-polygon bbox check within the MultiPolygon
+                    const outerRing = position[0];
+                    let minLng = Infinity,
+                        minLat = Infinity,
+                        maxLng = -Infinity,
+                        maxLat = -Infinity;
+                    for (const c of outerRing) {
+                        if (c[0] < minLng) minLng = c[0];
+                        if (c[0] > maxLng) maxLng = c[0];
+                        if (c[1] < minLat) minLat = c[1];
+                        if (c[1] > maxLat) maxLat = c[1];
+                    }
+                    if (!AssetAnalysisService.bboxesOverlap(locationBbox, [minLng, minLat, maxLng, maxLat])) return;
+
                     const polygon = turf.polygon(position);
                     const combinedFeatureCollection = { type: 'FeatureCollection', features: [location, polygon] } as FeatureCollection<Polygon>;
                     const intersection = turf.intersect(combinedFeatureCollection);
@@ -128,7 +158,9 @@ export class AssetAnalysisService {
                 suitability: 'green',
             },
         };
+        const locationBbox = turf.bbox(location);
         dataLayers.forEach((dataLayer) => {
+            const _tLayer = performance.now();
             if (dataLayer.id === 'windSpeed') {
                 const minSpeed = this.getNumericAttributeValue(dataLayer, 'minSpeed', 4);
                 const maxSpeed = this.getNumericAttributeValue(dataLayer, 'maxSpeed', 7.5);
@@ -158,13 +190,14 @@ export class AssetAnalysisService {
                     this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
                 );
             } else if (dataLayer.id === 'slope') {
-                const maxSlope = dataLayer.attributes.filter((attribute) => (Number(attribute.value) >= 0)).find((attribute) => attribute.id === 'maxSlope')?.value || 30;
+                const maxSlope =
+                    dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value || 30;
                 const slopesLayer = this.dataProviderUtils.getSlopesLayerData();
                 const slopesBadLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
                     features: slopesLayer.features.filter((feature) => {
                         const slope = Number(this.getNumericProperty(feature.properties, ['Slope', 'slope']));
-                        return !isNaN(slope) && slope > (Number(maxSlope));
+                        return !isNaN(slope) && slope > Number(maxSlope);
                     }),
                 };
 
@@ -181,8 +214,7 @@ export class AssetAnalysisService {
                 const amberAspect = new Set([3, 7]);
                 const redAspect = new Set([1, 2, 8]);
                 const amberAspectIssue = 'Moderate solar terrain suitability - aspect category East/West (3 or 7)';
-                const redAspectIssue =
-                    'Unfavourable solar terrain suitability - north-facing aspect category (North/North-East/North-West; 1, 2, 8)';
+                const redAspectIssue = 'Unfavourable solar terrain suitability - north-facing aspect category (North/North-East/North-West; 1, 2, 8)';
 
                 const aspectAmberLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
@@ -203,9 +235,7 @@ export class AssetAnalysisService {
                 cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(aspectAmberLayerData, location, 'amber', amberAspectIssue)
                 );
-                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(aspectRedLayerData, location, 'red', redAspectIssue)
-                );
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(this.getMatchedPolygonsForLayer(aspectRedLayerData, location, 'red', redAspectIssue));
             } else if (dataLayer.id === 'specialAreasOfConservation') {
                 const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
                 const specialAreasOfConservationLayerData = this.dataProviderUtils.getSpecialAreasOfConservationLayerData();
@@ -214,7 +244,9 @@ export class AssetAnalysisService {
                 const specialAreasOfConservationBufferedLayerFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
                 const specialAreasOfConservationBuffered500MLayerFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
 
+                const sacExpandedBbox = AssetAnalysisService.expandBbox(locationBbox, minDistance + 0.5);
                 specialAreasOfConservation1KmLayerData.features.forEach((feature) => {
+                    if (!AssetAnalysisService.bboxesOverlap(sacExpandedBbox, turf.bbox(feature))) return;
                     const bufferedPolygons = this.getBufferedPolygonsForFeature(feature, minDistance);
                     specialAreasOfConservationBufferedLayerFeatures.push(bufferedPolygons[0]);
                     specialAreasOfConservationBuffered500MLayerFeatures.push(bufferedPolygons[1]);
@@ -255,7 +287,9 @@ export class AssetAnalysisService {
                 const sitesOfSpecialScientificInterestBufferedFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
                 const sitesOfSpecialScientificInterestBuffered500MFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
 
+                const sssiExpandedBbox = AssetAnalysisService.expandBbox(locationBbox, minDistance + 0.5);
                 sitesOfSpecialScientificInterest1KmLayerData.features.forEach((feature) => {
+                    if (!AssetAnalysisService.bboxesOverlap(sssiExpandedBbox, turf.bbox(feature))) return;
                     const bufferedPolygons = this.getBufferedPolygonsForFeature(feature, minDistance);
                     sitesOfSpecialScientificInterestBufferedFeatures.push(bufferedPolygons[0]);
                     sitesOfSpecialScientificInterestBuffered500MFeatures.push(bufferedPolygons[1]);
@@ -296,7 +330,9 @@ export class AssetAnalysisService {
                 const builtupAreasBufferedFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
                 const builtupAreasBuffered500MFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
 
+                const buaExpandedBbox = AssetAnalysisService.expandBbox(locationBbox, minDistance + 0.5);
                 builtupAreas1KmLayerData.features.forEach((feature) => {
+                    if (!AssetAnalysisService.bboxesOverlap(buaExpandedBbox, turf.bbox(feature))) return;
                     const bufferedPolygons = this.getBufferedPolygonsForFeature(feature, minDistance);
                     builtupAreasBufferedFeatures.push(bufferedPolygons[0]);
                     builtupAreasBuffered500MFeatures.push(bufferedPolygons[1]);
@@ -327,7 +363,9 @@ export class AssetAnalysisService {
                 const areasOfNaturalBeautyBufferedFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
                 const areasOfNaturalBeautyBuffered500MFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
 
+                const aonbExpandedBbox = AssetAnalysisService.expandBbox(locationBbox, minDistance + 0.5);
                 areasOfNaturalBeauty1KmLayerData.features.forEach((feature) => {
+                    if (!AssetAnalysisService.bboxesOverlap(aonbExpandedBbox, turf.bbox(feature))) return;
                     const bufferedPolygons = this.getBufferedPolygonsForFeature(feature, minDistance);
                     areasOfNaturalBeautyBufferedFeatures.push(bufferedPolygons[0]);
                     areasOfNaturalBeautyBuffered500MFeatures.push(bufferedPolygons[1]);
@@ -397,8 +435,7 @@ export class AssetAnalysisService {
                     .filter((value) => Number.isFinite(value));
 
                 if (povertyPercentages.length > 0) {
-                    const averageFuelPovertyPercentage =
-                        povertyPercentages.reduce((sum, value) => sum + value, 0) / povertyPercentages.length;
+                    const averageFuelPovertyPercentage = povertyPercentages.reduce((sum, value) => sum + value, 0) / povertyPercentages.length;
 
                     const fuelPovertyBelowAverageLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                         type: 'FeatureCollection',
@@ -409,15 +446,11 @@ export class AssetAnalysisService {
                     };
 
                     badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                        this.getMatchedPolygonsForLayer(
-                            fuelPovertyBelowAverageLayerData,
-                            location,
-                            'red',
-                            'Low priority for minimising fuel poverty'
-                        )
+                        this.getMatchedPolygonsForLayer(fuelPovertyBelowAverageLayerData, location, 'red', 'Low priority for minimising fuel poverty')
                     );
                 }
             }
+            console.debug(`[getMatchedPolygonsForLayers] layer "${dataLayer.id}": ${(performance.now() - _tLayer).toFixed(1)}ms`);
         });
 
         return [goodLayerMatchedPolygon, ...cautionLayerMatchedPolygons, ...badLayerMatchedPolygons, ...exactbadLayerMatchedPolygons];
@@ -426,15 +459,21 @@ export class AssetAnalysisService {
      * A method to analayze the location sent by the user along with the data layers they choose to include for analysis and return a number of polygons with a suitability rating for placing an asset.
      */
     public analyzeLocation(req: AssetLocationRequestDto): FeatureCollection<Geometry> {
+        const _t0 = performance.now();
         const locationPolygon = turf.polygon(req.location.features![0].geometry.coordinates);
         const dataLayersToBeAnalysed = req.dataLayers.filter((dataLayer) => dataLayer.analyze);
+        console.debug(`[analyzeLocation] ${dataLayersToBeAnalysed.length} layer(s) to process: ${dataLayersToBeAnalysed.map((l) => l.id).join(', ')}`);
 
+        const _tLayers = performance.now();
         const matchedPolygons = this.getMatchedPolygonsForLayers(dataLayersToBeAnalysed, locationPolygon);
+        console.debug(`[analyzeLocation] getMatchedPolygonsForLayers (${matchedPolygons.length} polygons): ${(performance.now() - _tLayers).toFixed(1)}ms`);
+
         const featureCollection: FeatureCollection<Geometry> = {
             type: 'FeatureCollection',
             features: [...matchedPolygons],
         };
 
+        console.debug(`[analyzeLocation] total: ${(performance.now() - _t0).toFixed(1)}ms`);
         return featureCollection;
     }
 }

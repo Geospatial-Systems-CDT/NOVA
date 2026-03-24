@@ -38,6 +38,7 @@ export class DataProviderUtils {
     private readonly ancientWoodlandsLayerDataFilePath: string;
     private readonly agriculturalLandClassificationDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
+    private readonly cache = new Map<string, unknown>();
 
     /**
      * Constructor for DataProviderUtils
@@ -66,6 +67,16 @@ export class DataProviderUtils {
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
         this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
+    }
+
+    /**
+     * Read and parse a JSON file once, then return the cached result for all subsequent calls.
+     */
+    private readCachedJsonFile<T>(filePath: string): T {
+        if (!this.cache.has(filePath)) {
+            this.cache.set(filePath, JSON.parse(fs.readFileSync(filePath, 'utf8')));
+        }
+        return this.cache.get(filePath) as T;
     }
 
     /**
@@ -110,8 +121,7 @@ export class DataProviderUtils {
      * @returns GeoJSON object containing the GSP data
      */
     public readGridSupplyPointData(): FeatureCollection {
-        const fileContent = fs.readFileSync(this.gridSupplyPointDataFilePath, 'utf8');
-        return JSON.parse(fileContent) as FeatureCollection;
+        return this.readCachedJsonFile<FeatureCollection>(this.gridSupplyPointDataFilePath);
     }
 
     /**
@@ -149,63 +159,43 @@ export class DataProviderUtils {
     }
 
     public getWindspeedLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.windspeedLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.windspeedLayerDataFilePath);
     }
 
     public getSolarPotentialLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.solarPotentialLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.solarPotentialLayerDataFilePath);
     }
 
     public getSpecialAreasOfConservationLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.specialAreasOfConservationLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.specialAreasOfConservationLayerDataFilePath);
     }
 
     public getSpecialAreasOfConservation1KmLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.specialAreasOfConservation1KmLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.specialAreasOfConservation1KmLayerDataFilePath);
     }
 
     public getSitesOfSpecialScientificInterestLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.sitesOfSpecialScientificInterestLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.sitesOfSpecialScientificInterestLayerDataFilePath);
     }
 
     public getSitesOfSpecialScientificInterest1KmLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.sitesOfSpecialScientificInterest1KmLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.sitesOfSpecialScientificInterest1KmLayerDataFilePath);
     }
 
     public getBuiltupAreasLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.builtupAreasLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.builtupAreasLayerDataFilePath);
     }
 
     public getBuiltupAreas1KmLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.builtupAreas1KmLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.builtupAreas1KmLayerDataFilePath);
     }
 
     public getAreasOfNaturalBeautyLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.areasOfNaturalBeautyLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.areasOfNaturalBeautyLayerDataFilePath);
     }
 
     public getAreasOfNaturalBeauty1KmLayerData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.areasOfNaturalBeauty1KmLayerDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.areasOfNaturalBeauty1KmLayerDataFilePath);
     }
 
     public getAspectLayerData(): FeatureCollection<MultiPolygon | Polygon> {
@@ -235,9 +225,7 @@ export class DataProviderUtils {
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }
     public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
-        const fileContent = fs.readFileSync(this.agriculturalLandClassificationDataFilePath, 'utf8');
-
-        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.agriculturalLandClassificationDataFilePath);
     }
 }
 
