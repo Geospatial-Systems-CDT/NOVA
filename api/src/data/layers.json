@@ -60,6 +60,11 @@
                             "maxValue": "10"
                         }
                     ]
+                },
+                {
+                    "id": "fuelPoverty",
+                    "name": "Fuel poverty",
+                    "attributes": []
                 }
             ]
         },

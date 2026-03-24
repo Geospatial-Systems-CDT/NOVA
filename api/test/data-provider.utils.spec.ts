@@ -314,6 +314,32 @@ describe('DataProviderUtils', () => {
         ],
     };
 
+    const mockFuelPovertyLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    percentageOfHousesInFuelPoverty: 11.2,
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.34, 50.71],
+                                [-1.34, 50.7],
+                                [-1.33, 50.7],
+                                [-1.33, 50.71],
+                                [-1.34, 50.71],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     beforeEach(() => {
         // Reset all mocks
         jest.resetAllMocks();
@@ -527,6 +553,17 @@ describe('DataProviderUtils', () => {
 
             // Verify the result
             expect(result).toEqual(mockIoWPalLayerData);
+        });
+    });
+
+    describe('getFuelPovertyLayerData', () => {
+        it('should read and parse the fuel poverty layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockFuelPovertyLayerData));
+
+            const result = dataProviderUtils.getFuelPovertyLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Fuel_Poverty_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockFuelPovertyLayerData);
         });
     });
 });

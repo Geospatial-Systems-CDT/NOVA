@@ -322,6 +322,33 @@ export class AssetAnalysisService {
                         `Agricultural land classification at the selected grade (${selectedClassification}) and better`
                     )
                 );
+            } else if (dataLayer.id === 'fuelPoverty') {
+                const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
+                const povertyPercentages = fuelPovertyLayerData.features
+                    .map((feature) => Number(feature.properties?.percentageOfHousesInFuelPoverty))
+                    .filter((value) => Number.isFinite(value));
+
+                if (povertyPercentages.length > 0) {
+                    const averageFuelPovertyPercentage =
+                        povertyPercentages.reduce((sum, value) => sum + value, 0) / povertyPercentages.length;
+
+                    const fuelPovertyBelowAverageLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                        type: 'FeatureCollection',
+                        features: fuelPovertyLayerData.features.filter((feature) => {
+                            const value = Number(feature.properties?.percentageOfHousesInFuelPoverty);
+                            return Number.isFinite(value) && value < averageFuelPovertyPercentage;
+                        }),
+                    };
+
+                    badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                        this.getMatchedPolygonsForLayer(
+                            fuelPovertyBelowAverageLayerData,
+                            location,
+                            'red',
+                            'Low priority for minimising fuel poverty'
+                        )
+                    );
+                }
             }
         });
 

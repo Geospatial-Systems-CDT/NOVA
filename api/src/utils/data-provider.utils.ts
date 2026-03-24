@@ -32,6 +32,7 @@ export class DataProviderUtils {
     private readonly areasOfNaturalBeautyLayerDataFilePath: string;
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
     private readonly iowPalLayerDataFilePath: string;
+    private readonly fuelPovertyLayerDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
 
     /**
@@ -56,6 +57,7 @@ export class DataProviderUtils {
         this.areasOfNaturalBeautyLayerDataFilePath = path.join(__dirname, '../data/areanb.geojson');
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
+        this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
     }
 
     /**
@@ -200,6 +202,12 @@ export class DataProviderUtils {
 
     public getIoWPalLayerData(): FeatureCollection<MultiPolygon | Polygon> {
         const fileContent = fs.readFileSync(this.iowPalLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getFuelPovertyLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.fuelPovertyLayerDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }

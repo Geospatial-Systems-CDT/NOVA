@@ -385,6 +385,44 @@ describe('analyzeLocation', () => {
         ],
     };
 
+    const mockFuelPovertyLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: { percentageOfHousesInFuelPoverty: 8 },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [
+                        [
+                            [-1.34, 50.71],
+                            [-1.34, 50.705],
+                            [-1.333, 50.705],
+                            [-1.333, 50.71],
+                            [-1.34, 50.71],
+                        ],
+                    ],
+                },
+            },
+            {
+                type: 'Feature',
+                properties: { percentageOfHousesInFuelPoverty: 12 },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [
+                        [
+                            [-1.31, 50.7],
+                            [-1.31, 50.695],
+                            [-1.303, 50.695],
+                            [-1.303, 50.7],
+                            [-1.31, 50.7],
+                        ],
+                    ],
+                },
+            },
+        ],
+    };
+
     const drawnLocation: FeatureCollection<Polygon> = {
         type: 'FeatureCollection',
         features: [
@@ -473,6 +511,11 @@ describe('analyzeLocation', () => {
             ],
             analyze: false,
         },
+        {
+            id: 'fuelPoverty',
+            attributes: [],
+            analyze: false,
+        },
     ];
 
     beforeEach(() => {
@@ -493,6 +536,7 @@ describe('analyzeLocation', () => {
         (dataProviderUtils.getAreasOfNaturalBeautyLayerData as jest.Mock).mockImplementation(() => mockAreasOfOutstandingNaturalBeautyLayerData);
         (dataProviderUtils.getAreasOfNaturalBeauty1KmLayerData as jest.Mock).mockImplementation(() => mockAreasOfNaturalBeauty1KmLayerData);
         (dataProviderUtils.getIoWPalLayerData as jest.Mock).mockImplementation(() => mockIoWPalLayerData);
+        (dataProviderUtils.getFuelPovertyLayerData as jest.Mock).mockImplementation(() => mockFuelPovertyLayerData);
     });
 
     it('returns only the good layer when no data layers are provided for analysis', () => {
@@ -2289,5 +2333,31 @@ describe('analyzeLocation', () => {
             .filter((issue): issue is string => Boolean(issue));
 
         expect(issues.some((issue) => issue.includes('Low photovoltaic potential - < 900 kWh/kWp/year'))).toBe(true);
+    });
+
+    it('flags below-average fuel poverty areas as low priority when fuel poverty is analyzed', () => {
+        const fuelPovertyDataLayers: DataLayerDto[] = [
+            {
+                id: 'fuelPoverty',
+                attributes: [],
+                analyze: true,
+            },
+        ];
+
+        const requestDto: AssetLocationRequestDto = {
+            location: drawnLocation,
+            dataLayers: fuelPovertyDataLayers,
+        };
+
+        const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
+        const fuelPovertyIssues = result.features.filter(
+            (feature) =>
+                (feature.properties as GeoJsonProperties)?.suitability === 'red' &&
+                (feature.properties as GeoJsonProperties)?.issue === 'Low priority for minimising fuel poverty'
+        );
+
+        expect(dataProviderUtils.getFuelPovertyLayerData).toHaveBeenCalled();
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(fuelPovertyIssues.length).toBeGreaterThan(0);
     });
 });
