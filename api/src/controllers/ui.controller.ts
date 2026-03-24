@@ -15,6 +15,7 @@ import * as turf from '@turf/turf';
 import { EnergyEstimationService } from '../services/energy-estimation.service';
 import { AssetEstimationRequestDto } from '../models/asset-estimation-request.model';
 import { performance } from 'perf_hooks';
+import { reportJobStore } from '../services/report-job.store';
 
 /**
  * Controller for UI-related endpoints
@@ -379,23 +380,84 @@ export class UIController {
             const heatmap = this.assetAnalysisService.analyzeLocation(analysisRequest);
             console.debug(`[analyseLocation] analyzeLocation: ${(performance.now() - _tAnalyze).toFixed(1)}ms`);
 
-            const _tReport = performance.now();
-            const report =
-                analysisRequest.maxIssues !== undefined
-                    ? this.reportService.generateReport(
-                          heatmap,
-                          analysisRequest.maxIssues,
-                          analysisRequest.dataLayers.filter((l) => l.analyze)
-                      )
-                    : null;
-            console.debug(`[analyseLocation] generateReport: ${(performance.now() - _tReport).toFixed(1)}ms`);
+            // Create an async report job so the heatmap can be returned immediately.
+            // The report is generated in the background; the client polls GET /ui/location/report/:jobId.
+            let jobId: string | null = null;
+            if (analysisRequest.maxIssues !== undefined) {
+                jobId = reportJobStore.create();
+                const capturedJobId = jobId;
+                const activeDataLayers = analysisRequest.dataLayers.filter((l) => l.analyze);
+                const maxIssues = analysisRequest.maxIssues;
 
-            console.debug(`[analyseLocation] total: ${(performance.now() - _tTotal).toFixed(1)}ms`);
-            res.status(200).json({ heatmap, report });
+                setImmediate(() => {
+                    try {
+                        const _tReport = performance.now();
+                        const report = this.reportService.generateReport(heatmap, maxIssues, activeDataLayers);
+                        console.debug(`[analyseLocation] generateReport (async): ${(performance.now() - _tReport).toFixed(1)}ms`);
+                        reportJobStore.complete(capturedJobId, report);
+                    } catch (err) {
+                        console.error(`[analyseLocation] generateReport failed: ${err}`);
+                        reportJobStore.fail(capturedJobId, String(err));
+                    }
+                });
+            }
+
+            console.debug(`[analyseLocation] total (excl. report): ${(performance.now() - _tTotal).toFixed(1)}ms`);
+            res.status(200).json({ heatmap, jobId });
         } catch (error) {
             console.error(`Error analysing location data: ${error}`);
             res.status(500).json({ error: 'Failed to analyse location data' });
         }
+    }
+
+    /**
+     * @swagger
+     * /api/ui/location/report/{jobId}:
+     *   get:
+     *     summary: Poll for a background report generation job
+     *     description: |
+     *       Returns 202 with `{ status: 'pending' }` while the report is still being generated,
+     *       200 with `{ status: 'complete', report }` when ready,
+     *       or 500 with `{ status: 'error', message }` if generation failed.
+     *     tags:
+     *       - UI
+     *     parameters:
+     *       - in: path
+     *         name: jobId
+     *         schema:
+     *           type: string
+     *         required: true
+     *         description: Job ID returned by POST /api/ui/location/analyse
+     *     responses:
+     *       200:
+     *         description: Report is ready.
+     *       202:
+     *         description: Report is still being generated.
+     *       404:
+     *         description: Job not found or expired.
+     *       500:
+     *         description: Report generation failed.
+     */
+    public getReportJob(req: Request, res: Response): void {
+        const { jobId } = req.params;
+        const job = reportJobStore.get(jobId);
+
+        if (!job) {
+            res.status(404).json({ error: 'Report job not found or expired' });
+            return;
+        }
+
+        if (job.status === 'pending') {
+            res.status(202).json({ status: 'pending' });
+            return;
+        }
+
+        if (job.status === 'error') {
+            res.status(500).json({ status: 'error', message: job.error });
+            return;
+        }
+
+        res.status(200).json({ status: 'complete', report: job.report });
     }
 
     /**

@@ -30,6 +30,7 @@ export class UIRoutes {
         this.router.get('/ui/solar-potential', (req: Request, res: Response) => uiController.getSolarPotentialAtLocation(req, res));
         this.router.post('/ui/layer/:layerId', (req: Request, res: Response) => uiController.processLayerGeoJSON(req, res));
         this.router.post('/ui/location/analyse', (req: Request, res: Response) => uiController.analyseLocation(req, res));
+        this.router.get('/ui/location/report/:jobId', (req: Request, res: Response) => uiController.getReportJob(req, res));
         this.router.post('/ui/asset/analyse', (req: Request, res: Response) => uiController.analyseAsset(req, res));
         this.router.post('/ui/asset/estimate', (req: Request, res: Response) => uiController.estimateAssetContribution(req, res));
         this.router.post('/ui/substations', (req: Request, res: Response) => uiController.getSubstations(req, res));

@@ -47,6 +47,12 @@ export interface MapState {
     cachedReport: ReportDTO | null;
     setCachedReport: (report: ReportDTO | null) => void;
 
+    reportJobId: string | null;
+    setReportJobId: (id: string | null) => void;
+
+    reportLoading: boolean;
+    setReportLoading: (loading: boolean) => void;
+
     gridConnectViewActive: boolean;
     setGridConnectViewActive: (active: boolean) => void;
 
@@ -121,6 +127,12 @@ export const useMapStore = create<MapState>((set, get) => ({
         }
         set({ cachedReport: report });
     },
+
+    reportJobId: null,
+    setReportJobId: (id) => set({ reportJobId: id }),
+
+    reportLoading: false,
+    setReportLoading: (loading) => set({ reportLoading: loading }),
 
     cachedAssets: null,
     setCachedAssets: (assets) => set({ cachedAssets: assets }),
