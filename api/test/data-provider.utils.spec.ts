@@ -288,6 +288,84 @@ describe('DataProviderUtils', () => {
         ],
     };
 
+    const mockIoWPalLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    ALC_GRADE: 'Grade 2',
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.34, 50.71],
+                                [-1.34, 50.7],
+                                [-1.33, 50.7],
+                                [-1.33, 50.71],
+                                [-1.34, 50.71],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
+    const mockFuelPovertyLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    percentageOfHousesInFuelPoverty: 11.2,
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.34, 50.71],
+                                [-1.34, 50.7],
+                                [-1.33, 50.7],
+                                [-1.33, 50.71],
+                                [-1.34, 50.71],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
+    const mockAncientWoodlandsLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    THEME: 'ancient woodland',
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [
+                                [-1.34, 50.71],
+                                [-1.34, 50.705],
+                                [-1.333, 50.705],
+                                [-1.333, 50.71],
+                                [-1.34, 50.71],
+                            ],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     beforeEach(() => {
         // Reset all mocks
         jest.resetAllMocks();
@@ -485,6 +563,44 @@ describe('DataProviderUtils', () => {
 
             // Verify the result
             expect(result).toEqual(mockBuiltupAreas1KmLayerData);
+        });
+    });
+
+    describe('getIoWPalLayerData', () => {
+        it('should read and parse the IoW PAL layer data from file', () => {
+            // Mock fs.readFileSync to return our mock data
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockIoWPalLayerData));
+
+            // Call the method
+            const result = dataProviderUtils.getIoWPalLayerData();
+
+            // Verify fs.readFileSync was called with the correct path
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('PAL_IOW_WGS84.geojson'), 'utf8');
+
+            // Verify the result
+            expect(result).toEqual(mockIoWPalLayerData);
+        });
+    });
+
+    describe('getFuelPovertyLayerData', () => {
+        it('should read and parse the fuel poverty layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockFuelPovertyLayerData));
+
+            const result = dataProviderUtils.getFuelPovertyLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Fuel_Poverty_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockFuelPovertyLayerData);
+        });
+    });
+
+    describe('getAncientWoodlandsLayerData', () => {
+        it('should read and parse the ancient woodlands layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockAncientWoodlandsLayerData));
+
+            const result = dataProviderUtils.getAncientWoodlandsLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('AncientWoodlands_IOW.geojson'), 'utf8');
+            expect(result).toEqual(mockAncientWoodlandsLayerData);
         });
     });
 });
