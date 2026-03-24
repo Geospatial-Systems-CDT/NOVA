@@ -32,7 +32,8 @@ Updated asset-analysis.service.ts to:
 - This change affects issue text shown in the frontend popup.
 - Geometry layer generation/order from the API was not changed in this update.
 
-
+### Notes
+-Solar and wind support icon changes
 
 © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.  
 Licensed under the Open Government Licence v3.0.  
