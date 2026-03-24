@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { LngLat, MapMouseEvent, type Map, Popup, MercatorCoordinate } from 'maplibre-gl';
+import { LngLat, MapMouseEvent, type Map as MapLibreMap, Popup, MercatorCoordinate } from 'maplibre-gl';
 import type { Feature, FeatureCollection, Geometry, LineString, Polygon } from 'geojson';
 import type { GeoJSONSource, SourceSpecification } from 'maplibre-gl';
 import type { MapRef } from 'react-map-gl/maplibre';
@@ -64,7 +64,7 @@ export class MapVisualHelper {
      * @param map - The MapLibre map instance
      * @param polygon - A GeoJSON Polygon to act as the visible cutout
      */
-    static applyDimmedMaskAndPanToPolygon(map: Map, polygon: Polygon) {
+    static applyDimmedMaskAndPanToPolygon(map: MapLibreMap, polygon: Polygon) {
         const maskFeature: Feature<Polygon> = {
             type: 'Feature',
             geometry: {
@@ -113,7 +113,7 @@ export class MapVisualHelper {
      *
      * @param map - The MapLibre map instance
      */
-    static removeDimmedMask(map: Map) {
+    static removeDimmedMask(map: MapLibreMap) {
         if (map.getLayer(this.maskLayerId)) map.removeLayer(this.maskLayerId);
         if (map.getSource(this.maskLayerSourceId)) map.removeSource(this.maskLayerSourceId);
     }
@@ -126,7 +126,7 @@ export class MapVisualHelper {
      * @param map - The React MapLibre map reference
      * @returns A [lng, lat] tuple of the suggested popup position
      */
-    static getConfirmationPopupCoordinates(polygon: Polygon, map: Map): [number, number] {
+    static getConfirmationPopupCoordinates(polygon: Polygon, map: MapLibreMap): [number, number] {
         const coords = polygon.coordinates[0];
         const topLat = Math.max(...coords.map(([, lat]) => lat));
         const avgLng = coords.reduce((sum, [lng]) => sum + lng, 0) / coords.length;
@@ -252,7 +252,7 @@ export class MapVisualHelper {
         if (map.getSource(id)) map.removeSource(id);
     }
 
-    static panToPolygon(map: Map, draw?: MapboxDraw, polygon?: Polygon | null) {
+    static panToPolygon(map: MapLibreMap, draw?: MapboxDraw, polygon?: Polygon | null) {
         if (!map || (!polygon && !draw)) return;
 
         if (!polygon) polygon = MapVisualHelper.getFirstPolygon(draw!);
@@ -283,7 +283,7 @@ export class MapVisualHelper {
      * @param map - The MapLibre map instance
      * @returns An array of layer IDs that were hidden
      */
-    static hideNonBaseLayers(map: Map): string[] {
+    static hideNonBaseLayers(map: MapLibreMap): string[] {
         const allLayerIds = map.getStyle().layers?.map((layer) => layer.id) || [];
         const layersToHide = allLayerIds.filter((id) => id.startsWith('gl-') || id === MapVisualHelper.heatmapLayerId || id == MapVisualHelper.maskLayerId);
 
@@ -303,7 +303,7 @@ export class MapVisualHelper {
      * @param map - The MapLibre map instance
      * @param layerIds - Array of layer IDs to show
      */
-    static showLayers(map: Map, layerIds: string[]) {
+    static showLayers(map: MapLibreMap, layerIds: string[]) {
         layerIds.forEach((id) => {
             if (map.getLayer(id)) {
                 map.setLayoutProperty(id, 'visibility', 'visible');
@@ -316,7 +316,7 @@ export class MapVisualHelper {
      * @param map  - The MapLibre map instance.
      */
     static async visualiseAssetsIn3d(
-        map: Map,
+        map: MapLibreMap,
         markerPosition: { longitude?: number; latitude?: number } | null,
         markerBearing: number | null,
         markerVariant: Variation | null
@@ -354,7 +354,7 @@ export class MapVisualHelper {
             type: 'custom' as const,
             renderingMode: '3d' as const,
 
-            onAdd(_: Map, gl: WebGLRenderingContext) {
+            onAdd(_: MapLibreMap, gl: WebGLRenderingContext) {
                 const scene = new THREE.Scene();
                 const camera = new THREE.Camera();
 
@@ -408,7 +408,7 @@ export class MapVisualHelper {
     /**
      * Removes all 3d assets from the map.
      */
-    static remove3DAssets(map: Map) {
+    static remove3DAssets(map: MapLibreMap) {
         if (map.getLayer(MapVisualHelper.threeDimensionalAssetsLayer)) map.removeLayer(MapVisualHelper.threeDimensionalAssetsLayer);
     }
 
@@ -543,17 +543,6 @@ export class MapVisualHelper {
     }
 
     /**
-     * Extracts the "issue" field from a polygon feature.
-     *
-     * @param feature - A GeoJSON feature to extract issues from
-     * @returns A string array for an issue description (can be empty)
-     */
-    private static _parseIssueFromFeature(feature: Feature): string[] {
-        const issue = feature.properties?.issue;
-        return issue ? [issue] : [];
-    }
-
-    /**
      * Maps suitability values to hierarchy scores so only the highest-priority issue
      * per topic is shown in the popup.
      */
@@ -575,10 +564,7 @@ export class MapVisualHelper {
             return 'special-areas-of-conservation';
         }
 
-        if (
-            normalizedIssue.includes('site of special scientific interest') ||
-            normalizedIssue.includes('sites of special scientific interest')
-        ) {
+        if (normalizedIssue.includes('site of special scientific interest') || normalizedIssue.includes('sites of special scientific interest')) {
             return 'sites-of-special-scientific-interest';
         }
 
@@ -633,7 +619,7 @@ export class MapVisualHelper {
      * @param e - Click event with feature context
      */
     private static _handleHeatmapLayerClick(e: FeatureEvent) {
-        const map = e.target as Map;
+        const map = e.target as MapLibreMap;
         const features = e.features ?? [];
         if (features.length === 0) return;
 

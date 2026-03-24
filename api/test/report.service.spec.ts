@@ -3,6 +3,7 @@
 
 import { FeatureCollection, Geometry } from 'geojson';
 import { ReportService } from '../src/services/report.service';
+import { DataProviderUtils } from '../src/utils/data-provider.utils';
 
 function makePolygonFeature(minLon: number, minLat: number, maxLon: number, maxLat: number, properties: Record<string, unknown> = {}) {
     return {
@@ -85,6 +86,12 @@ describe('ReportService', () => {
         it('region has a stable id of "region-1"', () => {
             expect(service.generateReport(makeResult(greenPolygon), 0).regions[0].id).toBe('region-1');
         });
+
+        it('region has an empty layerValues array when no active layers are provided', () => {
+            const { regions } = service.generateReport(makeResult(greenPolygon), 0);
+
+            expect(regions[0].layerValues).toEqual([]);
+        });
     });
 
     describe('generateReport — maxIssues=0 with issues present', () => {
@@ -156,6 +163,93 @@ describe('ReportService', () => {
             // Should still be 2 distinct issue types (Built up area + SSSI), not 3
             const issueDescriptions = singleIssueRegions.map((r) => r.issues[0].description).sort();
             expect(issueDescriptions).toEqual(['Built up area', 'SSSI']);
+        });
+    });
+
+    describe('generateReport — layerValues computed when a DataProviderUtils is supplied', () => {
+        /** Build a minimal MultiPolygon FeatureCollection covering the green test polygon area */
+        function makeMultiPolygonFC(properties: Record<string, unknown>) {
+            return {
+                type: 'FeatureCollection' as const,
+                features: [
+                    {
+                        type: 'Feature' as const,
+                        properties,
+                        geometry: {
+                            type: 'MultiPolygon' as const,
+                            // Single ring that covers the entire [-2,51] → [-1,52] area
+                            coordinates: [
+                                [
+                                    [
+                                        [-3, 50],
+                                        [0, 50],
+                                        [0, 53],
+                                        [-3, 53],
+                                        [-3, 50],
+                                    ],
+                                ],
+                            ],
+                        },
+                    },
+                ],
+            };
+        }
+
+        function makeMockDataProviderUtils(): DataProviderUtils {
+            return {
+                getWindspeedLayerData: () => makeMultiPolygonFC({ ws_spring1: 6.5 }),
+                getSolarPotentialLayerData: () => makeMultiPolygonFC({ pv_annual_kwh_kwp: 950 }),
+                getSitesOfSpecialScientificInterestLayerData: () => ({ type: 'FeatureCollection', features: [] }),
+                getSpecialAreasOfConservationLayerData: () => ({ type: 'FeatureCollection', features: [] }),
+                getBuiltupAreasLayerData: () => ({ type: 'FeatureCollection', features: [] }),
+                getAreasOfNaturalBeautyLayerData: () => ({ type: 'FeatureCollection', features: [] }),
+                getAgriculturalLandClassificationData: () => makeMultiPolygonFC({ ALC_GRADE: 'Grade 3' }),
+            } as unknown as DataProviderUtils;
+        }
+
+        it('returns a layerValue entry for each active layer plus ALC grade', () => {
+            const serviceWithData = new ReportService(makeMockDataProviderUtils());
+            const activeLayers = [
+                { id: 'windSpeed', analyze: true, attributes: [] },
+                { id: 'solarPotential', analyze: true, attributes: [] },
+            ];
+
+            const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, activeLayers);
+
+            expect(regions[0].layerValues).toHaveLength(3);
+            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual(['agriculturalLandClassification', 'windSpeed', 'solarPotential']);
+        });
+
+        it('returns the correct wind speed value when the centroid falls within a grid cell', () => {
+            const serviceWithData = new ReportService(makeMockDataProviderUtils());
+            const activeLayers = [{ id: 'windSpeed', analyze: true, attributes: [] }];
+
+            const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, activeLayers);
+            const windEntry = regions[0].layerValues.find((v) => v.layerId === 'windSpeed');
+
+            expect(windEntry?.value).toBe(6.5);
+            expect(windEntry?.unit).toBe('m/s');
+        });
+
+        it('returns null distance for distance-based layers when the dataset is empty', () => {
+            const serviceWithData = new ReportService(makeMockDataProviderUtils());
+            const activeLayers = [{ id: 'sitesOfSpecialScientificInterest', analyze: true, attributes: [] }];
+
+            const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, activeLayers);
+            const sssiEntry = regions[0].layerValues.find((v) => v.layerId === 'sitesOfSpecialScientificInterest');
+
+            expect(sssiEntry?.value).toBeNull();
+            expect(sssiEntry?.unit).toBe('km');
+        });
+
+        it('returns only the ALC grade when activeDataLayers is empty', () => {
+            const serviceWithData = new ReportService(makeMockDataProviderUtils());
+
+            const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, []);
+
+            expect(regions[0].layerValues).toHaveLength(1);
+            expect(regions[0].layerValues[0].layerId).toBe('agriculturalLandClassification');
+            expect(regions[0].layerValues[0].value).toBe('Grade 3');
         });
     });
 });

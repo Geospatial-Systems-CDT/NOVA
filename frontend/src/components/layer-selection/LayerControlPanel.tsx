@@ -45,8 +45,10 @@ interface Attribute {
     defaultValue: string | number;
     valueType: 'number' | 'string';
     options?: string[];
-    maxValue: number;
+    maxValue?: number;
 }
+
+type AttributeValue = string | number;
 
 interface LayerItem {
     id: string;
@@ -70,14 +72,15 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
     const [checkedLayers, setCheckedLayers] = useState<Record<string, boolean>>({});
-    const [layerSettings, setLayerSettings] = useState<Record<string, Record<string, number>>>({});
+    const [layerSettings, setLayerSettings] = useState<Record<string, Record<string, AttributeValue>>>({});
     const [expandedPanels, setExpandedPanels] = useState<string[]>([]);
     const [propOpen, setPropOpen] = useState(false);
     const [currentLayer, setCurrentLayer] = useState<string | null>(null);
     const [layersLoaded, setLayersLoaded] = useState(false);
     const [loadError, setLoadError] = useState(false);
     const setCachedHeatmap = useMapStore((s) => s.setCachedHeatmap);
-    const [tempLayerSettings, setTempLayerSettings] = useState<Record<string, Record<string, number>>>({});
+    const [tempLayerSettings, setTempLayerSettings] = useState<Record<string, Record<string, AttributeValue>>>({});
+    const setCachedReport = useMapStore((s) => s.setCachedReport);
 
     const fetchLayers = async () => {
         try {
@@ -88,7 +91,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
             const transformed: Record<string, LayerItem[]> = {};
             const checks: Record<string, boolean> = {};
-            const defaults: Record<string, Record<string, number>> = {};
+            const defaults: Record<string, Record<string, AttributeValue>> = {};
 
             data.categories.forEach((category) => {
                 if (!category.items?.length) return;
@@ -99,7 +102,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                     checks[item.name] = true;
                     defaults[item.name] = {};
                     attributes.forEach((a) => {
-                        defaults[item.name][a.description] = Number(a.defaultValue);
+                        defaults[item.name][a.description] = a.defaultValue;
                     });
 
                     return {
@@ -127,14 +130,14 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     useEffect(() => {
         if (resetLayers) {
             const resetCheckedLayers: Record<string, boolean> = {};
-            const resetLayerSettings: Record<string, Record<string, number>> = {};
+            const resetLayerSettings: Record<string, Record<string, AttributeValue>> = {};
 
             Object.entries(layers).forEach(([, items]) => {
                 items.forEach((item) => {
                     resetCheckedLayers[item.name] = true;
                     resetLayerSettings[item.name] = {};
                     item.attributes.forEach((a) => {
-                        resetLayerSettings[item.name][a.description] = Number(a.defaultValue);
+                        resetLayerSettings[item.name][a.description] = a.defaultValue;
                     });
                 });
             });
@@ -208,28 +211,30 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         setCurrentLayer(null);
     };
 
-    const handleParamChange = (label: string, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleParamChange = (attr: Attribute, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (!currentLayer) return;
         const raw = e.target.value;
         setTempLayerSettings((prev) => ({
             ...prev,
             [currentLayer]: {
                 ...prev[currentLayer],
-                [label]: Number(raw),
+                [attr.description]: attr.valueType === 'number' ? Number(raw) : raw,
             },
         }));
     };
 
-    const handleParamBlur = (label: string) => {
+    const handleParamBlur = (attr: Attribute) => {
         if (!currentLayer) return;
-        const txt = tempLayerSettings[currentLayer][label];
+        if (attr.valueType !== 'number') return;
+
+        const txt = tempLayerSettings[currentLayer][attr.description];
         const num = Number(txt);
         const final = Number.isNaN(num) ? '' : String(num);
         setTempLayerSettings((prev) => ({
             ...prev,
             [currentLayer]: {
                 ...prev[currentLayer],
-                [label]: Number(final),
+                [attr.description]: Number(final),
             },
         }));
     };
@@ -262,7 +267,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         const dataLayers = allLayers.map((layer) => {
             const attributes = layer.attributes.map((attr) => ({
                 id: attr.id,
-                value: layerSettings[layer.name]?.[attr.description] ?? '',
+                value: layerSettings[layer.name]?.[attr.description] ?? attr.defaultValue,
             }));
 
             return {
@@ -293,9 +298,10 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
             }
 
             const { heatmap, report } = await response.json();
+            console.log('[REPORT]', report);
 
-            console.log('[Report]', report);
             setCachedHeatmap(heatmap);
+            setCachedReport(report);
             MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, heatmap);
             setLayersPanelOpen(false);
         } catch (err) {
@@ -489,7 +495,6 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                             Generate Report
                         </Button>
                     </Box>
-
                 </Paper>
             )}
 
@@ -533,42 +538,47 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                                     if (isError) hasErrors = true;
 
                                     return (
-                                        <TextField
-                                            key={attr.id}
-                                            label={attr.description}
-                                            type={attr.valueType === 'number' ? 'number' : 'text'}
-                                            InputProps={
-                                                attr.valueType === 'number'
-                                                    ? {
-                                                          inputProps: {
-                                                              min: 0,
-                                                              ...(attr.maxValue !== undefined && { max: attr.maxValue }),
-                                                          },
-                                                      }
-                                                    : {}
-                                            }
-                                            select={(attr.options?.length ?? 0) > 0}
-                                            fullWidth
-                                            value={value}
-                                            onChange={(e) => handleParamChange(attr.description, e)}
-                                            onBlur={() => handleParamBlur(attr.description)}
-                                            sx={{ mb: 3 }}
-                                            error={isError}
-                                            helperText={
-                                                attr.valueType === 'number' &&
-                                                (numericValue < 0
-                                                    ? 'Must be ≥ 0'
-                                                    : attr.maxValue !== undefined && numericValue > attr.maxValue
-                                                      ? `Must be ≤ ${attr.maxValue}`
-                                                      : '')
-                                            }
-                                        >
-                                            {attr.options?.map((option) => (
-                                                <MenuItem key={option} value={option}>
-                                                    {option}
-                                                </MenuItem>
-                                            ))}
-                                        </TextField>
+                                        <Box key={attr.id} sx={{ mb: 3 }}>
+                                            <TextField
+                                                label={attr.description}
+                                                type={attr.valueType === 'number' ? 'number' : 'text'}
+                                                InputProps={
+                                                    attr.valueType === 'number'
+                                                        ? {
+                                                              inputProps: {
+                                                                  min: 0,
+                                                                  ...(attr.maxValue !== undefined && { max: attr.maxValue }),
+                                                              },
+                                                          }
+                                                        : {}
+                                                }
+                                                select={(attr.options?.length ?? 0) > 0}
+                                                fullWidth
+                                                value={value}
+                                                onChange={(e) => handleParamChange(attr, e)}
+                                                onBlur={() => handleParamBlur(attr)}
+                                                error={isError}
+                                                helperText={
+                                                    attr.valueType === 'number' &&
+                                                    (numericValue < 0
+                                                        ? 'Must be ≥ 0'
+                                                        : attr.maxValue !== undefined && numericValue > attr.maxValue
+                                                          ? `Must be ≤ ${attr.maxValue}`
+                                                          : '')
+                                                }
+                                            >
+                                                {attr.options?.map((option) => (
+                                                    <MenuItem key={option} value={option}>
+                                                        {option}
+                                                    </MenuItem>
+                                                ))}
+                                            </TextField>
+                                            {attr.id === 'classificationThreshold' && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                                                    Selecting a grade flags all land with that grade and better agricultural grades (e.g. Grade 3 flags Grades 1, 2 and 3).
+                                                </Typography>
+                                            )}
+                                        </Box>
                                     );
                                 });
 

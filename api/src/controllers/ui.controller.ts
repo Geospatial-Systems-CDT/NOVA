@@ -372,7 +372,14 @@ export class UIController {
             }
 
             const heatmap = this.assetAnalysisService.analyzeLocation(analysisRequest);
-            const report = analysisRequest.maxIssues !== undefined ? this.reportService.generateReport(heatmap, analysisRequest.maxIssues) : null;
+            const report =
+                analysisRequest.maxIssues !== undefined
+                    ? this.reportService.generateReport(
+                          heatmap,
+                          analysisRequest.maxIssues,
+                          analysisRequest.dataLayers.filter((l) => l.analyze)
+                      )
+                    : null;
 
             res.status(200).json({ heatmap, report });
         } catch (error) {
@@ -500,6 +507,6 @@ export class UIController {
 }
 
 const assetAnalysisService = new AssetAnalysisService(new DataProviderUtils());
-export const reportService = new ReportService();
 const energyEstimationService = new EnergyEstimationService(new DataProviderUtils());
+export const reportService = new ReportService(new DataProviderUtils());
 export const uiController = new UIController(assetAnalysisService, reportService, energyEstimationService);
