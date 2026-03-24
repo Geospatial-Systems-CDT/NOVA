@@ -319,7 +319,7 @@ export class AssetAnalysisService {
                         agriculturalLandClassificationAboveThresholdLayerData,
                         location,
                         'red',
-                        `Agricultural land classification at or above ${selectedClassification}`
+                        `Agricultural land classification at the selected grade (${selectedClassification}) and better`
                     )
                 );
             }

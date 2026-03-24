@@ -716,7 +716,7 @@ describe('analyzeLocation', () => {
         expect(result.features[0].properties?.suitability).toEqual('green');
 
         const agriculturalIssues = result.features.filter(
-            (feature) => feature.properties?.issue === 'Agricultural land classification at or above Grade 3'
+            (feature) => feature.properties?.issue === 'Agricultural land classification at the selected grade (Grade 3) and better'
         );
 
         expect(agriculturalIssues).toHaveLength(1);
@@ -844,7 +844,7 @@ describe('analyzeLocation', () => {
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
         const agriculturalIssues = result.features.filter(
-            (feature) => feature.properties?.issue === 'Agricultural land classification at or above Grade 4'
+            (feature) => feature.properties?.issue === 'Agricultural land classification at the selected grade (Grade 4) and better'
         );
 
         expect(agriculturalIssues).toHaveLength(3);
