@@ -31,6 +31,7 @@ export class DataProviderUtils {
     private readonly builtupAreas1KmLayerDataFilePath: string;
     private readonly areasOfNaturalBeautyLayerDataFilePath: string;
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
+    private readonly agriculturalLandClassificationDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
 
     /**
@@ -54,6 +55,7 @@ export class DataProviderUtils {
         this.builtupAreas1KmLayerDataFilePath = path.join(__dirname, '../data/bua-1km.geojson');
         this.areasOfNaturalBeautyLayerDataFilePath = path.join(__dirname, '../data/areanb.geojson');
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
+        this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
     }
 
     /**
@@ -192,6 +194,12 @@ export class DataProviderUtils {
 
     public getAreasOfNaturalBeauty1KmLayerData(): FeatureCollection<MultiPolygon> {
         const fileContent = fs.readFileSync(this.areasOfNaturalBeauty1KmLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+    }
+
+    public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
+        const fileContent = fs.readFileSync(this.agriculturalLandClassificationDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
     }

@@ -294,6 +294,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
             }
 
             const { heatmap, report } = await response.json();
+            console.log('[REPORT]', report);
 
             setCachedHeatmap(heatmap);
             setCachedReport(report);

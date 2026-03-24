@@ -11,7 +11,7 @@ export interface ReportIssueDTO {
 export interface ReportRegionLayerValueDTO {
     layerId: string;
     label: string;
-    value: number | null;
+    value: string | number | null;
     unit: string;
 }
 

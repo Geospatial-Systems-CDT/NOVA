@@ -187,13 +187,19 @@ export class ReportService {
 
     /**
      * Compute layer-specific values for the given candidate region polygon.
-     * Returns an empty array when no data provider is available or no layers are active.
+     * The ALC grade is always included when a data provider is available.
+     * Additional values are computed for each active data layer.
      */
     private computeLayerValuesForRegion(region: Feature<Polygon>, activeDataLayers: DataLayerDto[]): ReportRegionLayerValueDTO[] {
-        if (!this.dataProviderUtils || activeDataLayers.length === 0) return [];
+        if (!this.dataProviderUtils) return [];
 
         const centroid = turf.centroid(region) as Feature<Point>;
         const results: ReportRegionLayerValueDTO[] = [];
+
+        // Always include agricultural land classification
+        const alcData = this.dataProviderUtils.getAgriculturalLandClassificationData();
+        const alcValue = this.computeAlcGradeAtCentroid(centroid, alcData);
+        results.push({ layerId: 'agriculturalLandClassification', label: 'Agricultural land classification', value: alcValue, unit: '' });
 
         for (const layer of activeDataLayers) {
             switch (layer.id) {
@@ -237,6 +243,23 @@ export class ReportService {
         }
 
         return results;
+    }
+
+    /**
+     * Find the first ALC polygon that contains the given centroid point and return its
+     * ALC_GRADE property as a string. Returns null when the centroid falls outside all polygons.
+     */
+    private computeAlcGradeAtCentroid(centroid: Feature<Point>, layerData: FeatureCollection<MultiPolygon>): string | null {
+        for (const feature of layerData.features) {
+            for (const coords of feature.geometry.coordinates) {
+                const poly = turf.polygon(coords);
+                if (turf.booleanPointInPolygon(centroid, poly)) {
+                    const grade = feature.properties?.['ALC_GRADE'];
+                    return typeof grade === 'string' ? grade : null;
+                }
+            }
+        }
+        return null;
     }
 
     /**
