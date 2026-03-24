@@ -80,6 +80,7 @@ describe('LayerControlPanel', () => {
                 layersPanelOpen: mockLayersPanelOpen,
                 setLayersPanelOpen: mockSetLayersPanelOpen,
                 setCachedHeatmap: vi.fn(),
+                setCachedReport: vi.fn(),
             } as unknown as mapStore.MapState)
         );
 
@@ -88,6 +89,7 @@ describe('LayerControlPanel', () => {
             layersPanelOpen: mockLayersPanelOpen,
             setLayersPanelOpen: mockSetLayersPanelOpen,
             setCachedHeatmap: vi.fn(),
+            setCachedReport: vi.fn(),
         });
 
         fetchSpy = vi.spyOn(global, 'fetch' as any).mockImplementation((...args: unknown[]) => {
