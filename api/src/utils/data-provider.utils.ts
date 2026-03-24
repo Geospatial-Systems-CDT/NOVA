@@ -3,7 +3,7 @@
 
 import * as fs from 'fs';
 import Fuse, { FuseResult } from 'fuse.js';
-import { FeatureCollection, GeoJSON, MultiPolygon } from 'geojson';
+import { FeatureCollection, GeoJSON, MultiPolygon, Polygon } from 'geojson';
 import * as path from 'path';
 import { AssetsDTO } from '../models/asset.model';
 import { LayersDTO } from '../models/layers.model';
@@ -31,6 +31,8 @@ export class DataProviderUtils {
     private readonly builtupAreas1KmLayerDataFilePath: string;
     private readonly areasOfNaturalBeautyLayerDataFilePath: string;
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
+    private readonly aspectLayerDataFilePath: string;
+    private readonly slopesLayerDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
 
     /**
@@ -54,6 +56,8 @@ export class DataProviderUtils {
         this.builtupAreas1KmLayerDataFilePath = path.join(__dirname, '../data/bua-1km.geojson');
         this.areasOfNaturalBeautyLayerDataFilePath = path.join(__dirname, '../data/areanb.geojson');
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
+        this.aspectLayerDataFilePath = path.join(__dirname, '../data/Aspect_WGS84.geojson');
+        this.slopesLayerDataFilePath = path.join(__dirname, '../data/Slopes_WGS84.geojson');
     }
 
     /**
@@ -194,6 +198,18 @@ export class DataProviderUtils {
         const fileContent = fs.readFileSync(this.areasOfNaturalBeauty1KmLayerDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
+    }
+
+    public getAspectLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.aspectLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getSlopesLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.slopesLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }
 }
 

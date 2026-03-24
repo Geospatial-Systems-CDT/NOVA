@@ -594,6 +594,14 @@ export class MapVisualHelper {
             return 'windspeed';
         }
 
+        if (normalizedIssue.includes('slope')) {
+            return 'terrain-slope';
+        }
+
+        if (normalizedIssue.includes('aspect')) {
+            return 'terrain-aspect';
+        }
+
         return normalizedIssue;
     }
 

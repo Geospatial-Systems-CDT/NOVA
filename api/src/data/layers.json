@@ -100,6 +100,29 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "Terrain",
+            "items": [
+                {
+                    "id": "slope",
+                    "name": "Slope",
+                    "attributes": [
+                        {
+                            "id": "maxSlope",
+                            "description": "Set maximum terrain slope (degrees)",
+                            "defaultValue": 30,
+                            "valueType": "number",
+                            "maxValue": "90"
+                        }
+                    ]
+                },
+                {
+                    "id": "aspect",
+                    "name": "Aspect",
+                    "attributes": []
+                }
+            ]
         }
     ]
 }
