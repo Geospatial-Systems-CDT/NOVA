@@ -489,7 +489,6 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                             Generate Report
                         </Button>
                     </Box>
-
                 </Paper>
             )}
 
