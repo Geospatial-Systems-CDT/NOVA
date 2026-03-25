@@ -9,7 +9,7 @@
         "image": "https://via.placeholder.com/300/D93535/FFFFFF?text=Vestas",
         "specification": [
           { "name": "Model", "value": "V150-6.0" },
-          { "name": "Capacity (MW)", "value": "6 MW" },
+          { "name": "Capacity (MW)", "value": "3.5 MW" },
           { "name": "Cut-in speed", "value": "3 m/s" },
           { "name": "Cut-out speed", "value": "25 m/s" },
           { "name": "Rotor diameter", "value": "150 m" },
@@ -43,7 +43,7 @@
         "image": "https://via.placeholder.com/300/3576D9/FFFFFF?text=Roof",
         "specification": [
           { "name": "Model", "value": "R-100" },
-          { "name": "Wattage", "value": "350 W" }
+          { "name": "Wattage", "value": "250 W" }
         ]
       },
       {
@@ -52,7 +52,7 @@
         "image": "https://via.placeholder.com/300/D9C635/FFFFFF?text=Farm",
         "specification": [
           { "name": "Model", "value": "F-500" },
-          { "name": "Wattage", "value": "500 W" }
+          { "name": "Wattage", "value": "5 kW" }
         ]
       }
     ]

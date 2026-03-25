@@ -114,15 +114,19 @@ export const getInstalledCapacityMW = (variant: Variation | null): number => {
     const technology = getTechnologyFromVariant(variant);
     if (!variant) return ENERGY_ASSUMPTIONS.defaultInstalledCapacityMW[technology];
 
-    const capacityLikeSpec = variant.specification.find((spec) => {
+    const capacityLikeSpecs = variant.specification.filter((spec) => {
         const key = spec.name.toLowerCase();
         return key.includes('capacity') || key.includes('rated power') || key.includes('wattage');
     });
 
-    const parsedMW = capacityLikeSpec ? parsePowerToMW(capacityLikeSpec.value) : null;
+    const parsedCandidatesMW = capacityLikeSpecs
+        .map((spec) => parsePowerToMW(spec.value))
+        .filter((value): value is number => value !== null);
 
-    // Small W/Wp entries typically represent module-level values; use scenario-scale fallback.
-    if (parsedMW !== null && parsedMW >= 0.05) {
+    // Prefer system-level capacity over module wattage by taking the largest parsed candidate.
+    const parsedMW = parsedCandidatesMW.length > 0 ? Math.max(...parsedCandidatesMW) : null;
+
+    if (parsedMW !== null && parsedMW > 0) {
         return parsedMW;
     }
 
@@ -189,14 +193,14 @@ export const estimateAssetStats = ({ variant, selectedSubstation, latitude, long
         location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
         connectedSubstation: selectedSubstation.name,
         connectionDistanceKm,
-        outputMWh: roundTo(deliveredMWh, 0),
-        outputMW: roundTo(outputMW, 2),
-        gridSupportMW: roundTo(gridSupportMW, 2),
+        outputMWh: roundTo(deliveredMWh, 3),
+        outputMW: roundTo(outputMW, 4),
+        gridSupportMW: roundTo(gridSupportMW, 4),
         boostPercent: roundTo(boostPercent, 1),
         localBoostPercent: roundTo(localBoostPercent, 1),
-        maxOutputMWh: Math.max(roundTo(deliveredMWh * 1.35, 0), 1000),
-        maxOutputMW: Math.max(roundTo(outputMW * 1.4, 2), 1),
-        maxGridSupportMW: Math.max(roundTo(gridSupportMW * 1.4, 2), 1),
+        maxOutputMWh: Math.max(roundTo(deliveredMWh * 1.35, 3), 1),
+        maxOutputMW: Math.max(roundTo(outputMW * 1.4, 4), 0.01),
+        maxGridSupportMW: Math.max(roundTo(gridSupportMW * 1.4, 4), 0.01),
         maxBoostPercent: 100,
         maxLocalBoostPercent: 100,
     };

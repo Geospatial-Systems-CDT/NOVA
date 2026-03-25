@@ -78,6 +78,49 @@ interface GridConnectFooterPanelProps {
     selectedSubstation: Substation;
 }
 
+interface DisplayStat {
+    value: number;
+    max: number;
+    unit: string;
+    decimals: number;
+}
+
+const toEnergyDisplay = (valueMWh: number, maxMWh: number): DisplayStat => {
+    if (Math.abs(valueMWh) < 1) {
+        return {
+            value: valueMWh * 1000,
+            max: maxMWh * 1000,
+            unit: 'kWh/year',
+            decimals: 1,
+        };
+    }
+
+    return {
+        value: valueMWh,
+        max: maxMWh,
+        unit: 'MWh/year',
+        decimals: 1,
+    };
+};
+
+const toPowerDisplay = (valueMW: number, maxMW: number): DisplayStat => {
+    if (Math.abs(valueMW) < 1) {
+        return {
+            value: valueMW * 1000,
+            max: maxMW * 1000,
+            unit: 'kW',
+            decimals: 1,
+        };
+    }
+
+    return {
+        value: valueMW,
+        max: maxMW,
+        unit: 'MW',
+        decimals: 2,
+    };
+};
+
 export default function GridConnectFooterPanel({ selectedSubstation }: GridConnectFooterPanelProps) {
     const markerPosition = useMapStore((s) => s.markerPosition);
     const markerVariant = useMapStore((s) => s.markerVariant);
@@ -134,6 +177,10 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
         [stats, markerVariant, selectedSubstation, lat, lng]
     );
 
+    const outputEnergyDisplay = toEnergyDisplay(computedStats.outputMWh, computedStats.maxOutputMWh);
+    const outputPowerDisplay = toPowerDisplay(computedStats.outputMW, computedStats.maxOutputMW);
+    const gridSupportDisplay = toPowerDisplay(computedStats.gridSupportMW, computedStats.maxGridSupportMW);
+
     const assetIcon = computedStats.technology === 'solar' ? '/images/solar-icon.png' : '/images/turbine-icon.png';
 
     return (
@@ -159,7 +206,13 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
             <MainStatSection>
                 <MainStatTitle>Estimated output contribution:</MainStatTitle>
                 <StatGridItem>
-                    <StatCircle value={computedStats.outputMWh} max={computedStats.maxOutputMWh} unit="MWh/year" size={96} decimals={0} />
+                    <StatCircle
+                        value={outputEnergyDisplay.value}
+                        max={outputEnergyDisplay.max}
+                        unit={outputEnergyDisplay.unit}
+                        size={96}
+                        decimals={outputEnergyDisplay.decimals}
+                    />
                     <StatLabel variant="body2">projected into {computedStats.connectedSubstation} load</StatLabel>
                 </StatGridItem>
                 <Typography variant="caption" color="text.secondary">
@@ -169,11 +222,23 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
 
             <StatGrid>
                 <StatGridItem>
-                    <StatCircle value={computedStats.outputMW} max={computedStats.maxOutputMW} unit="MW" size={64} decimals={1} />
+                    <StatCircle
+                        value={outputPowerDisplay.value}
+                        max={outputPowerDisplay.max}
+                        unit={outputPowerDisplay.unit}
+                        size={64}
+                        decimals={outputPowerDisplay.decimals}
+                    />
                     <StatLabel variant="body2">to local distribution network</StatLabel>
                 </StatGridItem>
                 <StatGridItem>
-                    <StatCircle value={computedStats.gridSupportMW} max={computedStats.maxGridSupportMW} unit="MW" size={64} decimals={1} />
+                    <StatCircle
+                        value={gridSupportDisplay.value}
+                        max={gridSupportDisplay.max}
+                        unit={gridSupportDisplay.unit}
+                        size={64}
+                        decimals={gridSupportDisplay.decimals}
+                    />
                     <StatLabel variant="body2">grid support</StatLabel>
                 </StatGridItem>
                 <StatGridItem>
