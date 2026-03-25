@@ -29,9 +29,7 @@ Updated asset-analysis.service.ts to:
   2.Suppression of lower-priority duplicate issue messages in popup content.
 
 #### Changes from features/solar_data
-Add solar potential and windspeed resource integration to analysis and MVP output estimation.
-
-Introduce a backend-first, deterministic screening estimator across API and frontend.
+Added solar potential and windspeed resource integration to analysis and MVP output estimation, with a backend-first deterministic screening estimator across API and frontend.
 
 Backend:
 - Added `EnergyEstimationService` with deterministic, assumption-based screening logic.
@@ -52,7 +50,7 @@ Frontend:
 - Added unit tests for frontend energy estimation utility behavior.
 
 Docs:
-- Added and expanded the user guide method note with equations, constants, assumptions, and limitations.
+- Added and expanded the user guide methods note with equations, constants, assumptions, and limitations.
 - Documented data-source precedence (solar/wind lookup first, heuristic fallback second).
 
 Additional updates (terrain suitability):
@@ -77,6 +75,15 @@ Additional updates (terrain suitability):
 - Added/updated API tests for:
   - terrain data loading in `data-provider.utils.spec.ts`
   - slope/aspect suitability behavior in `asset-analysis.service.spec.ts`
+
+Latest refinements (estimation and display):
+- Updated capacity parsing so any positive parsed asset specification value is used directly (including small solar W/kW-scale values), with fallback values used only when parsing is missing or non-positive.
+- Synced API asset specification values with UI-displayed asset values to avoid mismatch during contribution estimation checks.
+- Improved low-output visibility by increasing precision/scaling handling for small estimated values.
+- Updated frontend footer display to use adaptive units for small values:
+  - energy below 1 MWh is shown in kWh/year
+  - power below 1 MW is shown in kW
+- Updated methods documentation to reflect the estimator and display behavior above.
 
 ### Notes
 - This change affects issue text shown in the frontend popup.

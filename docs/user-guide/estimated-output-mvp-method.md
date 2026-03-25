@@ -53,9 +53,11 @@ The current implementation is deterministic and assumption-based, with calculati
 
 - Technology is inferred from selected variant metadata (keywords in name/spec text/icon paths).
 - Installed capacity is parsed from specification fields such as Capacity, Rated Power, or Wattage.
-- If solar values look module-level only (for example 500 Wp), fallback capacity is used:
-  - Farm = 5 MW
-  - Roof = 0.35 MW
+- The parsed specification value is used directly when it is a valid positive power value (including small installations, for example 250 W or 5 kW).
+- Fallback capacity is only used when capacity cannot be parsed (or is non-positive):
+  - Wind fallback: 5 MW
+  - Solar fallback by variant label: Farm = 5 MW, Roof = 0.35 MW
+  - Unknown fallback: 2 MW
 
 ### 2) Compute resource-adjusted capacity factor
 
@@ -120,7 +122,11 @@ boostPercent = clamp((gridSupportMW / 60) x 100, 0, 100)
 
 localBoostPercent = clamp((outputMW / 8) x 100, 0, 100)
 
-- Values are rounded for display.
+- Values are rounded for display with low-value precision preserved in the estimator payload.
+- UI unit adaptation for small values:
+  - If annual energy < 1 MWh, display as kWh/year.
+  - If power < 1 MW, display as kW.
+  - Otherwise display in MWh/year and MW.
 
 ## Worked Example (from observed UI output)
 
@@ -142,7 +148,7 @@ Observed output:
 Interpretation:
 
 - The asset is treated as solar.
-- A scenario-scale installed capacity and solar capacity factor are used.
+- Installed capacity comes from the selected specification value (or fallback only if not parseable).
 - Availability, losses, and short-distance penalties are applied.
 - MWh/year is converted to MW and then normalized against assumed headroom and local demand to get percentages.
 
