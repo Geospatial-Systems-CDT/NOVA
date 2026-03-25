@@ -9,7 +9,7 @@ import PrivacyNotice from './components/privacy-notice/PrivacyNotice';
 import theme from './theme';
 import './App.scss';
 import { Routes, Route } from 'react-router-dom';
-import ReportPage from './pages/ReportPage';
+import ReportPage from './pages/ReportPage/ReportPage';
 
 const App: React.FC = () => {
     const [showPrivacy, setShowPrivacy] = useState(false);
