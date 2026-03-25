@@ -88,7 +88,6 @@ Frontend:
 - Kept client-side estimation as fallback when backend estimation is unavailable.
 - Added helper clients: `assetEstimationApi` and `solarPotentialApi`.
 - Added unit tests for frontend energy estimation utility behavior.
-
 Docs:
 
 - Added and expanded the user guide method note with equations, constants, assumptions, and limitations.
