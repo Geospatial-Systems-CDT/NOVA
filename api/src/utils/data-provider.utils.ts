@@ -39,11 +39,19 @@ export class DataProviderUtils {
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
     private readonly roadBufferLayerDataFilePath: string;
     private readonly railBufferLayerDataFilePath: string;
+    private readonly railBufferSolarLayerDataFilePath: string;
+    private readonly roadBufferSolar7mLayerDataFilePath: string;
+    private readonly roadBufferSolar5mLayerDataFilePath: string;
     private readonly aspectLayerDataFilePath: string;
     private readonly slopesLayerDataFilePath: string;
     private readonly iowPalLayerDataFilePath: string;
     private readonly fuelPovertyLayerDataFilePath: string;
     private readonly ancientWoodlandsLayerDataFilePath: string;
+    private readonly scheduledAncientMonuments750mBufferLayerDataFilePath: string;
+    private readonly specialProtectionAreas2kmBufferLayerDataFilePath: string;
+    private readonly ramsarWetlandsLayerDataFilePath: string;
+    private readonly coastalErosionProjectionLayerDataFilePath: string;
+    private readonly dissolvedRiverFloodRiskLayerDataFilePath: string;
     private readonly agriculturalLandClassificationDataFilePath: string;
     private readonly solarKkDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
@@ -72,11 +80,19 @@ export class DataProviderUtils {
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
         this.roadBufferLayerDataFilePath = path.join(__dirname, '../data/road_10m_buffer.geojson');
         this.railBufferLayerDataFilePath = path.join(__dirname, '../data/rail_10m_buffer.geojson');
+        this.railBufferSolarLayerDataFilePath = path.join(__dirname, '../data/rail_5m_solar_buffer.geojson');
+        this.roadBufferSolar7mLayerDataFilePath = path.join(__dirname, '../data/road_solar_7m_buffer.geojson');
+        this.roadBufferSolar5mLayerDataFilePath = path.join(__dirname, '../data/road_solar_5m_buffer.geojson');
         this.aspectLayerDataFilePath = path.join(__dirname, '../data/Aspect_WGS84.geojson');
         this.slopesLayerDataFilePath = path.join(__dirname, '../data/Slopes_WGS84.geojson');
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
+        this.scheduledAncientMonuments750mBufferLayerDataFilePath = path.join(__dirname, '../data/Scheduled_Ancient_Monuments_IoW.geojson');
+        this.specialProtectionAreas2kmBufferLayerDataFilePath = path.join(__dirname, '../data/Special_protection_areas.geojson');
+        this.ramsarWetlandsLayerDataFilePath = path.join(__dirname, '../data/ramsar_wetlands.geojson');
+        this.coastalErosionProjectionLayerDataFilePath = path.join(__dirname, '../data/coastal_erosion_projection.geojson');
+        this.dissolvedRiverFloodRiskLayerDataFilePath = path.join(__dirname, '../data/dissolved_river_200m_buffer.geojson');
         this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
         this.solarKkDataFilePath = path.join(__dirname, '../data/solar-kk.json');
     }
@@ -255,6 +271,18 @@ export class DataProviderUtils {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.railBufferLayerDataFilePath);
     }
 
+    public getRailBufferSolarLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.railBufferSolarLayerDataFilePath);
+    }
+
+    public getRoadBufferSolar7mLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.roadBufferSolar7mLayerDataFilePath);
+    }
+
+    public getRoadBufferSolar5mLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.roadBufferSolar5mLayerDataFilePath);
+    }
+
 
     public getWindspeedLayerData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.windspeedLayerDataFilePath);
@@ -322,6 +350,31 @@ export class DataProviderUtils {
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }
+
+    public getScheduledAncientMonuments750mBufferLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.scheduledAncientMonuments750mBufferLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getSpecialProtectionAreas2kmBufferLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.specialProtectionAreas2kmBufferLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getRamsarWetlandsLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.ramsarWetlandsLayerDataFilePath);
+    }
+
+    public getCoastalErosionProjectionLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.coastalErosionProjectionLayerDataFilePath);
+    }
+
+    public getDissolvedRiverFloodRiskLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.dissolvedRiverFloodRiskLayerDataFilePath);
+    }
+
     public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.agriculturalLandClassificationDataFilePath);
     }

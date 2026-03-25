@@ -337,6 +337,28 @@ describe('DataProviderUtils', () => {
         ],
     };
 
+    const mockDissolvedRiverFloodRiskLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    coordinates: [
+                        [
+                            [-1.33, 50.7],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.7],
+                            [-1.33, 50.7],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     beforeEach(() => {
         // Reset all mocks
         jest.resetAllMocks();
@@ -470,6 +492,17 @@ describe('DataProviderUtils', () => {
 
             // Verify the result
             expect(result).toEqual(mockSitesOfSpecialScientificInterest1KmLayerData);
+        });
+    });
+
+    describe('getDissolvedRiverFloodRiskLayerData', () => {
+        it('should read and parse the dissolved river flood-risk layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockDissolvedRiverFloodRiskLayerData));
+
+            const result = dataProviderUtils.getDissolvedRiverFloodRiskLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('dissolved_river_200m_buffer.geojson'), 'utf8');
+            expect(result).toEqual(mockDissolvedRiverFloodRiskLayerData);
         });
     });
 

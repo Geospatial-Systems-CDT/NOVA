@@ -10,9 +10,11 @@ import { MarkerStatus } from '../components/asset-marker/AssetMarkerStatus';
 import type { Substation } from '../components/map-substations-list/SubstationsList';
 import type { Asset, Variation } from '../components/search/add-asset/AddAsset';
 import type { ReportDTO } from '../types/report';
+import type { Scenario } from '../types/scenario';
 import { CACHED_REPORT_STORAGE_KEY } from '../types/report';
 
 export type PolygonStatus = 'none' | 'drawing' | 'editing' | 'pendingConfirmation' | 'confirmed';
+export type PlanningMode = 'scenarios' | 'layers';
 
 export interface MapState {
     mapRef: MapRef | null;
@@ -75,6 +77,21 @@ export interface MapState {
 
     layersPanelOpen: boolean;
     setLayersPanelOpen: (open: boolean) => void;
+
+    selectedScenario: Scenario | null;
+    setSelectedScenario: (scenario: Scenario | null) => void;
+
+    scenarioIsCustom: boolean;
+    setScenarioIsCustom: (isCustom: boolean) => void;
+
+    planningMode: PlanningMode;
+    setPlanningMode: (mode: PlanningMode) => void;
+
+    creatingScenario: boolean;
+    setCreatingScenario: (creating: boolean) => void;
+
+    userScenariosVersion: number;
+    bumpUserScenariosVersion: () => void;
 
     clearMarkerValues: () => void;
 }
@@ -152,6 +169,21 @@ export const useMapStore = create<MapState>((set, get) => ({
     setLayersPanelOpen: (open) => set({ layersPanelOpen: open }),
 
     clearMarkerValues: () => set({ markerBearing: null, markerVariant: null, markerPosition: null, assetCount: 1 }),
+    selectedScenario: null,
+    setSelectedScenario: (scenario) => set({ selectedScenario: scenario, scenarioIsCustom: false }),
+
+    scenarioIsCustom: false,
+    setScenarioIsCustom: (isCustom) => set({ scenarioIsCustom: isCustom }),
+
+    planningMode: 'scenarios',
+    setPlanningMode: (mode) => set({ planningMode: mode }),
+
+    creatingScenario: false,
+    setCreatingScenario: (creating) => set({ creatingScenario: creating }),
+
+    userScenariosVersion: 0,
+    bumpUserScenariosVersion: () => set((state) => ({ userScenariosVersion: state.userScenariosVersion + 1 })),
+
 
     handleMapClick: (e: MapLayerMouseEvent) => {
         if (get().placing) {

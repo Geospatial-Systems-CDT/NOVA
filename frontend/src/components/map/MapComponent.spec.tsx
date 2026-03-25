@@ -41,6 +41,15 @@ const createMockMapState = (overrides: Partial<MapState> = {}): MapState => ({
     cachedHeatmap: null,
     setCachedHeatmap: vi.fn(),
 
+    cachedReport: null,
+    setCachedReport: vi.fn(),
+
+    reportJobId: null,
+    setReportJobId: vi.fn(),
+
+    reportLoading: false,
+    setReportLoading: vi.fn(),
+
     gridConnectViewActive: false,
     setGridConnectViewActive: vi.fn(),
 
@@ -61,6 +70,21 @@ const createMockMapState = (overrides: Partial<MapState> = {}): MapState => ({
 
     layersPanelOpen: false, // add this line to satisfy MapState
     setLayersPanelOpen: vi.fn(), // add this line to satisfy MapState
+
+    selectedScenario: null,
+    setSelectedScenario: vi.fn(),
+
+    scenarioIsCustom: false,
+    setScenarioIsCustom: vi.fn(),
+
+    planningMode: 'scenarios',
+    setPlanningMode: vi.fn(),
+
+    creatingScenario: false,
+    setCreatingScenario: vi.fn(),
+
+    userScenariosVersion: 0,
+    bumpUserScenariosVersion: vi.fn(),
 
     ...overrides,
 });

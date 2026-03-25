@@ -396,13 +396,14 @@ export class UIController {
             if (analysisRequest.maxIssues !== undefined) {
                 jobId = reportJobStore.create();
                 const capturedJobId = jobId;
-                const activeDataLayers = analysisRequest.dataLayers.filter((l) => l.analyze);
+                const allDataLayers = analysisRequest.dataLayers;
                 const maxIssues = analysisRequest.maxIssues;
 
                 setImmediate(() => {
                     try {
                         const _tReport = performance.now();
-                        const report = this.reportService.generateReport(heatmap, maxIssues, activeDataLayers);
+                        const selectedPolygon = analysisRequest.location.features[0] ?? null;
+                        const report = this.reportService.generateReport(heatmap, maxIssues, allDataLayers, selectedPolygon);
                         console.debug(`[analyseLocation] generateReport (async): ${(performance.now() - _tReport).toFixed(1)}ms`);
                         reportJobStore.complete(capturedJobId, report);
                     } catch (err) {
