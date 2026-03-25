@@ -39,6 +39,9 @@ export class DataProviderUtils {
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
     private readonly roadBufferLayerDataFilePath: string;
     private readonly railBufferLayerDataFilePath: string;
+    private readonly railBufferSolarLayerDataFilePath: string;
+    private readonly roadBufferSolar7mLayerDataFilePath: string;
+    private readonly roadBufferSolar5mLayerDataFilePath: string;
     private readonly aspectLayerDataFilePath: string;
     private readonly slopesLayerDataFilePath: string;
     private readonly iowPalLayerDataFilePath: string;
@@ -71,6 +74,9 @@ export class DataProviderUtils {
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
         this.roadBufferLayerDataFilePath = path.join(__dirname, '../data/road_10m_buffer.geojson');
         this.railBufferLayerDataFilePath = path.join(__dirname, '../data/rail_10m_buffer.geojson');
+        this.railBufferSolarLayerDataFilePath = path.join(__dirname, '../data/rail_5m_solar_buffer.geojson');
+        this.roadBufferSolar7mLayerDataFilePath = path.join(__dirname, '../data/road_solar_7m_buffer.geojson');
+        this.roadBufferSolar5mLayerDataFilePath = path.join(__dirname, '../data/road_solar_5m_buffer.geojson');
         this.aspectLayerDataFilePath = path.join(__dirname, '../data/Aspect_WGS84.geojson');
         this.slopesLayerDataFilePath = path.join(__dirname, '../data/Slopes_WGS84.geojson');
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
@@ -251,6 +257,18 @@ export class DataProviderUtils {
 
     public getRailBufferLayerData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.railBufferLayerDataFilePath);
+    }
+
+    public getRailBufferSolarLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.railBufferSolarLayerDataFilePath);
+    }
+
+    public getRoadBufferSolar7mLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.roadBufferSolar7mLayerDataFilePath);
+    }
+
+    public getRoadBufferSolar5mLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.roadBufferSolar5mLayerDataFilePath);
     }
 
 
