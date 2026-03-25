@@ -189,9 +189,10 @@ export class AssetAnalysisService {
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
                 );
-            } else if (dataLayer.id === 'slope') {
+            } else if (dataLayer.id === 'slope' || dataLayer.id === 'slopeWind') {
+                const defaultMaxSlope = dataLayer.id === 'slopeWind' ? 10 : 30;
                 const maxSlope =
-                    dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value || 30;
+                    dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value || defaultMaxSlope;
                 const slopesLayer = this.dataProviderUtils.getSlopesLayerData();
                 const slopesBadLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
@@ -201,13 +202,13 @@ export class AssetAnalysisService {
                     }),
                 };
 
+                const slopeIssue =
+                    dataLayer.id === 'slopeWind'
+                        ? `Unfavourable wind terrain suitability - steep slope (> ${maxSlope}°)`
+                        : `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`;
+
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        slopesBadLayerData,
-                        location,
-                        'red',
-                        `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`
-                    )
+                    this.getMatchedPolygonsForLayer(slopesBadLayerData, location, 'red', slopeIssue)
                 );
             } else if (dataLayer.id === 'roadBuffer') {
                 const roadBufferLayerData = this.dataProviderUtils.getRoadBufferLayerData();

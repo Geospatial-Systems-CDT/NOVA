@@ -195,12 +195,25 @@
             "items": [
                 {
                     "id": "slope",
-                    "name": "Slope",
+                    "name": "Slope (Solar)",
                     "attributes": [
                         {
                             "id": "maxSlope",
                             "description": "Set maximum terrain slope (degrees)",
                             "defaultValue": 30,
+                            "valueType": "number",
+                            "maxValue": "90"
+                        }
+                    ]
+                },
+                {
+                    "id": "slopeWind",
+                    "name": "Slope (Wind)",
+                    "attributes": [
+                        {
+                            "id": "maxSlope",
+                            "description": "Set maximum terrain slope for wind (degrees)",
+                            "defaultValue": 10,
                             "valueType": "number",
                             "maxValue": "90"
                         }

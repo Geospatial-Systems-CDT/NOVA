@@ -2493,7 +2493,7 @@ describe('analyzeLocation', () => {
         expect(steepSlopeIssues.length).toBeGreaterThan(0);
     });
 
-    
+
     it('flags polygons inside ancient woodland as an issue when the layer is analyzed', () => {
         const ancientWoodlandsDataLayers: DataLayerDto[] = [
             {
