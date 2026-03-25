@@ -1,0 +1,94 @@
+{
+    "scenarios": [
+        {
+            "id": "balanced-wind",
+            "name": "Balanced Wind",
+            "description": "Balanced environmental buffers and wind limits.",
+            "layers": [
+                {
+                    "layerId": "windSpeed",
+                    "attributes": [
+                        {
+                            "id": "minSpeed",
+                            "value": 5
+                        },
+                        {
+                            "id": "maxSpeed",
+                            "value": 9
+                        }
+                    ]
+                },
+                {
+                    "layerId": "specialAreasOfConservation",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 2
+                        }
+                    ]
+                },
+                {
+                    "layerId": "sitesOfSpecialScientificInterest",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 2
+                        }
+                    ]
+                },
+                {
+                    "layerId": "builtUpAreas",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 1.5
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "conservation-first",
+            "name": "Conservation First",
+            "description": "Larger protection buffers around sensitive areas.",
+            "layers": [
+                {
+                    "layerId": "areasOfOutstandingNaturalBeauty",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 5
+                        }
+                    ]
+                },
+                {
+                    "layerId": "sitesOfSpecialScientificInterest",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 5
+                        }
+                    ]
+                },
+                {
+                    "layerId": "specialAreasOfConservation",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 5
+                        }
+                    ]
+                },
+                {
+                    "layerId": "builtUpAreas",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 2
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

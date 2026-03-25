@@ -7,6 +7,7 @@ import {
     AccordionSummary,
     Box,
     Button,
+    Chip,
     Checkbox,
     CircularProgress,
     Divider,
@@ -19,7 +20,7 @@ import {
     Typography,
 } from '@mui/material';
 import area from '@turf/area';
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type MapboxDraw from '@mapbox/mapbox-gl-draw';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
@@ -30,7 +31,9 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SearchIcon from '@mui/icons-material/Search';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { useMapStore } from '../../stores/useMapStore';
+import type { Scenario } from '../../types/scenario';
 import { MapVisualHelper } from '../../utils/MapVisualHelper';
+import { createUserScenarioId, saveUserScenario } from '../../utils/scenarioStorage';
 
 interface LayerControlPanelProps {
     mapRef: React.RefObject<MapRef>;
@@ -64,6 +67,8 @@ interface LayerApiResponse {
 }
 
 const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: LayerControlPanelProps) => {
+    const panelRenderStartRef = useRef(performance.now());
+    const layerPanelReadyLoggedRef = useRef(false);
     const polygonStatus = useMapStore((s) => s.polygonStatus);
     const layersPanelOpen = useMapStore((s) => s.layersPanelOpen);
     const setLayersPanelOpen = useMapStore((s) => s.setLayersPanelOpen);
@@ -83,8 +88,63 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const setCachedReport = useMapStore((s) => s.setCachedReport);
     const setReportJobId = useMapStore((s) => s.setReportJobId);
     const setReportLoading = useMapStore((s) => s.setReportLoading);
+    const selectedScenario = useMapStore((s) => s.selectedScenario);
+    const scenarioIsCustom = useMapStore((s) => s.scenarioIsCustom);
+    const setScenarioIsCustom = useMapStore((s) => s.setScenarioIsCustom);
+    const creatingScenario = useMapStore((s) => s.creatingScenario);
+    const setCreatingScenario = useMapStore((s) => s.setCreatingScenario);
+    const setSelectedScenario = useMapStore((s) => s.setSelectedScenario);
+    const bumpUserScenariosVersion = useMapStore((s) => s.bumpUserScenariosVersion);
+    const [newScenarioName, setNewScenarioName] = useState('');
+    const [newScenarioDescription, setNewScenarioDescription] = useState('');
+
+    const buildDefaultLayerState = useCallback(
+        (defaultChecked: boolean) => {
+            const checks: Record<string, boolean> = {};
+            const defaults: Record<string, Record<string, AttributeValue>> = {};
+
+            Object.values(layers).forEach((items) => {
+                items.forEach((item) => {
+                    checks[item.name] = defaultChecked;
+                    defaults[item.name] = {};
+                    item.attributes.forEach((attribute) => {
+                        defaults[item.name][attribute.description] = attribute.defaultValue;
+                    });
+                });
+            });
+
+            return { checks, defaults };
+        },
+        [layers]
+    );
+
+    const buildScenarioLayerState = useCallback(
+        (scenario: Scenario) => {
+            const { checks, defaults } = buildDefaultLayerState(false);
+            const allLayers = Object.values(layers).flat();
+            const layersById = new Map(allLayers.map((layer) => [layer.id, layer]));
+
+            scenario.layers.forEach((scenarioLayer) => {
+                const layer = layersById.get(scenarioLayer.layerId);
+                if (!layer) return;
+
+                checks[layer.name] = true;
+
+                scenarioLayer.attributes.forEach((scenarioAttribute) => {
+                    const matchingAttribute = layer.attributes.find((attribute) => attribute.id === scenarioAttribute.id);
+                    if (!matchingAttribute) return;
+
+                    defaults[layer.name][matchingAttribute.description] = scenarioAttribute.value;
+                });
+            });
+
+            return { checks, defaults };
+        },
+        [buildDefaultLayerState, layers]
+    );
 
     const fetchLayers = async () => {
+        const fetchStart = performance.now();
         try {
             setLoadError(false);
             const response = await fetch('/api/ui/layers');
@@ -123,6 +183,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
             setExpandedPanels(allCategories);
 
             setLayersLoaded(true);
+            console.info(`[perf] layer metadata fetched in ${(performance.now() - fetchStart).toFixed(2)}ms`);
         } catch (err) {
             console.error('Failed to load layers', err);
             setLoadError(true);
@@ -131,29 +192,34 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
     useEffect(() => {
         if (resetLayers) {
-            const resetCheckedLayers: Record<string, boolean> = {};
-            const resetLayerSettings: Record<string, Record<string, AttributeValue>> = {};
-
-            Object.entries(layers).forEach(([, items]) => {
-                items.forEach((item) => {
-                    resetCheckedLayers[item.name] = true;
-                    resetLayerSettings[item.name] = {};
-                    item.attributes.forEach((a) => {
-                        resetLayerSettings[item.name][a.description] = a.defaultValue;
-                    });
-                });
-            });
-
+            const state = selectedScenario ? buildScenarioLayerState(selectedScenario) : buildDefaultLayerState(true);
+            const resetCheckedLayers = state.checks;
+            const resetLayerSettings = state.defaults;
             setCheckedLayers(resetCheckedLayers);
             setLayerSettings(resetLayerSettings);
 
             setResetLayers(false);
         }
-    }, [resetLayers, layers, setResetLayers]);
+    }, [buildDefaultLayerState, buildScenarioLayerState, resetLayers, selectedScenario, setResetLayers]);
 
     useEffect(() => {
         fetchLayers();
     }, []);
+
+    useEffect(() => {
+        if (layersLoaded && !loadError && !layerPanelReadyLoggedRef.current) {
+            layerPanelReadyLoggedRef.current = true;
+            console.info(`[perf] layer panel ready in ${(performance.now() - panelRenderStartRef.current).toFixed(2)}ms`);
+        }
+    }, [layersLoaded, loadError]);
+
+    useEffect(() => {
+        if (!layersLoaded || !selectedScenario) return;
+
+        const scenarioState = buildScenarioLayerState(selectedScenario);
+        setCheckedLayers(scenarioState.checks);
+        setLayerSettings(scenarioState.defaults);
+    }, [buildScenarioLayerState, layersLoaded, selectedScenario]);
 
     useEffect(() => {
         if (propOpen && currentLayer && layerSettings[currentLayer]) {
@@ -166,6 +232,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
     const handleCheckboxChange = (name: string) => {
         setCheckedLayers((prev) => ({ ...prev, [name]: !prev[name] }));
+        if (selectedScenario) setScenarioIsCustom(true);
     };
 
     const handleAccordionToggle = (category: string) => {
@@ -250,8 +317,46 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                     ...updatedSettings,
                 },
             }));
+            if (selectedScenario) setScenarioIsCustom(true);
         }
         closeProps();
+    };
+
+    const handleSaveScenario = () => {
+        const saveStart = performance.now();
+        const trimmedName = newScenarioName.trim();
+        if (!trimmedName) {
+            alert('Enter a scenario name.');
+            return;
+        }
+
+        const allLayers = Object.values(layers).flat();
+        const scenarioLayers = allLayers
+            .filter((layer) => checkedLayers[layer.name])
+            .map((layer) => ({
+                layerId: layer.id,
+                attributes: layer.attributes.map((attr) => ({
+                    id: attr.id,
+                    value: layerSettings[layer.name]?.[attr.description] ?? attr.defaultValue,
+                })),
+            }));
+
+        const scenario: Scenario = {
+            id: createUserScenarioId(trimmedName),
+            name: trimmedName,
+            description: newScenarioDescription.trim() || undefined,
+            source: 'user',
+            layers: scenarioLayers,
+        };
+
+        saveUserScenario(scenario);
+        bumpUserScenariosVersion();
+        setSelectedScenario(scenario);
+        setScenarioIsCustom(false);
+        setCreatingScenario(false);
+        setNewScenarioName('');
+        setNewScenarioDescription('');
+        console.info(`[perf] user scenario saved in ${(performance.now() - saveStart).toFixed(2)}ms`);
     };
 
     const handleApply = async () => {
@@ -269,6 +374,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         const dataLayers = allLayers.map((layer) => {
             const attributes = layer.attributes.map((attr) => ({
                 id: attr.id,
+                label: attr.description,
                 value: layerSettings[layer.name]?.[attr.description] ?? attr.defaultValue,
             }));
 
@@ -359,6 +465,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
     const isVisible = polygonStatus === 'confirmed';
     if (!isVisible) return null;
+    const layerPanelTop = '3.75rem';
     const handleGenerateReport = () => {
         if (!drawRef.current) {
             alert('No polygon selected.');
@@ -408,18 +515,68 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     };
     return (
         <>
-            <Box className="layer-panel-toggle" sx={{ left: layersPanelOpen ? '430px' : '1rem' }}>
+            <Box className="layer-panel-toggle" sx={{ left: layersPanelOpen ? '430px' : '1rem', top: layerPanelTop }}>
                 <IconButton onClick={() => setLayersPanelOpen(!layersPanelOpen)}>
                     <ArrowBackIosNewIcon fontSize="small" sx={{ transform: !layersPanelOpen ? 'rotate(180deg)' : 'none' }} />
                 </IconButton>
             </Box>
 
             {layersPanelOpen && (
-                <Paper className="layer-panel" elevation={4}>
+                <Paper className="layer-panel" elevation={4} sx={{ top: layerPanelTop }}>
                     <Box className="layer-panel-header">
                         <LayersOutlinedIcon color="primary" sx={{ mr: 1 }} />
                         <Typography variant="subtitle1">Layers</Typography>
                     </Box>
+
+                    {selectedScenario && (
+                        <Box sx={{ px: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Scenario: {selectedScenario.name}
+                            </Typography>
+                            <Chip size="small" label={selectedScenario.source === 'user' ? 'User scenario' : 'Predefined scenario'} />
+                            {scenarioIsCustom && <Chip size="small" color="warning" label="Customized" />}
+                        </Box>
+                    )}
+
+                    {creatingScenario && (
+                        <Box sx={{ px: 2, pb: 1 }}>
+                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Save current settings as a new scenario
+                            </Typography>
+                            <TextField
+                                size="small"
+                                fullWidth
+                                label="Scenario name"
+                                value={newScenarioName}
+                                onChange={(e) => setNewScenarioName(e.target.value)}
+                                sx={{ mb: 1 }}
+                            />
+                            <TextField
+                                size="small"
+                                fullWidth
+                                label="Description (optional)"
+                                value={newScenarioDescription}
+                                onChange={(e) => setNewScenarioDescription(e.target.value)}
+                                sx={{ mb: 1 }}
+                            />
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button size="small" variant="contained" onClick={handleSaveScenario}>
+                                    Save scenario
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="text"
+                                    onClick={() => {
+                                        setCreatingScenario(false);
+                                        setNewScenarioName('');
+                                        setNewScenarioDescription('');
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </Box>
+                        </Box>
+                    )}
 
                     {!layersLoaded && !loadError && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -439,59 +596,58 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                     )}
 
                     {layersLoaded && !loadError && (
-                    <>
-                    <Box className="layer-panel-search">
-                        <TextField
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            placeholder="Search for layers"
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                            slotProps={{
-                                input: {
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon sx={{ fontSize: 20, color: 'grey.600' }} />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: searchTerm && (
-                                        <InputAdornment position="end">
-                                            <IconButton size="small" onClick={clearSearch} aria-label="Clear search">
-                                                <HighlightOffIcon />
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                    sx: { borderRadius: 2 },
-                                },
-                            }}
-                        />
-                    </Box>
-
-                    <Box className="layer-panel-selectable-layers">
-                        {hasSearchResults ? (
-                            filteredLayerEntries
-                        ) : (
-                            <Box sx={{ px: 2, pt: 2 }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    No results
-                                </Typography>
+                        <>
+                            <Box className="layer-panel-search">
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    size="small"
+                                    placeholder="Search for layers"
+                                    value={searchTerm}
+                                    onChange={handleSearchChange}
+                                    slotProps={{
+                                        input: {
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <SearchIcon sx={{ fontSize: 20, color: 'grey.600' }} />
+                                                </InputAdornment>
+                                            ),
+                                            endAdornment: searchTerm && (
+                                                <InputAdornment position="end">
+                                                    <IconButton size="small" onClick={clearSearch} aria-label="Clear search">
+                                                        <HighlightOffIcon />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 2 },
+                                        },
+                                    }}
+                                />
                             </Box>
-                        )}
-                    </Box>
 
-                    <Divider sx={{ my: 2, opacity: 0.3 }} />
-                    <Box className="layer-panel-footer" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <Button variant="contained" onClick={handleApply} sx={{ px: 4 }}>
-                            APPLY
-                        </Button>
-                        <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
-                            Generate Report
-                        </Button>
-                    </Box>
-                    </>
+                            <Box className="layer-panel-selectable-layers">
+                                {hasSearchResults ? (
+                                    filteredLayerEntries
+                                ) : (
+                                    <Box sx={{ px: 2, pt: 2 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            No results
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Box>
+
+                            <Divider sx={{ my: 2, opacity: 0.3 }} />
+                            <Box className="layer-panel-footer" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Button variant="contained" onClick={handleApply} sx={{ px: 4 }}>
+                                    APPLY
+                                </Button>
+                                {/* <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
+                                    Generate Report
+                                </Button> */}
+                            </Box>
+                        </>
                     )}
-
                 </Paper>
             )}
 
@@ -572,7 +728,8 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                                             </TextField>
                                             {attr.id === 'classificationThreshold' && (
                                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-                                                    Selecting a grade flags all land with that grade and better agricultural grades (e.g. Grade 3 flags Grades 1, 2 and 3).
+                                                    Selecting a grade flags all land with that grade and better agricultural grades (e.g. Grade 3 flags Grades
+                                                    1, 2 and 3).
                                                 </Typography>
                                             )}
                                         </Box>

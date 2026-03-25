@@ -97,21 +97,12 @@ const ReportButton = () => {
 
     return (
         <StyledContainer style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-            <ControlButton
-                onClick={openReportPage}
-                aria-label="Report"
-                disabled={reportLoading}
-            >
+            <ControlButton onClick={openReportPage} aria-label="Report" disabled={reportLoading}>
                 <span style={{ marginRight: '8px' }}>Report</span>
-                {reportLoading ? (
-                    <CircularProgress size={18} color="inherit" />
-                ) : (
-                    <img src={'/icons/report_black.svg'} alt="Report" width={18} height={18} />
-                )}
+                {reportLoading ? <CircularProgress size={18} color="inherit" /> : <img src={'/icons/report_black.svg'} alt="Report" width={18} height={18} />}
             </ControlButton>
         </StyledContainer>
     );
 };
 
 export default ReportButton;
-
