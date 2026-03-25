@@ -223,7 +223,7 @@ export class AssetAnalysisService {
                     this.getMatchedPolygonsForLayer(roadBufferSolar7mLayerData, location, 'amber', '>7m to road')
                 );
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(roadBufferSolar5mLayerData, location, 'red', '>5m to road')
+                    this.getMatchedPolygonsForLayer(roadBufferSolar5mLayerData, location, 'red', 'Too close to road (Solar)')
                 );
             } else if (dataLayer.id === 'railBuffer') {
                 const railBufferLayerData = this.dataProviderUtils.getRailBufferLayerData();
