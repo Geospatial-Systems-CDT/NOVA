@@ -213,13 +213,28 @@ export class AssetAnalysisService {
                 const roadBufferLayerData = this.dataProviderUtils.getRoadBufferLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(roadBufferLayerData, location, 'red', 'Too close to road - <= 10m')
+                    this.getMatchedPolygonsForLayer(roadBufferLayerData, location, 'red', 'Too close to road (Wind Turbines)')
+                );
+            } else if (dataLayer.id === 'roadBufferSolar') {
+                const roadBufferSolar7mLayerData = this.dataProviderUtils.getRoadBufferSolar7mLayerData();
+                const roadBufferSolar5mLayerData = this.dataProviderUtils.getRoadBufferSolar5mLayerData();
+
+                cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(roadBufferSolar7mLayerData, location, 'amber', '>7m to road')
+                );
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(roadBufferSolar5mLayerData, location, 'red', 'Too close to road (Solar)')
                 );
             } else if (dataLayer.id === 'railBuffer') {
                 const railBufferLayerData = this.dataProviderUtils.getRailBufferLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 10m'))
+                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 100m'))
+            } else if (dataLayer.id === 'railBufferSolar') {
+                const railBufferSolarLayerData = this.dataProviderUtils.getRailBufferSolarLayerData();
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(railBufferSolarLayerData, location, 'red', 'Too close to railway (Solar)'))
             } else if (dataLayer.id === 'aspect') {
                 const aspectLayer = this.dataProviderUtils.getAspectLayerData();
                 const amberAspect = new Set([3, 7]);
