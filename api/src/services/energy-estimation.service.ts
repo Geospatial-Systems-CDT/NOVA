@@ -173,6 +173,11 @@ const getSolarKkValue = (kkDictionary: Record<string, number>, orientation: stri
     return kkValue;
 };
 
+const sanitizeAssetCount = (assetCount: number | undefined): number => {
+    if (!Number.isFinite(assetCount)) return 1;
+    return Math.max(1, Math.floor(assetCount as number));
+};
+
 type SeasonalWindspeed = {
     spring: number;
     summer: number;
@@ -259,10 +264,11 @@ export class EnergyEstimationService {
     }
 
     public estimateAssetContribution(req: AssetEstimationRequestDto): AssetEstimationResponseDto {
-        const { variant, selectedSubstation, latitude, longitude, solarOrientation } = req;
+        const { variant, selectedSubstation, latitude, longitude, solarOrientation, assetCount } = req;
 
         const technology = getTechnologyFromVariant(variant);
         const installedCapacityMW = getInstalledCapacityMW(variant);
+        const assetMultiplier = sanitizeAssetCount(assetCount);
         const connectionDistanceKm = parseDistanceKm(selectedSubstation.distanceFromTurbine);
 
         let grossAnnualMWh: number;
@@ -303,6 +309,8 @@ export class EnergyEstimationService {
                 grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
             }
         }
+
+        grossAnnualMWh *= assetMultiplier;
 
         const availableAnnualMWh = grossAnnualMWh * ENERGY_ASSUMPTIONS.availabilityFactor;
         const netAnnualMWh = availableAnnualMWh * (1 - ENERGY_ASSUMPTIONS.lossesFactor);

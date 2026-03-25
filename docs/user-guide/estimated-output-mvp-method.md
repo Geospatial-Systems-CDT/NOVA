@@ -20,8 +20,9 @@ The current implementation is deterministic and assumption-based, with calculati
 1. Selected asset variant (wind or solar metadata and specification text)
 2. Marker location (latitude, longitude)
 3. Selected substation (name, id, connection distance)
-4. Solar panel orientation (cardinal value; default: south)
-5. Wind speed at location (seasonal fields from windspeed.geojson), when available
+4. Asset count (integer, default: 1)
+5. Solar panel orientation (cardinal value; default: south)
+6. Wind speed at location (seasonal fields from windspeed.geojson), when available
 
 ## Constants and Assumptions
 
@@ -38,6 +39,7 @@ The current implementation is deterministic and assumption-based, with calculati
   - Unknown: 2 MW
 - Assumed substation headroom: 60 MW
 - Assumed local demand: 8 MW
+- Asset count default: 1
 - Solar shading factor (SF): 1.0
 - Default solar orientation: south
 - Default wind physical parameters:
@@ -67,7 +69,7 @@ The current implementation is deterministic and assumption-based, with calculati
   - Solar fallback by variant label: Farm = 5 MW, Roof = 0.35 MW
   - Unknown fallback: 2 MW
 
-### 2) Compute resource-adjusted capacity factor
+### 2) Compute gross annual energy by technology
 
 Solar (primary method)
 
@@ -97,15 +99,28 @@ Fallback behavior
 - If required solar or wind inputs are missing, the estimator falls back to a latitude-adjusted capacity-factor method.
 - Unknown technology always uses bounded default capacity-factor behavior.
 
+Multi-asset scaling
+
+- The estimator first computes gross annual energy for one asset using the selected technology path.
+- Total gross annual energy is then scaled by asset count:
+
+E_gross_total = E_gross_single x assetCount
+
+- The same selected substation and connection-distance context are used for all assets in this MVP (single-substation screening assumption).
+
 ### 3) Compute annual delivered energy
 
 Gross annual energy:
 
 E_gross = P_installed x 8760 x CF
 
+For multi-asset runs:
+
+E_gross_total = E_gross_single x assetCount
+
 Availability adjustment:
 
-E_available = E_gross x 0.97
+E_available = E_gross_total x 0.97
 
 Losses adjustment:
 
@@ -168,6 +183,7 @@ Interpretation:
 - Installed capacity comes from the selected specification value (or fallback only if not parseable), then is converted to kWp for the solar Kk equation.
 - Solar orientation selects the Kk value used in annual energy estimation.
 - Availability, losses, and short-distance penalties are applied.
+- Output represents the selected number of identical assets, all assumed connected to the same selected substation.
 - MWh/year is converted to MW and then normalized against assumed headroom and local demand to get percentages.
 
 ## Known Limitations
@@ -179,6 +195,7 @@ Interpretation:
 5. Solar currently uses a fixed shading factor SF = 1.0
 6. Solar uses orientation-based annual Kk values; it does not yet model hourly irradiance, temperature, or tilt as dynamic time-series inputs
 7. Wind uses seasonal-average wind speeds and simplified physical assumptions; it does not include hub-height correction or full manufacturer power-curve interpolation
+8. Multi-asset mode assumes all assets connect to one selected substation with shared connection context
 
 ## Recommended Next Step to Reach Production-Grade Estimation
 

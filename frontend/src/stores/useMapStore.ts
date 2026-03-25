@@ -40,6 +40,8 @@ export interface MapState {
     setMarkerVariant: (variant: Variation | null) => void;
     solarOrientation: string;
     setSolarOrientation: (orientation: string) => void;
+    assetCount: number;
+    setAssetCount: (count: number) => void;
     markerStatus: MarkerStatus;
     setMarkerStatus: (status: MarkerStatus) => void;
 
@@ -101,6 +103,8 @@ export const useMapStore = create<MapState>((set, get) => ({
     setMarkerVariant: (variant) => set({ markerVariant: variant }),
     solarOrientation: 'south',
     setSolarOrientation: (orientation) => set({ solarOrientation: orientation }),
+    assetCount: 1,
+    setAssetCount: (count) => set({ assetCount: Math.max(1, Math.floor(count)) }),
     markerStatus: MarkerStatus.Draft,
     setMarkerStatus: (status) => set({ markerStatus: status }),
 
@@ -147,7 +151,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     layersPanelOpen: true,
     setLayersPanelOpen: (open) => set({ layersPanelOpen: open }),
 
-    clearMarkerValues: () => set({ markerBearing: null, markerVariant: null, markerPosition: null }),
+    clearMarkerValues: () => set({ markerBearing: null, markerVariant: null, markerPosition: null, assetCount: 1 }),
 
     handleMapClick: (e: MapLayerMouseEvent) => {
         if (get().placing) {

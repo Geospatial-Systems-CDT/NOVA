@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { Box, FormControl, InputLabel, MenuItem, Select, Typography, styled } from '@mui/material';
+import { Box, FormControl, InputLabel, MenuItem, Select, TextField, Typography, styled } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import StatCircle from './StatCircle';
 import type { Substation } from '../map-substations-list/SubstationsList';
@@ -126,6 +126,8 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
     const markerVariant = useMapStore((s) => s.markerVariant);
     const solarOrientation = useMapStore((s) => s.solarOrientation);
     const setSolarOrientation = useMapStore((s) => s.setSolarOrientation);
+    const assetCount = useMapStore((s) => s.assetCount);
+    const setAssetCount = useMapStore((s) => s.setAssetCount);
     const lng = markerPosition && markerPosition.longitude ? markerPosition.longitude : -3.744;
     const lat = markerPosition && markerPosition.latitude ? markerPosition.latitude : 57.148;
     const [stats, setStats] = useState<EstimatedAssetStats | null>(null);
@@ -183,6 +185,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                     latitude: lat,
                     longitude: lng,
                     solarOrientation,
+                    assetCount,
                 });
 
                 if (!cancelled) {
@@ -196,6 +199,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                     latitude: lat,
                     longitude: lng,
                     solarOrientation,
+                    assetCount,
                 });
 
                 if (!cancelled) {
@@ -209,7 +213,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
         return () => {
             cancelled = true;
         };
-    }, [markerVariant, selectedSubstation, lat, lng, solarOrientation]);
+    }, [markerVariant, selectedSubstation, lat, lng, solarOrientation, assetCount]);
 
     const computedStats = useMemo(
         () =>
@@ -220,8 +224,9 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                 latitude: lat,
                 longitude: lng,
                 solarOrientation,
+                assetCount,
             }),
-        [stats, markerVariant, selectedSubstation, lat, lng, solarOrientation]
+        [stats, markerVariant, selectedSubstation, lat, lng, solarOrientation, assetCount]
     );
 
     const outputEnergyDisplay = toEnergyDisplay(computedStats.outputMWh, computedStats.maxOutputMWh);
@@ -265,6 +270,27 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                 <Typography variant="caption" color="text.secondary">
                     Estimated using shared assumptions and location context.
                 </Typography>
+                <TextField
+                    size="small"
+                    type="number"
+                    label="Number of assets"
+                    value={assetCount}
+                    onChange={(event) => {
+                        const parsed = Number.parseInt(event.target.value, 10);
+                        if (!Number.isFinite(parsed)) {
+                            setAssetCount(1);
+                            return;
+                        }
+                        setAssetCount(parsed);
+                    }}
+                    slotProps={{
+                        htmlInput: {
+                            min: 1,
+                            step: 1,
+                        },
+                    }}
+                    sx={{ mt: 1, width: 210 }}
+                />
                 {isSolarSelection && (
                     <FormControl size="small" sx={{ mt: 1, minWidth: 210 }}>
                         <InputLabel id="solar-orientation-select-label">Panel orientation</InputLabel>

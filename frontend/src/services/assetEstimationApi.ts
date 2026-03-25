@@ -11,6 +11,7 @@ interface AssetEstimationRequest {
     latitude: number;
     longitude: number;
     solarOrientation?: string;
+    assetCount?: number;
 }
 
 export const fetchAssetEstimation = async (payload: AssetEstimationRequest): Promise<EstimatedAssetStats> => {

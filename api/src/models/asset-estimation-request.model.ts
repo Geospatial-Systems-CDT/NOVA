@@ -26,4 +26,5 @@ export interface AssetEstimationRequestDto {
     latitude: number;
     longitude: number;
     solarOrientation?: string;
+    assetCount?: number;
 }

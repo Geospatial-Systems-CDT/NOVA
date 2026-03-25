@@ -62,7 +62,13 @@ interface EstimationInput {
     latitude: number;
     longitude: number;
     solarOrientation?: string;
+    assetCount?: number;
 }
+
+const sanitizeAssetCount = (assetCount: number | undefined): number => {
+    if (!Number.isFinite(assetCount)) return 1;
+    return Math.max(1, Math.floor(assetCount as number));
+};
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
@@ -184,9 +190,10 @@ const getSolarKkValue = (orientation: string | undefined): number | null => {
     return Number.isFinite(kk) && kk > 0 ? kk : null;
 };
 
-export const estimateAssetStats = ({ variant, selectedSubstation, latitude, longitude, solarOrientation }: EstimationInput): EstimatedAssetStats => {
+export const estimateAssetStats = ({ variant, selectedSubstation, latitude, longitude, solarOrientation, assetCount }: EstimationInput): EstimatedAssetStats => {
     const technology = getTechnologyFromVariant(variant);
     const installedCapacityMW = getInstalledCapacityMW(variant);
+    const assetMultiplier = sanitizeAssetCount(assetCount);
     const connectionDistanceKm = parseDistanceKm(selectedSubstation.distanceFromTurbine);
 
     let grossAnnualMWh: number;
@@ -205,6 +212,8 @@ export const estimateAssetStats = ({ variant, selectedSubstation, latitude, long
         const capacityFactor = getResourceAdjustedCapacityFactor(technology, latitude);
         grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
     }
+
+    grossAnnualMWh *= assetMultiplier;
 
     const availableAnnualMWh = grossAnnualMWh * ENERGY_ASSUMPTIONS.availabilityFactor;
     const netAnnualMWh = availableAnnualMWh * (1 - ENERGY_ASSUMPTIONS.lossesFactor);
