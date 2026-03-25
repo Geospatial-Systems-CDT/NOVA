@@ -85,11 +85,15 @@ Latest refinements (estimation and display):
 - Added backend solar Kk lookup data (`solar-kk.json`) and request support for optional `solarOrientation`.
 - Added UI API route for supported orientations: `GET /api/ui/solar-orientations`.
 - Updated frontend estimation flow to pass `solarOrientation` to backend and to use the same Kk-orientation logic in fallback estimation.
+- Added multi-asset estimation support with `assetCount` (default 1) in the footer panel for both wind and solar scenarios.
+- Extended estimation request contracts (frontend API client + backend DTO) to include optional `assetCount`.
+- Updated backend and frontend fallback estimators to scale contribution outputs for multiple identical assets using a single-substation screening assumption.
+- Fixed wind multi-asset scaling so turbine count multiplies computed annual energy consistently (not only rated-cap clipping behavior).
 - Improved low-output visibility by increasing precision/scaling handling for small estimated values.
 - Updated frontend footer display to use adaptive units for small values:
   - energy below 1 MWh is shown in kWh/year
   - power below 1 MW is shown in kW
-- Updated methods documentation to reflect the current wind/solar estimator methodology, assumptions, and fallback behavior.
+- Updated methods documentation to reflect the current wind/solar estimator methodology, assumptions, fallback behavior, and multi-asset scaling.
 
 ### Notes
 - This change affects issue text shown in the frontend popup.
