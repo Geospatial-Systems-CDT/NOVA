@@ -24,6 +24,7 @@ const ReportPage = () => {
     const report = loadCachedReport();
     const regions = report?.regions ?? [];
     const sharedLayerValues = report?.layerValues ?? [];
+    const assumptions = report?.assumptions ?? [];
 
     return (
         <ThemeProvider theme={theme}>
@@ -54,26 +55,54 @@ const ReportPage = () => {
                         <section className="report-slide table-only" data-auto-animate>
                             <h2>Layer Values Overview</h2>
                             <p className="subtitle">Assumptions and layer values applicable to all regions.</p>
-                            <div className="layer-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Metric</th>
-                                            <th>Value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {sharedLayerValues.map((layer) => (
-                                            <tr key={layer.layerId}>
-                                                <td>{layer.label}</td>
-                                                <td>
-                                                    {formatNumber(layer.value)} {layer.unit}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            {assumptions.length > 0 && (
+                                <>
+                                    <h4>Analysis Assumptions</h4>
+                                    <div className="layer-table">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Parameter</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {assumptions.map((assumption) => (
+                                                    <tr key={`${assumption.layerId}-${assumption.attributeId}`}>
+                                                        <td>{assumption.label}</td>
+                                                        <td>{assumption.value}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
+                            {sharedLayerValues.length > 0 && (
+                                <>
+                                    <h4>Layer Values</h4>
+                                    <div className="layer-table">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Metric</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {sharedLayerValues.map((layer) => (
+                                                    <tr key={layer.layerId}>
+                                                        <td>{layer.label}</td>
+                                                        <td>
+                                                            {formatNumber(layer.value)} {layer.unit}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
                         </section>
                     </Slide>
 

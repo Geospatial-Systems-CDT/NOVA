@@ -269,6 +269,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         const dataLayers = allLayers.map((layer) => {
             const attributes = layer.attributes.map((attr) => ({
                 id: attr.id,
+                label: attr.description,
                 value: layerSettings[layer.name]?.[attr.description] ?? attr.defaultValue,
             }));
 
@@ -439,59 +440,58 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                     )}
 
                     {layersLoaded && !loadError && (
-                    <>
-                    <Box className="layer-panel-search">
-                        <TextField
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            placeholder="Search for layers"
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                            slotProps={{
-                                input: {
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon sx={{ fontSize: 20, color: 'grey.600' }} />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: searchTerm && (
-                                        <InputAdornment position="end">
-                                            <IconButton size="small" onClick={clearSearch} aria-label="Clear search">
-                                                <HighlightOffIcon />
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                    sx: { borderRadius: 2 },
-                                },
-                            }}
-                        />
-                    </Box>
-
-                    <Box className="layer-panel-selectable-layers">
-                        {hasSearchResults ? (
-                            filteredLayerEntries
-                        ) : (
-                            <Box sx={{ px: 2, pt: 2 }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    No results
-                                </Typography>
+                        <>
+                            <Box className="layer-panel-search">
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    size="small"
+                                    placeholder="Search for layers"
+                                    value={searchTerm}
+                                    onChange={handleSearchChange}
+                                    slotProps={{
+                                        input: {
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <SearchIcon sx={{ fontSize: 20, color: 'grey.600' }} />
+                                                </InputAdornment>
+                                            ),
+                                            endAdornment: searchTerm && (
+                                                <InputAdornment position="end">
+                                                    <IconButton size="small" onClick={clearSearch} aria-label="Clear search">
+                                                        <HighlightOffIcon />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 2 },
+                                        },
+                                    }}
+                                />
                             </Box>
-                        )}
-                    </Box>
 
-                    <Divider sx={{ my: 2, opacity: 0.3 }} />
-                    <Box className="layer-panel-footer" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <Button variant="contained" onClick={handleApply} sx={{ px: 4 }}>
-                            APPLY
-                        </Button>
-                        <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
-                            Generate Report
-                        </Button>
-                    </Box>
-                    </>
+                            <Box className="layer-panel-selectable-layers">
+                                {hasSearchResults ? (
+                                    filteredLayerEntries
+                                ) : (
+                                    <Box sx={{ px: 2, pt: 2 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            No results
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Box>
+
+                            <Divider sx={{ my: 2, opacity: 0.3 }} />
+                            <Box className="layer-panel-footer" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Button variant="contained" onClick={handleApply} sx={{ px: 4 }}>
+                                    APPLY
+                                </Button>
+                                <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
+                                    Generate Report
+                                </Button>
+                            </Box>
+                        </>
                     )}
-
                 </Paper>
             )}
 
@@ -572,7 +572,8 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                                             </TextField>
                                             {attr.id === 'classificationThreshold' && (
                                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-                                                    Selecting a grade flags all land with that grade and better agricultural grades (e.g. Grade 3 flags Grades 1, 2 and 3).
+                                                    Selecting a grade flags all land with that grade and better agricultural grades (e.g. Grade 3 flags Grades
+                                                    1, 2 and 3).
                                                 </Typography>
                                             )}
                                         </Box>

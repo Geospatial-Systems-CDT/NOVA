@@ -4,7 +4,7 @@
 import { Feature, FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Point, Polygon } from 'geojson';
 import * as turf from '@turf/turf';
 import { performance } from 'perf_hooks';
-import { ReportDTO, ReportIssueDTO, ReportRegionDTO, ReportRegionLayerValueDTO } from '../models/report.model';
+import { ReportAssumptionDTO, ReportDTO, ReportIssueDTO, ReportRegionDTO, ReportRegionLayerValueDTO } from '../models/report.model';
 import { DataLayerDto } from '../models/data-layer.model';
 import { DataProviderUtils } from '../utils/data-provider.utils';
 
@@ -29,14 +29,18 @@ export class ReportService {
      *
      * @param analysisResult - The FeatureCollection returned by AssetAnalysisService.analyzeLocation.
      * @param maxIssues - Include regions with at most this many distinct issue types.
-     * @param activeDataLayers - The data layers (with `analyze: true`) used during this analysis.
+     * @param dataLayers - All data layers submitted in the analysis request (both analyzed and non-analyzed).
+     *                     Used to derive `assumptions` (all layers) and `layerValues` (analyze=true layers).
+     * @param selectedPolygon - The polygon drawn by the user, or null.
      */
     public generateReport(
         analysisResult: FeatureCollection<Geometry>,
         maxIssues: number,
-        activeDataLayers: DataLayerDto[] = [],
+        dataLayers: DataLayerDto[] = [],
         selectedPolygon: Feature<Polygon> | null = null
     ): ReportDTO {
+        const activeDataLayers = dataLayers.filter((l) => l.analyze);
+        const assumptions = this.buildAssumptions(dataLayers);
         const _t0 = performance.now();
 
         // 1. Separate green baseline from issue features
@@ -45,7 +49,7 @@ export class ReportService {
             | undefined;
 
         if (!greenFeature) {
-            return { regions: [], totalRegions: 0, selectedPolygon };
+            return { regions: [], totalRegions: 0, selectedPolygon, assumptions };
         }
 
         const issueFeatures = analysisResult.features.filter((f) => f.properties?.suitability !== 'green') as Feature<
@@ -107,7 +111,27 @@ export class ReportService {
         console.debug(`[generateReport] computeLayerValuesForRegion total: ${_tLayerValuesTotal.toFixed(1)}ms`);
         console.debug(`[generateReport] total: ${(performance.now() - _t0).toFixed(1)}ms`);
 
-        return { regions, totalRegions: regions.length, selectedPolygon };
+        return { regions, totalRegions: regions.length, selectedPolygon, assumptions };
+    }
+
+    /**
+     * Build the list of user-configured assumptions from all submitted data layers.
+     * Each attribute with a label is recorded; attributes without a label are skipped.
+     */
+    private buildAssumptions(dataLayers: DataLayerDto[]): ReportAssumptionDTO[] {
+        const assumptions: ReportAssumptionDTO[] = [];
+        for (const layer of dataLayers) {
+            for (const attr of layer.attributes) {
+                if (!attr.label) continue;
+                assumptions.push({
+                    layerId: layer.id,
+                    attributeId: attr.id,
+                    label: attr.label,
+                    value: attr.value,
+                });
+            }
+        }
+        return assumptions;
     }
 
     /**

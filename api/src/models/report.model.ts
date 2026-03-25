@@ -134,6 +134,45 @@ export interface ReportRegionDTO {
  * @swagger
  * components:
  *   schemas:
+ *     ReportAssumptionDTO:
+ *       type: object
+ *       description: A single user-configured parameter (assumption) used during analysis.
+ *       properties:
+ *         layerId:
+ *           type: string
+ *           description: Identifier of the data layer this assumption belongs to.
+ *         attributeId:
+ *           type: string
+ *           description: Identifier of the attribute (e.g. "distanceFromAonb").
+ *         label:
+ *           type: string
+ *           description: Human-readable label for the assumption (e.g. "Distance from AONB").
+ *         value:
+ *           oneOf:
+ *             - type: number
+ *             - type: string
+ *           description: The value configured by the user.
+ *       required:
+ *         - layerId
+ *         - attributeId
+ *         - label
+ *         - value
+ */
+export interface ReportAssumptionDTO {
+    /** Identifier of the data layer this assumption belongs to */
+    layerId: string;
+    /** Identifier of the attribute, e.g. "distanceFromAonb" */
+    attributeId: string;
+    /** Human-readable label, e.g. "Distance from AONB" */
+    label: string;
+    /** The value configured by the user */
+    value: number | string;
+}
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
  *     ReportDTO:
  *       type: object
  *       description: Suitability report containing candidate regions filtered by issue count.
@@ -151,10 +190,16 @@ export interface ReportRegionDTO {
  *             - $ref: '#/components/schemas/GeoJSONDTO'
  *             - nullable: true
  *           description: The polygon selected by the user on the map, or null if no polygon has been selected.
+ *         assumptions:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ReportAssumptionDTO'
+ *           description: User-configured parameters (e.g. buffer distances) used during analysis.
  *       required:
  *         - regions
  *         - totalRegions
  *         - selectedPolygon
+ *         - assumptions
  */
 export interface ReportDTO {
     /** Candidate regions, each with at most maxIssues distinct issue types */
@@ -163,4 +208,6 @@ export interface ReportDTO {
     totalRegions: number;
     /** The polygon drawn by the user on the map, or null if none was provided */
     selectedPolygon: Feature<Polygon> | null;
+    /** User-configured parameters (e.g. buffer distances) recorded at the time of analysis */
+    assumptions: ReportAssumptionDTO[];
 }

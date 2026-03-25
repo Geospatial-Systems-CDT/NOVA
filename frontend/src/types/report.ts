@@ -25,10 +25,18 @@ export interface ReportRegionDTO {
     layerValues: ReportRegionLayerValueDTO[];
 }
 
+export interface ReportAssumptionDTO {
+    layerId: string;
+    attributeId: string;
+    label: string;
+    value: number | string;
+}
+
 export interface ReportDTO {
     regions: ReportRegionDTO[];
     totalRegions: number;
     layerValues: ReportRegionLayerValueDTO[];
+    assumptions: ReportAssumptionDTO[];
 }
 
 export const CACHED_REPORT_STORAGE_KEY = 'nova-cached-report';
