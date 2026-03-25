@@ -263,7 +263,3 @@ html.title-page .reveal-viewport.reveal-scroll {
 .reveal .slides section[data-state='title-page'] a {
     color: #fff;
 }
-
-body:has([data-state='title-page']:not([aria-hidden='true'])) {
-    background: #001e3f;
-}

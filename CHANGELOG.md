@@ -72,50 +72,58 @@ For full licensing terms, see [OGL_LICENSE.md](OGL_LICENSE.md).
 
 ## Features
 
-- Added predefined planning scenarios loaded from `frontend/public/data/scenarios.json` and a new scenario model contract in `frontend/src/types/scenario.ts`.
-- Added a dedicated Scenario panel (`frontend/src/components/layer-selection/ScenarioPanel.tsx`) that:
-  - Loads predefined scenarios from static JSON.
-  - Merges predefined scenarios with user-created local scenarios.
-  - Allows selecting a scenario to pre-fill layers and parameters.
-  - Provides an `Add scenario` action to start custom scenario creation from current layer settings.
-- Added exclusive planning modes (`scenarios` and `layers`) in map state and UI:
-  - Top-left toggle in `MapComponent`.
-  - Mutual exclusivity between Scenario panel and Layers panel to prevent overlap.
-- Added user-created scenario persistence via browser local storage in `frontend/src/utils/scenarioStorage.ts`:
-  - Safe load/validation.
-  - Save/append for user scenarios.
-  - User scenario id generation.
+**Report generation**
+
+- Introduced report generation for a selected location, accessible from the search panel via a new report button.
+- Added `ReportPage` as a dedicated routed page (`/report`) with print-optimised layout, satellite imagery, per-layer analysis assumptions, selected polygon geometry, and agricultural land classification (PAL) data.
+- Print view button added to `ReportPage` with correct background colour for printing.
+- Report generation runs asynchronously in the background; the map remains interactive while the report loads.
+- Report data is cached in map store so the report page can be accessed after generation without re-requesting.
+
+**Energy estimation**
+
+- Added `assetEstimationApi.ts` and `solarPotentialApi.ts` service clients for backend energy estimation endpoints.
+- Added client-side energy estimation utility (`energyEstimation.ts`); backend estimate used when available, client-side calculation retained as fallback.
+
+**Scenario planning**
+
+- Added predefined planning scenarios loaded from `public/data/scenarios.json` and a new scenario model in `src/types/scenario.ts`.
+- Added `ScenarioPanel` component that loads predefined scenarios, merges with user-created scenarios, and allows a scenario to pre-fill layer selections and parameter values.
+- Added `Add scenario` action to create a custom scenario from current layer settings.
+- Introduced exclusive planning modes (`scenarios` / `layers`) toggled from the map, preventing the Scenario and Layers panels from being open simultaneously.
+- Added `scenarioStorage.ts` for persisting user-created scenarios to browser local storage.
+
+**Report layer toggle**
+
+- Added a `View/Hide Report Layer` toggle next to the report button in the search controls to display report regions directly on the dashboard map.
+- Added report-to-GeoJSON mapping to convert cached report regions into a popup-ready overlay layer.
+- Added interactive report-region callouts on map click showing area, issue count, full issue list, and layer values.
+- Added cached-report fallback logic so the report layer can be toggled from store or local storage data, with user guidance when report data is missing.
+
+**Asset management**
+
+- Extended `AssetMarker` and `PlacingMarkerOverlay` with solar asset type support.
+- Added `assetIconResolver.ts` to resolve the correct map icon per asset type and variant.
+- Extended `AddAssetPanel` with solar asset selection options.
+
+## Fixes
+
+- Fixed `MapVisualHelper` type error when classifying amber areas with a single issue.
+- Corrected layer hierarchy resolution in `MapVisualHelper` for multi-level suitability classifications.
+- Fixed layer conflict by hiding the model heatmap whenever report layer view is enabled, and restoring model heatmap when report layer view is disabled.
 
 ## Changes
 
-- Extended map store (`frontend/src/stores/useMapStore.ts`) with scenario/planning workflow state:
-  - `selectedScenario`
-  - `planningMode`
-  - `scenarioIsCustom`
-  - `creatingScenario`
-  - `userScenariosVersion`
-- Updated layer control behaviour (`frontend/src/components/layer-selection/LayerControlPanel.tsx`) to:
-  - Pre-fill checked layers and attribute values from selected scenario.
-  - Preserve scenario-driven defaults on reset.
-  - Show scenario mode indicator (`Predefined`/`User`) and `Customized` state.
-  - Mark scenario as customised when layer selections or parameters are manually edited.
-  - Save current layer configuration as a new user scenario.
-- Updated map composition (`frontend/src/components/map/MapComponent.tsx`) to render only one planning panel at a time based on selected planning mode.
-
-## Observability
-
-- Added lightweight performance logging (`[perf]`) for new scenario/layer workflow elements:
-  - Map initialisation time.
-  - Time until planning controls are shown.
-  - First-show timing for scenarios panel and layers panel.
-  - Predefined scenario fetch duration and scenario panel readiness time.
-  - Layer metadata fetch duration and layer panel readiness time.
-  - User scenario save duration.
-
+- `MapVisualHelper` updated with visual support for road/rail and terrain constraint layers.
+- `MapVisualHelper` extended with dedicated report overlay add/update/remove methods and report popup handling.
+- `LayerControlPanel` updated to surface per-layer assumptions, support scenario-driven pre-selection, and trigger background report generation.
+- `MapComponent` extended with planning mode toggle and report/model overlay switching behavior.
+- Map store (`useMapStore.ts`) extended with report caching state and scenario/planning workflow state.
+- Map store (`useMapStore.ts`) extended with report layer visibility/data state.
+- `App.tsx` and `main.tsx` updated to register the `/report` route.
+- updated road and rail buffers added caution buffer area for road and solar.
+added the rest of layers.
 ## Tests
 
-- Added/updated frontend tests to cover scenario and planning mode behaviour:
-  - `frontend/src/components/layer-selection/ScenarioPanel.spec.tsx`
-  - `frontend/src/components/layer-selection/LayerControlPanel.spec.tsx`
-  - `frontend/src/components/map/MapComponent.spec.tsx`
-- Verified targeted test suite passes for the updated scenario/layer/map components.
+- Added/updated tests for `energyEstimation`, `ScenarioPanel`, `LayerControlPanel`, `MapComponent`, report UI components, and `MapVisualHelper`.
+- Added tests for report-layer mapping and report overlay add/remove behavior in map utilities.

@@ -8,13 +8,19 @@
         "icon": "/images/turbine-icon.png",
         "image": "https://via.placeholder.com/300/D93535/FFFFFF?text=Vestas",
         "specification": [
-          { "name": "Model", "value": "V150-6.0" },
-          { "name": "Capacity (MW)", "value": "6 MW" },
+          { "name": "Model", "value": "V117-3.45 MW" },
+          { "name": "Model Type", "value": "IEC IB" },
+          { "name": "Blade Length", "value": "57.2 meters" },
+          { "name": "Hub Height", "value": "80 meters" },
+          { "name": "Wind Speed Range", "value": "3-25 m/s" },
+          { "name": "Rated Wattage", "value": "3.45 MW" },
+          { "name": "Capacity (MW)", "value": "3.45 MW" },
+          { "name": "Power Coefficient (Cp)", "value": "0.45" },
+          { "name": "Air Density (kg/m3)", "value": "1.225" },
+          { "name": "Rated wind speed", "value": "12 m/s" },
           { "name": "Cut-in speed", "value": "3 m/s" },
           { "name": "Cut-out speed", "value": "25 m/s" },
-          { "name": "Rotor diameter", "value": "150 m" },
-          { "name": "Min hub height", "value": "105 m" },
-          { "name": "Max hub height", "value": "166 m" }
+          { "name": "Rotor diameter", "value": "114.4 m" }
         ]
       },
       {
@@ -22,13 +28,19 @@
         "icon": "/images/turbine-icon.png",
         "image": "https://via.placeholder.com/300/35D976/FFFFFF?text=Siemens",
         "specification": [
-          { "name": "Model", "value": "SG 5.0-145 (2.0)" },
-          { "name": "Capacity (MW)", "value": "5 MW" },
+          { "name": "Model", "value": "SG 4.3-120" },
+          { "name": "Model Type", "value": "Onshore" },
+          { "name": "Blade Length", "value": "60 meters" },
+          { "name": "Hub Height", "value": "76.5 meters" },
+          { "name": "Wind Speed Range", "value": "Typhoon Rated" },
+          { "name": "Rated Wattage", "value": "4.3 MW" },
+          { "name": "Capacity (MW)", "value": "4.3 MW" },
+          { "name": "Power Coefficient (Cp)", "value": "0.45" },
+          { "name": "Air Density (kg/m3)", "value": "1.225" },
+          { "name": "Rated wind speed", "value": "11 m/s" },
           { "name": "Cut-in speed", "value": "3 m/s" },
-          { "name": "Cut-out speed", "value": "20 m/s" },
-          { "name": "Rotor diameter", "value": "45 m" },
-          { "name": "Min hub height", "value": "90 m" },
-          { "name": "Max hub height", "value": "127 m" }
+          { "name": "Cut-out speed", "value": "25 m/s" },
+          { "name": "Rotor diameter", "value": "120 m" }
         ]
       }
     ]
@@ -43,7 +55,7 @@
         "image": "https://via.placeholder.com/300/3576D9/FFFFFF?text=Roof",
         "specification": [
           { "name": "Model", "value": "R-100" },
-          { "name": "Wattage", "value": "350 W" }
+          { "name": "Wattage", "value": "250 W" }
         ]
       },
       {
@@ -52,7 +64,7 @@
         "image": "https://via.placeholder.com/300/D9C635/FFFFFF?text=Farm",
         "specification": [
           { "name": "Model", "value": "F-500" },
-          { "name": "Wattage", "value": "500 W" }
+          { "name": "Wattage", "value": "5 kW" }
         ]
       }
     ]

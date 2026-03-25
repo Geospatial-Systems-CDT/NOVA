@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { Box, Typography, styled } from '@mui/material';
+import { Box, FormControl, InputLabel, MenuItem, Select, TextField, Typography, styled } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import StatCircle from './StatCircle';
 import type { Substation } from '../map-substations-list/SubstationsList';
 import { useMapStore } from '../../stores/useMapStore';
-import { estimateAssetStats, type EstimatedAssetStats } from '../../utils/energyEstimation';
+import { estimateAssetStats, getTechnologyFromVariant, type EstimatedAssetStats } from '../../utils/energyEstimation';
 import { fetchAssetEstimation } from '../../services/assetEstimationApi';
 
 const GridConnectFooterContainer = styled(Box)(({ theme }) => ({
@@ -78,12 +78,101 @@ interface GridConnectFooterPanelProps {
     selectedSubstation: Substation;
 }
 
+interface DisplayStat {
+    value: number;
+    max: number;
+    unit: string;
+    decimals: number;
+}
+
+const toEnergyDisplay = (valueMWh: number, maxMWh: number): DisplayStat => {
+    if (Math.abs(valueMWh) < 1) {
+        return {
+            value: valueMWh * 1000,
+            max: maxMWh * 1000,
+            unit: 'kWh/year',
+            decimals: 1,
+        };
+    }
+
+    return {
+        value: valueMWh,
+        max: maxMWh,
+        unit: 'MWh/year',
+        decimals: 1,
+    };
+};
+
+const toPowerDisplay = (valueMW: number, maxMW: number): DisplayStat => {
+    if (Math.abs(valueMW) < 1) {
+        return {
+            value: valueMW * 1000,
+            max: maxMW * 1000,
+            unit: 'kW',
+            decimals: 1,
+        };
+    }
+
+    return {
+        value: valueMW,
+        max: maxMW,
+        unit: 'MW',
+        decimals: 2,
+    };
+};
+
 export default function GridConnectFooterPanel({ selectedSubstation }: GridConnectFooterPanelProps) {
     const markerPosition = useMapStore((s) => s.markerPosition);
     const markerVariant = useMapStore((s) => s.markerVariant);
+    const solarOrientation = useMapStore((s) => s.solarOrientation);
+    const setSolarOrientation = useMapStore((s) => s.setSolarOrientation);
+    const assetCount = useMapStore((s) => s.assetCount);
+    const setAssetCount = useMapStore((s) => s.setAssetCount);
     const lng = markerPosition && markerPosition.longitude ? markerPosition.longitude : -3.744;
     const lat = markerPosition && markerPosition.latitude ? markerPosition.latitude : 57.148;
     const [stats, setStats] = useState<EstimatedAssetStats | null>(null);
+    const [solarOrientationOptions, setSolarOrientationOptions] = useState<string[]>([
+        'south',
+        'south_west',
+        'south_east',
+        'west',
+        'east',
+        'north_west',
+        'north_east',
+        'north',
+    ]);
+
+    const isSolarSelection = getTechnologyFromVariant(markerVariant) === 'solar';
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadOrientationOptions = async () => {
+            try {
+                const response = await fetch('/api/ui/solar-orientations', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'cors',
+                    credentials: 'include',
+                });
+
+                if (!response.ok) return;
+
+                const payload = (await response.json()) as { orientations?: string[] };
+                if (!cancelled && Array.isArray(payload.orientations) && payload.orientations.length > 0) {
+                    setSolarOrientationOptions(payload.orientations);
+                }
+            } catch {
+                // Keep defaults when endpoint is unavailable.
+            }
+        };
+
+        void loadOrientationOptions();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -95,6 +184,8 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                     selectedSubstation,
                     latitude: lat,
                     longitude: lng,
+                    solarOrientation,
+                    assetCount,
                 });
 
                 if (!cancelled) {
@@ -107,6 +198,8 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                     selectedSubstation,
                     latitude: lat,
                     longitude: lng,
+                    solarOrientation,
+                    assetCount,
                 });
 
                 if (!cancelled) {
@@ -120,7 +213,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
         return () => {
             cancelled = true;
         };
-    }, [markerVariant, selectedSubstation, lat, lng]);
+    }, [markerVariant, selectedSubstation, lat, lng, solarOrientation, assetCount]);
 
     const computedStats = useMemo(
         () =>
@@ -130,9 +223,15 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                 selectedSubstation,
                 latitude: lat,
                 longitude: lng,
+                solarOrientation,
+                assetCount,
             }),
-        [stats, markerVariant, selectedSubstation, lat, lng]
+        [stats, markerVariant, selectedSubstation, lat, lng, solarOrientation, assetCount]
     );
+
+    const outputEnergyDisplay = toEnergyDisplay(computedStats.outputMWh, computedStats.maxOutputMWh);
+    const outputPowerDisplay = toPowerDisplay(computedStats.outputMW, computedStats.maxOutputMW);
+    const gridSupportDisplay = toPowerDisplay(computedStats.gridSupportMW, computedStats.maxGridSupportMW);
 
     const assetIcon = computedStats.technology === 'solar' ? '/images/solar-icon.png' : '/images/turbine-icon.png';
 
@@ -159,21 +258,77 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
             <MainStatSection>
                 <MainStatTitle>Estimated output contribution:</MainStatTitle>
                 <StatGridItem>
-                    <StatCircle value={computedStats.outputMWh} max={computedStats.maxOutputMWh} unit="MWh/year" size={96} decimals={0} />
+                    <StatCircle
+                        value={outputEnergyDisplay.value}
+                        max={outputEnergyDisplay.max}
+                        unit={outputEnergyDisplay.unit}
+                        size={96}
+                        decimals={outputEnergyDisplay.decimals}
+                    />
                     <StatLabel variant="body2">projected into {computedStats.connectedSubstation} load</StatLabel>
                 </StatGridItem>
                 <Typography variant="caption" color="text.secondary">
                     Estimated using shared assumptions and location context.
                 </Typography>
+                <TextField
+                    size="small"
+                    type="number"
+                    label="Number of assets"
+                    value={assetCount}
+                    onChange={(event) => {
+                        const parsed = Number.parseInt(event.target.value, 10);
+                        if (!Number.isFinite(parsed)) {
+                            setAssetCount(1);
+                            return;
+                        }
+                        setAssetCount(parsed);
+                    }}
+                    slotProps={{
+                        htmlInput: {
+                            min: 1,
+                            step: 1,
+                        },
+                    }}
+                    sx={{ mt: 1, width: 210 }}
+                />
+                {isSolarSelection && (
+                    <FormControl size="small" sx={{ mt: 1, minWidth: 210 }}>
+                        <InputLabel id="solar-orientation-select-label">Panel orientation</InputLabel>
+                        <Select
+                            labelId="solar-orientation-select-label"
+                            value={solarOrientation}
+                            label="Panel orientation"
+                            onChange={(event) => setSolarOrientation(String(event.target.value))}
+                        >
+                            {solarOrientationOptions.map((option) => (
+                                <MenuItem key={option} value={option}>
+                                    {option.replace(/_/g, ' ')}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                )}
             </MainStatSection>
 
             <StatGrid>
                 <StatGridItem>
-                    <StatCircle value={computedStats.outputMW} max={computedStats.maxOutputMW} unit="MW" size={64} decimals={1} />
+                    <StatCircle
+                        value={outputPowerDisplay.value}
+                        max={outputPowerDisplay.max}
+                        unit={outputPowerDisplay.unit}
+                        size={64}
+                        decimals={outputPowerDisplay.decimals}
+                    />
                     <StatLabel variant="body2">to local distribution network</StatLabel>
                 </StatGridItem>
                 <StatGridItem>
-                    <StatCircle value={computedStats.gridSupportMW} max={computedStats.maxGridSupportMW} unit="MW" size={64} decimals={1} />
+                    <StatCircle
+                        value={gridSupportDisplay.value}
+                        max={gridSupportDisplay.max}
+                        unit={gridSupportDisplay.unit}
+                        size={64}
+                        decimals={gridSupportDisplay.decimals}
+                    />
                     <StatLabel variant="body2">grid support</StatLabel>
                 </StatGridItem>
                 <StatGridItem>

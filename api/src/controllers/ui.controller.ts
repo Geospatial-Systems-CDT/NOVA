@@ -309,6 +309,16 @@ export class UIController {
         }
     }
 
+    public getSolarOrientationOptions(req: Request, res: Response): void {
+        try {
+            const orientations = dataProviderUtils.getSolarOrientationOptions();
+            res.status(200).json({ orientations });
+        } catch (error) {
+            console.error(`Error retrieving solar orientation options: ${error}`);
+            res.status(500).json({ error: 'Failed to retrieve solar orientation options' });
+        }
+    }
+
     public estimateAssetContribution(req: Request, res: Response): void {
         try {
             const estimationRequest = req.body as AssetEstimationRequestDto;
