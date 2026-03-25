@@ -3,7 +3,7 @@
 
 import * as fs from 'fs';
 import Fuse, { FuseResult } from 'fuse.js';
-import { FeatureCollection, GeoJSON, Geometry, MultiPolygon } from 'geojson';
+import { FeatureCollection, GeoJSON, Geometry, MultiPolygon, Polygon } from 'geojson';
 import * as path from 'path';
 import proj4 from 'proj4';
 import { AssetsDTO } from '../models/asset.model';
@@ -39,6 +39,12 @@ export class DataProviderUtils {
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
     private readonly roadBufferLayerDataFilePath: string;
     private readonly railBufferLayerDataFilePath: string;
+    private readonly aspectLayerDataFilePath: string;
+    private readonly slopesLayerDataFilePath: string;
+    private readonly iowPalLayerDataFilePath: string;
+    private readonly fuelPovertyLayerDataFilePath: string;
+    private readonly ancientWoodlandsLayerDataFilePath: string;
+    private readonly agriculturalLandClassificationDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
 
     /**
@@ -64,6 +70,12 @@ export class DataProviderUtils {
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
         this.roadBufferLayerDataFilePath = path.join(__dirname, '../data/road_10m_buffer.geojson');
         this.railBufferLayerDataFilePath = path.join(__dirname, '../data/rail_10m_buffer.geojson');
+        this.aspectLayerDataFilePath = path.join(__dirname, '../data/Aspect_WGS84.geojson');
+        this.slopesLayerDataFilePath = path.join(__dirname, '../data/Slopes_WGS84.geojson');
+        this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
+        this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
+        this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
+        this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
     }
 
     /**
@@ -268,6 +280,38 @@ export class DataProviderUtils {
 
     public getRailBufferLayerData(): FeatureCollection<MultiPolygon> {
         return this.readGeoJsonLayerData(this.railBufferLayerDataFilePath);
+    }
+
+    public getAspectLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.aspectLayerDataFilePath, 'utf8');
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+    public getIoWPalLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.iowPalLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getSlopesLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.slopesLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+    public getFuelPovertyLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.fuelPovertyLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getAncientWoodlandsLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.ancientWoodlandsLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+    public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
+        const fileContent = fs.readFileSync(this.agriculturalLandClassificationDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon>;
     }
 }
 

@@ -42,6 +42,11 @@
                             "maxValue": "10"
                         }
                     ]
+                },
+                {
+                    "id": "ancientWoodlands",
+                    "name": "Ancient woodland",
+                    "attributes": []
                 }
             ]
         },
@@ -58,6 +63,35 @@
                             "defaultValue": 1,
                             "valueType": "number",
                             "maxValue": "10"
+                        }
+                    ]
+                },
+                {
+                    "id": "fuelPoverty",
+                    "name": "Fuel poverty",
+                    "attributes": []
+                }
+            ]
+        },
+        {
+            "name": "Rural constraints",
+            "items": [
+                {
+                    "id": "agriculturalLandClassification",
+                    "name": "Agricultural Land Classification (ALC)",
+                    "attributes": [
+                        {
+                            "id": "classificationThreshold",
+                            "description": "Set minimum land classification",
+                            "defaultValue": "Grade 3",
+                            "valueType": "string",
+                            "options": [
+                                "Grade 1",
+                                "Grade 2",
+                                "Grade 3",
+                                "Grade 4",
+                                "Grade 5"
+                            ]
                         }
                     ]
                 }
@@ -113,6 +147,29 @@
                             "maxValue": "1300"
                         }
                     ]
+                }
+            ]
+        },
+        {
+            "name": "Terrain",
+            "items": [
+                {
+                    "id": "slope",
+                    "name": "Slope",
+                    "attributes": [
+                        {
+                            "id": "maxSlope",
+                            "description": "Set maximum terrain slope (degrees)",
+                            "defaultValue": 30,
+                            "valueType": "number",
+                            "maxValue": "90"
+                        }
+                    ]
+                },
+                {
+                    "id": "aspect",
+                    "name": "Aspect",
+                    "attributes": []
                 }
             ]
         }

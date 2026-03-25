@@ -30,6 +30,47 @@ export interface ReportIssueDTO {
  * @swagger
  * components:
  *   schemas:
+ *     ReportRegionLayerValueDTO:
+ *       type: object
+ *       description: The computed value for a single active data layer within a candidate region.
+ *       properties:
+ *         layerId:
+ *           type: string
+ *           description: The identifier of the data layer (e.g. "windSpeed", "sitesOfSpecialScientificInterest").
+ *         label:
+ *           type: string
+ *           description: Human-readable label for the layer value.
+ *         value:
+ *           oneOf:
+ *             - type: number
+ *               nullable: true
+ *             - type: string
+ *               nullable: true
+ *           description: The computed value (wind speed, solar potential, distance to nearest boundary, or text grade such as ALC grade). Null when the value cannot be determined for this region.
+ *         unit:
+ *           type: string
+ *           description: Unit of the value (e.g. "m/s", "kWh/kWp/year", "km").
+ *       required:
+ *         - layerId
+ *         - label
+ *         - value
+ *         - unit
+ */
+export interface ReportRegionLayerValueDTO {
+    /** Identifier of the data layer, e.g. "windSpeed" */
+    layerId: string;
+    /** Human-readable label, e.g. "Wind speed" */
+    label: string;
+    /** Computed value, or null when it cannot be determined */
+    value: string | number | null;
+    /** Unit string, e.g. "m/s", "kWh/kWp/year", "km" */
+    unit: string;
+}
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
  *     ReportRegionDTO:
  *       type: object
  *       description: A candidate region suitable for asset placement, with spatial and issue metadata.
@@ -58,6 +99,11 @@ export interface ReportIssueDTO {
  *           items:
  *             $ref: '#/components/schemas/ReportIssueDTO'
  *           description: Issues present within this region.
+ *         layerValues:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ReportRegionLayerValueDTO'
+ *           description: Computed values for each active data layer used during analysis.
  *       required:
  *         - id
  *         - polygon
@@ -65,6 +111,7 @@ export interface ReportIssueDTO {
  *         - areaSqKm
  *         - issueCount
  *         - issues
+ *         - layerValues
  */
 export interface ReportRegionDTO {
     /** Stable identifier for this region within the report, e.g. "region-1" */
@@ -79,6 +126,8 @@ export interface ReportRegionDTO {
     issueCount: number;
     /** Issues present within this region (empty array for zero-issue regions) */
     issues: ReportIssueDTO[];
+    /** Computed values for each active data layer used during analysis */
+    layerValues: ReportRegionLayerValueDTO[];
 }
 
 /**

@@ -13,15 +13,61 @@ import { DataLayerDto } from '../models/data-layer.model';
 export class AssetAnalysisService {
     constructor(private readonly dataProviderUtils: DataProviderUtils) {}
 
+    private getNumericProperty(properties: GeoJsonProperties | null | undefined, candidates: string[]): number | null {
+        if (!properties) return null;
+
+        for (const candidate of candidates) {
+            const value = Number(properties[candidate]);
+            if (Number.isFinite(value)) return value;
+        }
+
+        return null;
+    }
+    private getAttributeValue(dataLayer: DataLayerDto, attributeId: string): number | string | undefined {
+        return dataLayer.attributes.find((attribute) => attribute.id === attributeId)?.value;
+    }
+
+    private getNumericAttributeValue(dataLayer: DataLayerDto, attributeId: string, fallbackValue: number): number {
+        const value = this.getAttributeValue(dataLayer, attributeId);
+
+        return typeof value === 'number' && value >= 0 ? value : fallbackValue;
+    }
+
+    private getStringAttributeValue(dataLayer: DataLayerDto, attributeId: string, fallbackValue: string): string {
+        const value = this.getAttributeValue(dataLayer, attributeId);
+
+        return typeof value === 'string' && value.trim().length > 0 ? value : fallbackValue;
+    }
+
+    private getAgriculturalLandClassificationRank(classification: string): number {
+        const ranking: Record<string, number> = {
+            'Grade 1': 1,
+            'Grade 2': 2,
+            'Grade 3': 3,
+            'Grade 4': 4,
+            'Grade 5': 5,
+        };
+
+        return ranking[classification] ?? Number.POSITIVE_INFINITY;
+    }
+
     /*
-     * A helper method to get the polygons for the provided feature that have a buffer equivalent to the provided min distance in kilometers. If the min distance is > 1 then 2 polygons are returned one with a buffer of equal to the min distance and the other one with a buffer of min distance + 0.5. If the min distance is < 1 then 2 polygons are returned where the first one has no buffer applied and the second one has a buffer of 0.5 km.
+     * A helper method to get the polygons for the provided feature that have a buffer equivalent to the provided min distance in kilometers.
+     * Returns two disjoint zones:
+     *   [0] inner (bad)    - the full disc up to minDistance (or the raw 1km pre-buffer when minDistance <= 1)
+     *   [1] outer (caution) - an annulus from minDistance to minDistance+0.5km (inner disc subtracted out)
+     * The annulus ensures the two zones do not overlap, which allows the report service to produce
+     * single-issue candidate regions for each zone independently.
      */
     private getBufferedPolygonsForFeature(feature: Feature<MultiPolygon>, minDistance: number): Feature<MultiPolygon | Polygon, GeoJsonProperties>[] {
         const bufferDistance = minDistance - 1;
         const bufferedFeature = minDistance > 1 ? turf.buffer(feature, bufferDistance, { units: 'kilometers' }) : feature;
         const bufferedFeature500M = turf.buffer(feature, minDistance > 1 ? bufferDistance + 0.5 : 0.5, { units: 'kilometers' });
 
-        return [bufferedFeature!, bufferedFeature500M!];
+        // Subtract the inner buffer from the outer to produce a non-overlapping annulus.
+        const annulus = turf.difference(turf.featureCollection([bufferedFeature500M!, bufferedFeature!]));
+
+        return [bufferedFeature!, annulus ?? bufferedFeature500M!];
     }
 
     /*
@@ -84,9 +130,8 @@ export class AssetAnalysisService {
         };
         dataLayers.forEach((dataLayer) => {
             if (dataLayer.id === 'windSpeed') {
-                const minSpeed = dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minSpeed')?.value || 4;
-                const maxSpeed =
-                    dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'maxSpeed')?.value || 7.5;
+                const minSpeed = this.getNumericAttributeValue(dataLayer, 'minSpeed', 4);
+                const maxSpeed = this.getNumericAttributeValue(dataLayer, 'maxSpeed', 7.5);
                 const windspeedLayer = this.dataProviderUtils.getWindspeedLayerData();
                 const windspeedBadLayerData: FeatureCollection<MultiPolygon> = {
                     type: 'FeatureCollection',
@@ -99,8 +144,7 @@ export class AssetAnalysisService {
                     this.getMatchedPolygonsForLayer(windspeedBadLayerData, location, 'red', `Bad windspeed - < ${minSpeed}m/s or > ${maxSpeed}m/s`)
                 );
             } else if (dataLayer.id === 'solarPotential') {
-                const minPotential =
-                    dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minPotential')?.value || 900;
+                const minPotential = this.getNumericAttributeValue(dataLayer, 'minPotential', 900);
                 const solarPotentialLayer = this.dataProviderUtils.getSolarPotentialLayerData();
                 const solarPotentialBadLayerData: FeatureCollection<MultiPolygon> = {
                     type: 'FeatureCollection',
@@ -111,11 +155,25 @@ export class AssetAnalysisService {
                 };
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
+                );
+            } else if (dataLayer.id === 'slope') {
+                const maxSlope = dataLayer.attributes.filter((attribute) => (Number(attribute.value) >= 0)).find((attribute) => attribute.id === 'maxSlope')?.value || 30;
+                const slopesLayer = this.dataProviderUtils.getSlopesLayerData();
+                const slopesBadLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                    type: 'FeatureCollection',
+                    features: slopesLayer.features.filter((feature) => {
+                        const slope = Number(this.getNumericProperty(feature.properties, ['Slope', 'slope']));
+                        return !isNaN(slope) && slope > (Number(maxSlope));
+                    }),
+                };
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(
-                        solarPotentialBadLayerData,
+                        slopesBadLayerData,
                         location,
                         'red',
-                        `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`
+                        `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`
                     )
                 );
             } else if (dataLayer.id === 'roadBuffer') {
@@ -128,11 +186,39 @@ export class AssetAnalysisService {
                 const railBufferLayerData = this.dataProviderUtils.getRailBufferLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 10m')
+                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 10m'))
+            } else if (dataLayer.id === 'aspect') {
+                const aspectLayer = this.dataProviderUtils.getAspectLayerData();
+                const amberAspect = new Set([3, 7]);
+                const redAspect = new Set([1, 2, 8]);
+                const amberAspectIssue = 'Moderate solar terrain suitability - aspect category East/West (3 or 7)';
+                const redAspectIssue =
+                    'Unfavourable solar terrain suitability - north-facing aspect category (North/North-East/North-West; 1, 2, 8)';
+
+                const aspectAmberLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                    type: 'FeatureCollection',
+                    features: aspectLayer.features.filter((feature) => {
+                        const aspect = this.getNumericProperty(feature.properties, ['aspect', 'Aspect']);
+                        return aspect !== null && amberAspect.has(Math.round(aspect));
+                    }),
+                };
+
+                const aspectRedLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                    type: 'FeatureCollection',
+                    features: aspectLayer.features.filter((feature) => {
+                        const aspect = this.getNumericProperty(feature.properties, ['aspect', 'Aspect']);
+                        return aspect !== null && redAspect.has(Math.round(aspect));
+                    }),
+                };
+
+                cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(aspectAmberLayerData, location, 'amber', amberAspectIssue)
+                );
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(aspectRedLayerData, location, 'red', redAspectIssue)
                 );
             } else if (dataLayer.id === 'specialAreasOfConservation') {
-                const minDistance: number =
-                    dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minDistance')?.value || 1;
+                const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
                 const specialAreasOfConservationLayerData = this.dataProviderUtils.getSpecialAreasOfConservationLayerData();
                 const specialAreasOfConservation1KmLayerData: FeatureCollection<MultiPolygon> =
                     this.dataProviderUtils.getSpecialAreasOfConservation1KmLayerData();
@@ -174,8 +260,7 @@ export class AssetAnalysisService {
                     )
                 );
             } else if (dataLayer.id == 'sitesOfSpecialScientificInterest') {
-                const minDistance: number =
-                    dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minDistance')?.value || 1;
+                const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
                 const sitesOfSpecialScientificInterestLayerData = this.dataProviderUtils.getSitesOfSpecialScientificInterestLayerData();
                 const sitesOfSpecialScientificInterest1KmLayerData = this.dataProviderUtils.getSitesOfSpecialScientificInterest1KmLayerData();
                 const sitesOfSpecialScientificInterestBufferedFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
@@ -216,8 +301,7 @@ export class AssetAnalysisService {
                     )
                 );
             } else if (dataLayer.id === 'builtUpAreas') {
-                const minDistance: number =
-                    dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minDistance')?.value || 1;
+                const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
                 const builtupAreasLayerData = this.dataProviderUtils.getBuiltupAreasLayerData();
                 const builtupAreas1KmLayerData = this.dataProviderUtils.getBuiltupAreas1KmLayerData();
                 const builtupAreasBufferedFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
@@ -248,8 +332,7 @@ export class AssetAnalysisService {
                     this.getMatchedPolygonsForLayer(builtupAreasBuffer500MLayerData, location, 'amber', `Close to built up areas - <= ${minDistance + 0.5}km`)
                 );
             } else if (dataLayer.id == 'areasOfOutstandingNaturalBeauty') {
-                const minDistance: number =
-                    dataLayer.attributes.filter((attribute) => attribute.value >= 0).find((attribute) => attribute.id === 'minDistance')?.value || 1;
+                const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
                 const areasOfNaturalBeautyLayerData = this.dataProviderUtils.getAreasOfNaturalBeautyLayerData();
                 const areasOfNaturalBeauty1KmLayerData = this.dataProviderUtils.getAreasOfNaturalBeauty1KmLayerData();
                 const areasOfNaturalBeautyBufferedFeatures: Feature<MultiPolygon | Polygon, GeoJsonProperties>[] = [];
@@ -289,6 +372,62 @@ export class AssetAnalysisService {
                         `Close to areas of outstanding natural beauty - <= ${minDistance + 0.5}km`
                     )
                 );
+            } else if (dataLayer.id === 'agriculturalLandClassification') {
+                const selectedClassification = this.getStringAttributeValue(dataLayer, 'classificationThreshold', 'Grade 3');
+                const selectedClassificationRank = this.getAgriculturalLandClassificationRank(selectedClassification);
+                const iowPalLayerData = this.dataProviderUtils.getIoWPalLayerData();
+
+                const agriculturalLandClassificationAboveThresholdLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                    type: 'FeatureCollection',
+                    features: iowPalLayerData.features.filter((feature) => {
+                        const classification = String(feature.properties?.ALC_GRADE || '');
+                        const classificationRank = this.getAgriculturalLandClassificationRank(classification);
+
+                        return classificationRank <= selectedClassificationRank;
+                    }),
+                };
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        agriculturalLandClassificationAboveThresholdLayerData,
+                        location,
+                        'red',
+                        `Agricultural land classification at the selected grade (${selectedClassification}) and better`
+                    )
+                );
+            } else if (dataLayer.id === 'ancientWoodlands') {
+                const ancientWoodlandsLayerData = this.dataProviderUtils.getAncientWoodlandsLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(ancientWoodlandsLayerData, location, 'darkRed', 'Ancient woodland')
+                );
+            } else if (dataLayer.id === 'fuelPoverty') {
+                const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
+                const povertyPercentages = fuelPovertyLayerData.features
+                    .map((feature) => Number(feature.properties?.percentageOfHousesInFuelPoverty))
+                    .filter((value) => Number.isFinite(value));
+
+                if (povertyPercentages.length > 0) {
+                    const averageFuelPovertyPercentage =
+                        povertyPercentages.reduce((sum, value) => sum + value, 0) / povertyPercentages.length;
+
+                    const fuelPovertyBelowAverageLayerData: FeatureCollection<MultiPolygon | Polygon> = {
+                        type: 'FeatureCollection',
+                        features: fuelPovertyLayerData.features.filter((feature) => {
+                            const value = Number(feature.properties?.percentageOfHousesInFuelPoverty);
+                            return Number.isFinite(value) && value < averageFuelPovertyPercentage;
+                        }),
+                    };
+
+                    badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                        this.getMatchedPolygonsForLayer(
+                            fuelPovertyBelowAverageLayerData,
+                            location,
+                            'red',
+                            'Low priority for minimising fuel poverty'
+                        )
+                    );
+                }
             }
         });
 

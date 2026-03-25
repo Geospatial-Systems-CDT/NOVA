@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { Feature, FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Polygon } from 'geojson';
+import { Feature, FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Point, Polygon } from 'geojson';
 import * as turf from '@turf/turf';
-import { ReportDTO, ReportIssueDTO, ReportRegionDTO } from '../models/report.model';
+import { ReportDTO, ReportIssueDTO, ReportRegionDTO, ReportRegionLayerValueDTO } from '../models/report.model';
+import { DataLayerDto } from '../models/data-layer.model';
+import { DataProviderUtils } from '../utils/data-provider.utils';
 
 /** Minimum area in m² below which a region is discarded as a geometric sliver */
 const MIN_AREA_M2 = 1000;
@@ -19,13 +21,16 @@ interface IssueUnion {
  * into a suitability report of candidate regions grouped by issue count.
  */
 export class ReportService {
+    constructor(private readonly dataProviderUtils?: DataProviderUtils) {}
+
     /**
      * Generate a report from an already-computed analysis FeatureCollection.
      *
      * @param analysisResult - The FeatureCollection returned by AssetAnalysisService.analyzeLocation.
      * @param maxIssues - Include regions with at most this many distinct issue types.
+     * @param activeDataLayers - The data layers (with `analyze: true`) used during this analysis.
      */
-    public generateReport(analysisResult: FeatureCollection<Geometry>, maxIssues: number): ReportDTO {
+    public generateReport(analysisResult: FeatureCollection<Geometry>, maxIssues: number, activeDataLayers: DataLayerDto[] = []): ReportDTO {
         // 1. Separate green baseline from issue features
         const greenFeature = analysisResult.features.find((f) => f.properties?.suitability === 'green') as
             | Feature<Polygon | MultiPolygon, GeoJsonProperties>
@@ -67,13 +72,17 @@ export class ReportService {
                         suitability,
                     }));
 
+                    const regionPolygon = flat as Feature<Polygon>;
+                    const layerValues = this.computeLayerValuesForRegion(regionPolygon, activeDataLayers);
+
                     regions.push({
                         id: `region-${regionIndex++}`,
-                        polygon: flat as Feature<Polygon>,
+                        polygon: regionPolygon,
                         bbox: turf.bbox(flat),
                         areaSqKm: area / 1e6,
                         issueCount: combo.length,
                         issues,
+                        layerValues,
                     });
                 }
             }
@@ -174,5 +183,126 @@ export class ReportService {
         const withoutFirst = this.getCombinations(rest, k);
 
         return [...withFirst, ...withoutFirst];
+    }
+
+    /**
+     * Compute layer-specific values for the given candidate region polygon.
+     * The ALC grade is always included when a data provider is available.
+     * Additional values are computed for each active data layer.
+     */
+    private computeLayerValuesForRegion(region: Feature<Polygon>, activeDataLayers: DataLayerDto[]): ReportRegionLayerValueDTO[] {
+        if (!this.dataProviderUtils) return [];
+
+        const centroid = turf.centroid(region) as Feature<Point>;
+        const results: ReportRegionLayerValueDTO[] = [];
+
+        // Always include agricultural land classification
+        const alcData = this.dataProviderUtils.getAgriculturalLandClassificationData();
+        const alcValue = this.computeAlcGradeAtCentroid(centroid, alcData);
+        results.push({ layerId: 'agriculturalLandClassification', label: 'Agricultural land classification', value: alcValue, unit: '' });
+
+        for (const layer of activeDataLayers) {
+            switch (layer.id) {
+                case 'windSpeed': {
+                    const data = this.dataProviderUtils.getWindspeedLayerData();
+                    const value = this.computeGridValueAtCentroid(centroid, data, 'ws_spring1');
+                    results.push({ layerId: 'windSpeed', label: 'Wind speed', value, unit: 'm/s' });
+                    break;
+                }
+                case 'solarPotential': {
+                    const data = this.dataProviderUtils.getSolarPotentialLayerData();
+                    const value = this.computeGridValueAtCentroid(centroid, data, 'pv_annual_kwh_kwp');
+                    results.push({ layerId: 'solarPotential', label: 'Solar potential', value, unit: 'kWh/kWp/year' });
+                    break;
+                }
+                case 'sitesOfSpecialScientificInterest': {
+                    const data = this.dataProviderUtils.getSitesOfSpecialScientificInterestLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'sitesOfSpecialScientificInterest', label: 'Distance to nearest SSSI boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'specialAreasOfConservation': {
+                    const data = this.dataProviderUtils.getSpecialAreasOfConservationLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'specialAreasOfConservation', label: 'Distance to nearest SAC boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'builtUpAreas': {
+                    const data = this.dataProviderUtils.getBuiltupAreasLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'builtUpAreas', label: 'Distance to nearest built-up area boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'areasOfOutstandingNaturalBeauty': {
+                    const data = this.dataProviderUtils.getAreasOfNaturalBeautyLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'areasOfOutstandingNaturalBeauty', label: 'Distance to nearest AONB boundary', value, unit: 'km' });
+                    break;
+                }
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Find the first ALC polygon that contains the given centroid point and return its
+     * ALC_GRADE property as a string. Returns null when the centroid falls outside all polygons.
+     */
+    private computeAlcGradeAtCentroid(centroid: Feature<Point>, layerData: FeatureCollection<MultiPolygon>): string | null {
+        for (const feature of layerData.features) {
+            for (const coords of feature.geometry.coordinates) {
+                const poly = turf.polygon(coords);
+                if (turf.booleanPointInPolygon(centroid, poly)) {
+                    const grade = feature.properties?.['ALC_GRADE'];
+                    return typeof grade === 'string' ? grade : null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find the first MultiPolygon grid cell that contains the given centroid point and return the
+     * numeric value of `propertyKey` from its properties. Returns null when no cell matches.
+     */
+    private computeGridValueAtCentroid(centroid: Feature<Point>, layerData: FeatureCollection<MultiPolygon>, propertyKey: string): number | null {
+        for (const feature of layerData.features) {
+            for (const coords of feature.geometry.coordinates) {
+                const poly = turf.polygon(coords);
+                if (turf.booleanPointInPolygon(centroid, poly)) {
+                    const val = feature.properties?.[propertyKey];
+                    return typeof val === 'number' ? Math.round(val * 100) / 100 : null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Compute the minimum distance in kilometres from `centroid` to the nearest boundary of any
+     * feature in `layerData`. Returns 0 when the centroid falls inside a feature, and null when
+     * the layer has no features.
+     */
+    private computeDistanceToNearestBoundaryKm(centroid: Feature<Point>, layerData: FeatureCollection<MultiPolygon>): number | null {
+        if (layerData.features.length === 0) return null;
+
+        let minDistKm: number | null = null;
+
+        for (const feature of layerData.features) {
+            for (const coords of feature.geometry.coordinates) {
+                const poly = turf.polygon(coords);
+                if (turf.booleanPointInPolygon(centroid, poly)) {
+                    return 0;
+                }
+                const outerRing = turf.lineString(coords[0]);
+                const dist = turf.pointToLineDistance(centroid, outerRing, { units: 'kilometers' });
+                if (minDistKm === null || dist < minDistKm) {
+                    minDistKm = dist;
+                }
+            }
+        }
+
+        return minDistKm !== null ? Math.round(minDistKm * 100) / 100 : null;
     }
 }

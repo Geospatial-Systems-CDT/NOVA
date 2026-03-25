@@ -2,28 +2,12 @@
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
 import { Box, Typography, styled } from '@mui/material';
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import StatCircle from './StatCircle';
 import type { Substation } from '../map-substations-list/SubstationsList';
 import { useMapStore } from '../../stores/useMapStore';
-
-interface Specification {
-    name: string;
-    value: string;
-}
-
-interface Variation {
-    name: string;
-    specification: Specification[];
-    image: string;
-    icon: string;
-}
-
-interface Asset {
-    id: string;
-    name: string;
-    variations: Variation[];
-}
+import { estimateAssetStats, type EstimatedAssetStats } from '../../utils/energyEstimation';
+import { fetchAssetEstimation } from '../../services/assetEstimationApi';
 
 const GridConnectFooterContainer = styled(Box)(({ theme }) => ({
     position: 'fixed',
@@ -90,31 +74,8 @@ const StatLabel = styled(Typography)(({ theme }) => ({
     whiteSpace: 'nowrap',
 }));
 
-type Range = {
-    min: number;
-    max: number;
-    decimals?: number; // number of decimal places
-};
-
 interface GridConnectFooterPanelProps {
     selectedSubstation: Substation;
-}
-
-interface AssetStats {
-    assetId: string;
-    location: string;
-    connectedSubstation: string;
-    connectionDistance: string;
-    outputMWh: number;
-    outputMW: number;
-    gridSupportMW: number;
-    boostPercent: number;
-    localBoostPercent: number;
-    maxOutputMWh?: number;
-    maxOutputMW?: number;
-    maxBoostPercent?: number;
-    maxLocalBoostPercent?: number;
-    maxGridSupportMW: number;
 }
 
 export default function GridConnectFooterPanel({ selectedSubstation }: GridConnectFooterPanelProps) {
@@ -122,162 +83,75 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
     const markerVariant = useMapStore((s) => s.markerVariant);
     const lng = markerPosition && markerPosition.longitude ? markerPosition.longitude : -3.744;
     const lat = markerPosition && markerPosition.latitude ? markerPosition.latitude : 57.148;
-
-    const [assets, setAssets] = useState<Asset[]>([]);
+    const [stats, setStats] = useState<EstimatedAssetStats | null>(null);
 
     useEffect(() => {
-        const fetchAssets = async () => {
+        let cancelled = false;
+
+        const loadEstimation = async () => {
             try {
-                const res = await fetch('/data/assets.json');
-                const data = await res.json();
-                setAssets(data);
+                const estimated = await fetchAssetEstimation({
+                    variant: markerVariant,
+                    selectedSubstation,
+                    latitude: lat,
+                    longitude: lng,
+                });
+
+                if (!cancelled) {
+                    setStats(estimated);
+                }
             } catch (error) {
-                console.error('Failed to fetch assets:', error);
+                console.error('Error fetching backend estimation, using fallback:', error);
+                const fallback = estimateAssetStats({
+                    variant: markerVariant,
+                    selectedSubstation,
+                    latitude: lat,
+                    longitude: lng,
+                });
+
+                if (!cancelled) {
+                    setStats(fallback);
+                }
             }
         };
-        fetchAssets();
-    }, []);
 
-    const getRandomInRange = (range: Range): number => {
-        const raw = Math.random() * (range.max - range.min) + range.min;
-        if (range.decimals === undefined) {
-            return raw;
-        }
-        return Number.parseFloat(raw.toFixed(range.decimals));
-    };
+        void loadEstimation();
 
-    const stats = useMemo((): AssetStats => {
-        // Find the asset that contains the selected markerVariant
-        let asset: Asset | undefined;
-        let isWind = true; // default fallback
-        
-        if (markerVariant) {
-            asset = assets.find(a => a.variations.some(v => v.name === markerVariant.name));
-            isWind = asset?.id === 'windTurbine';
-        } else {
-            // Fallback to old logic if no markerVariant (shouldn't happen in normal flow)
-            isWind = selectedSubstation.id % 2 === 0;
-            const assetId = isWind ? 'windTurbine' : 'solarPanel';
-            asset = assets.find(a => a.id === assetId);
-        }
-
-        let ratedPowerMW = 6; // default fallback
-        let assetIdPrefix = 'WT';
-        let selectedVariation = markerVariant;
-
-        if (asset && asset.variations.length > 0) {
-            // Use markerVariant if available, otherwise select variation based on substation ID
-            if (!selectedVariation) {
-                const variationIndex = Math.floor(selectedSubstation.id / 2) % asset.variations.length;
-                selectedVariation = asset.variations[variationIndex];
-            }
-
-            if (isWind) {
-                const capacitySpec = selectedVariation.specification.find(spec => spec.name === 'Capacity (MW)');
-                if (capacitySpec) {
-                    const capacityValue = parseFloat(capacitySpec.value.replace(' MW', ''));
-                    if (!isNaN(capacityValue)) {
-                        ratedPowerMW = capacityValue;
-                    }
-                }
-                assetIdPrefix = 'WT';
-            } else {
-                // Solar panel
-                const wattageSpec = selectedVariation.specification.find(spec => spec.name === 'Wattage');
-                if (wattageSpec) {
-                    let wattageValue = wattageSpec.value;
-                    let multiplier = 1;
-                    if (wattageValue.includes(' kW')) {
-                        multiplier = 1000;
-                        wattageValue = wattageValue.replace(' kW', '');
-                    } else if (wattageValue.includes(' W')) {
-                        wattageValue = wattageValue.replace(' W', '');
-                    }
-                    const wattage = parseFloat(wattageValue);
-                    if (!isNaN(wattage)) {
-                        ratedPowerMW = (wattage * multiplier) / 1000000; // Convert to MW
-                    }
-                }
-                assetIdPrefix = 'SP';
-            }
-        }
-
-        // Calculate annual output
-        let annualOutputMWh: number;
-        if (isWind) {
-            // Wind: rated power * capacity factor * hours per year
-            const capacityFactor = 0.4;
-            const hoursPerYear = 8760;
-            annualOutputMWh = ratedPowerMW * capacityFactor * hoursPerYear;
-        } else {
-            // Solar: approximate annual output based on UK average
-            // Assuming 15% system efficiency and ~1000 kWh/m²/year irradiance
-            // Simple approximation: 1 MW solar system produces ~1500 MWh/year in UK
-            annualOutputMWh = ratedPowerMW * 1500;
-        }
-
-        return {
-            assetId: `${assetIdPrefix}-${selectedSubstation.id}`,
-            location: `${lat}, ${lng}`,
-            connectedSubstation: selectedSubstation.name,
-            connectionDistance: selectedSubstation.distanceFromTurbine,
-            outputMWh: annualOutputMWh,
-            outputMW: getRandomInRange({ min: 1.5, max: 8, decimals: 2 }),
-            gridSupportMW: getRandomInRange({ min: 1.5, max: 8, decimals: 2 }),
-            boostPercent: getRandomInRange({ min: 1, max: 10, decimals: 1 }),
-            localBoostPercent: getRandomInRange({ min: 1, max: 10, decimals: 1 }),
-            maxOutputMWh: annualOutputMWh * 1.2, // 20% higher for max
-            maxOutputMW: getRandomInRange({ min: 8, max: 10, decimals: 2 }),
-            maxBoostPercent: getRandomInRange({ min: 20, max: 100, decimals: 1 }),
-            maxLocalBoostPercent: getRandomInRange({ min: 20, max: 100, decimals: 1 }),
-            maxGridSupportMW: getRandomInRange({ min: 8, max: 10, decimals: 2 }),
+        return () => {
+            cancelled = true;
         };
-    }, [selectedSubstation, lat, lng, assets, markerVariant]);
+    }, [markerVariant, selectedSubstation, lat, lng]);
 
-    // Get the current asset info for display
-    const currentAssetInfo = useMemo(() => {
-        if (markerVariant) {
-            const asset = assets.find(a => a.variations.some(v => v.name === markerVariant.name));
-            const isWind = asset?.id === 'windTurbine';
-            return {
-                type: isWind ? 'Turbine' : 'Panel',
-                icon: markerVariant.icon
-            };
-        } else {
-            // Fallback to old logic
-            const isWind = selectedSubstation.id % 2 === 0;
-            const assetId = isWind ? 'windTurbine' : 'solarPanel';
-            const asset = assets.find(a => a.id === assetId);
-            if (asset && asset.variations.length > 0) {
-                const variationIndex = Math.floor(selectedSubstation.id / 2) % asset.variations.length;
-                return {
-                    type: isWind ? 'Turbine' : 'Panel',
-                    icon: asset.variations[variationIndex]?.icon || (isWind ? '/images/turbine-icon.png' : '/images/solar-icon.png')
-                };
-            }
-            return {
-                type: 'Turbine',
-                icon: '/images/turbine-icon.png'
-            };
-        }
-    }, [selectedSubstation, assets, markerVariant]);
+    const computedStats = useMemo(
+        () =>
+            stats ??
+            estimateAssetStats({
+                variant: markerVariant,
+                selectedSubstation,
+                latitude: lat,
+                longitude: lng,
+            }),
+        [stats, markerVariant, selectedSubstation, lat, lng]
+    );
+
+    const assetIcon = computedStats.technology === 'solar' ? '/images/solar-icon.png' : '/images/turbine-icon.png';
 
     return (
         <GridConnectFooterContainer>
             <TurbineInfoSection>
-                <TurbineIcon src={currentAssetInfo.icon} alt={currentAssetInfo.type} />
+                <TurbineIcon src={assetIcon} alt="Selected asset" />
                 <Box sx={{ minWidth: 0 }}>
                     <Typography fontSize={16} noWrap>
-                        <strong>{currentAssetInfo.type} ID:</strong> {stats.assetId}
+                        <strong>Asset ID:</strong> {computedStats.assetId}
                     </Typography>
                     <Typography fontSize={16} noWrap>
-                        <strong>Location:</strong> {stats.location}
+                        <strong>Location:</strong> {computedStats.location}
                     </Typography>
                     <Typography fontSize={16} noWrap>
-                        <strong>Connected Substation:</strong> {stats.connectedSubstation}
+                        <strong>Connected Substation:</strong> {computedStats.connectedSubstation}
                     </Typography>
                     <Typography fontSize={16} noWrap>
-                        <strong>Connection distance:</strong> {stats.connectionDistance}km
+                        <strong>Connection distance:</strong> {computedStats.connectionDistanceKm.toFixed(2)} km
                     </Typography>
                 </Box>
             </TurbineInfoSection>
@@ -285,26 +159,29 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
             <MainStatSection>
                 <MainStatTitle>Estimated output contribution:</MainStatTitle>
                 <StatGridItem>
-                    <StatCircle value={stats.outputMWh} max={stats.maxOutputMWh ?? 20000} unit="MWh/year" size={96} decimals={0} />
-                    <StatLabel variant="body2">projected into {stats.connectedSubstation} load</StatLabel>
+                    <StatCircle value={computedStats.outputMWh} max={computedStats.maxOutputMWh} unit="MWh/year" size={96} decimals={0} />
+                    <StatLabel variant="body2">projected into {computedStats.connectedSubstation} load</StatLabel>
                 </StatGridItem>
+                <Typography variant="caption" color="text.secondary">
+                    Estimated using shared assumptions and location context.
+                </Typography>
             </MainStatSection>
 
             <StatGrid>
                 <StatGridItem>
-                    <StatCircle value={stats.outputMW} max={stats.maxOutputMW ?? 10} unit="MW" size={64} decimals={1} />
+                    <StatCircle value={computedStats.outputMW} max={computedStats.maxOutputMW} unit="MW" size={64} decimals={1} />
                     <StatLabel variant="body2">to local distribution network</StatLabel>
                 </StatGridItem>
                 <StatGridItem>
-                    <StatCircle value={stats.gridSupportMW} max={stats.maxGridSupportMW ?? 10} unit="MW" size={64} decimals={1} />
+                    <StatCircle value={computedStats.gridSupportMW} max={computedStats.maxGridSupportMW} unit="MW" size={64} decimals={1} />
                     <StatLabel variant="body2">grid support</StatLabel>
                 </StatGridItem>
                 <StatGridItem>
-                    <StatCircle value={stats.boostPercent} max={stats.maxBoostPercent ?? 100} suffix="%" size={64} decimals={1} />
+                    <StatCircle value={computedStats.boostPercent} max={computedStats.maxBoostPercent} suffix="%" size={64} decimals={1} />
                     <StatLabel variant="body2">boost to substation capacity</StatLabel>
                 </StatGridItem>
                 <StatGridItem>
-                    <StatCircle value={stats.localBoostPercent} max={stats.maxLocalBoostPercent ?? 100} suffix="%" size={64} decimals={1} />
+                    <StatCircle value={computedStats.localBoostPercent} max={computedStats.maxLocalBoostPercent} suffix="%" size={64} decimals={1} />
                     <StatLabel variant="body2">local self-sufficiency</StatLabel>
                 </StatGridItem>
             </StatGrid>

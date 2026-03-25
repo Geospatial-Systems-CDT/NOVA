@@ -288,49 +288,50 @@ describe('DataProviderUtils', () => {
         ],
     };
 
-    const mockProjectedRoadBufferLayerData = {
+    const mockAspectLayerData = {
         type: 'FeatureCollection',
         features: [
             {
                 type: 'Feature',
-                properties: {},
+                properties: {
+                    aspect: 5,
+                },
                 geometry: {
-                    type: 'MultiPolygon',
                     coordinates: [
                         [
-                            [
-                                [498000, 100000],
-                                [498020, 100000],
-                                [498020, 100020],
-                                [498000, 100020],
-                                [498000, 100000],
-                            ],
+                            [-1.33, 50.70],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.70],
+                            [-1.33, 50.70],
                         ],
                     ],
+                    type: 'MultiPolygon',
                 },
             },
         ],
     };
 
-    const mockProjectedRailBufferLayerData = {
+    const mockSlopesLayerData = {
         type: 'FeatureCollection',
         features: [
             {
                 type: 'Feature',
-                properties: {},
+                properties: {
+                    fid: 1,
+                    Slope: 12,
+                },
                 geometry: {
-                    type: 'MultiPolygon',
                     coordinates: [
                         [
-                            [
-                                [493400, 99420],
-                                [493420, 99420],
-                                [493420, 99440],
-                                [493400, 99440],
-                                [493400, 99420],
-                            ],
+                            [-1.33, 50.70],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.70],
+                            [-1.33, 50.70],
                         ],
                     ],
+                    type: 'Polygon',
                 },
             },
         ],
@@ -535,34 +536,26 @@ describe('DataProviderUtils', () => {
             expect(result).toEqual(mockBuiltupAreas1KmLayerData);
         });
     });
+    
+    describe('getAspectLayerData', () => {
+        it('should read and parse the aspect layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockAspectLayerData));
 
-    describe('getRoadBufferLayerData', () => {
-        it('should read the road buffer layer data and normalize projected coordinates to WGS84', () => {
-            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockProjectedRoadBufferLayerData));
+            const result = dataProviderUtils.getAspectLayerData();
 
-            const result = dataProviderUtils.getRoadBufferLayerData();
-            const [longitude, latitude] = result.features[0].geometry.coordinates[0][0][0];
-
-            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('road_10m_buffer.geojson'), 'utf8');
-            expect(longitude).toBeGreaterThan(-10);
-            expect(longitude).toBeLessThan(5);
-            expect(latitude).toBeGreaterThan(45);
-            expect(latitude).toBeLessThan(65);
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Aspect_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockAspectLayerData);
         });
     });
 
-    describe('getRailBufferLayerData', () => {
-        it('should read the rail buffer layer data and normalize projected coordinates to WGS84', () => {
-            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockProjectedRailBufferLayerData));
+    describe('getSlopesLayerData', () => {
+        it('should read and parse the slopes layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockSlopesLayerData));
 
-            const result = dataProviderUtils.getRailBufferLayerData();
-            const [longitude, latitude] = result.features[0].geometry.coordinates[0][0][0];
+            const result = dataProviderUtils.getSlopesLayerData();
 
-            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('rail_10m_buffer.geojson'), 'utf8');
-            expect(longitude).toBeGreaterThan(-10);
-            expect(longitude).toBeLessThan(5);
-            expect(latitude).toBeGreaterThan(45);
-            expect(latitude).toBeLessThan(65);
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Slopes_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockSlopesLayerData);
         });
     });
 });
