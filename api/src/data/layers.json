@@ -47,6 +47,11 @@
                     "id": "ancientWoodlands",
                     "name": "Ancient woodland",
                     "attributes": []
+                },
+                {
+                    "id": "ramsarWetlands",
+                    "name": "Ramsar Wetlands",
+                    "attributes": []
                 }
             ]
         },

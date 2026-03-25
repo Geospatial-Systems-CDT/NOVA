@@ -47,6 +47,7 @@ export class DataProviderUtils {
     private readonly iowPalLayerDataFilePath: string;
     private readonly fuelPovertyLayerDataFilePath: string;
     private readonly ancientWoodlandsLayerDataFilePath: string;
+    private readonly ramsarWetlandsLayerDataFilePath: string;
     private readonly agriculturalLandClassificationDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
     private readonly cache = new Map<string, unknown>();
@@ -82,6 +83,7 @@ export class DataProviderUtils {
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
+        this.ramsarWetlandsLayerDataFilePath = path.join(__dirname, '../data/ramsar_wetlands.geojson');
         this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
     }
 
@@ -338,6 +340,11 @@ export class DataProviderUtils {
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }
+
+    public getRamsarWetlandsLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.ramsarWetlandsLayerDataFilePath);
+    }
+
     public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.agriculturalLandClassificationDataFilePath);
     }

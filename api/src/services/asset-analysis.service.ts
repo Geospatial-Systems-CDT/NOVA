@@ -454,6 +454,12 @@ export class AssetAnalysisService {
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(ancientWoodlandsLayerData, location, 'darkRed', 'Ancient woodland')
                 );
+            } else if (dataLayer.id === 'ramsarWetlands') {
+                const ramsarWetlandsLayerData = this.dataProviderUtils.getRamsarWetlandsLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(ramsarWetlandsLayerData, location, 'darkRed', 'Ramsar Wetland')
+                );
             } else if (dataLayer.id === 'fuelPoverty') {
                 const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
                 const povertyPercentages = fuelPovertyLayerData.features
