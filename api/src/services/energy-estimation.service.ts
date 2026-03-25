@@ -8,6 +8,8 @@ import { AssetEstimationResponseDto, AssetTechnologyDto } from '../models/asset-
 
 const HOURS_PER_YEAR = 8760;
 const HOURS_PER_SEASON = HOURS_PER_YEAR / 4;
+const DEFAULT_SOLAR_ORIENTATION = 'south';
+const SOLAR_SHADING_FACTOR = 1.0;
 
 const ENERGY_ASSUMPTIONS = {
     availabilityFactor: 0.97,
@@ -154,13 +156,21 @@ const getResourceAdjustedCapacityFactor = (technology: AssetTechnologyDto, latit
     return clamp(base, 0.1, 0.4);
 };
 
-const getCapacityFactorFromSolarPotential = (solarPotentialKwhPerKwp: number | null): number | null => {
-    if (!Number.isFinite(solarPotentialKwhPerKwp)) return null;
+const normalizeOrientation = (orientation: string | undefined): string => {
+    if (!orientation) return DEFAULT_SOLAR_ORIENTATION;
 
-    const value = Number(solarPotentialKwhPerKwp);
-    if (value <= 0) return null;
+    return orientation
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/-/g, '_');
+};
 
-    return clamp(value / HOURS_PER_YEAR, 0.08, 0.25);
+const getSolarKkValue = (kkDictionary: Record<string, number>, orientation: string | undefined): number | null => {
+    const normalizedOrientation = normalizeOrientation(orientation);
+    const kkValue = kkDictionary[normalizedOrientation];
+    if (!Number.isFinite(kkValue) || kkValue <= 0) return null;
+    return kkValue;
 };
 
 type SeasonalWindspeed = {
@@ -232,23 +242,6 @@ const getWindParameters = (variant: AssetEstimationRequestDto['variant']) => {
 export class EnergyEstimationService {
     constructor(private readonly dataProviderUtils: DataProviderUtils) {}
 
-    private getSolarPotentialAtLocation(longitude: number, latitude: number): number | null {
-        const solarPotentialLayer = this.dataProviderUtils.getSolarPotentialLayerData();
-        const targetPoint = turf.point([longitude, latitude]);
-
-        for (const feature of solarPotentialLayer.features) {
-            for (const coordinates of feature.geometry.coordinates) {
-                const polygon = turf.polygon(coordinates);
-                if (turf.booleanPointInPolygon(targetPoint, polygon)) {
-                    const value = Number(feature.properties?.pv_annual_kwh_kwp);
-                    return Number.isFinite(value) ? value : null;
-                }
-            }
-        }
-
-        return null;
-    }
-
     private getSeasonalWindspeedAtLocation(longitude: number, latitude: number): SeasonalWindspeed | null {
         const windspeedLayer = this.dataProviderUtils.getWindspeedLayerData();
         const targetPoint = turf.point([longitude, latitude]);
@@ -266,14 +259,12 @@ export class EnergyEstimationService {
     }
 
     public estimateAssetContribution(req: AssetEstimationRequestDto): AssetEstimationResponseDto {
-        const { variant, selectedSubstation, latitude, longitude } = req;
+        const { variant, selectedSubstation, latitude, longitude, solarOrientation } = req;
 
         const technology = getTechnologyFromVariant(variant);
         const installedCapacityMW = getInstalledCapacityMW(variant);
         const connectionDistanceKm = parseDistanceKm(selectedSubstation.distanceFromTurbine);
 
-        const solarPotentialKwhPerKwp = technology === 'solar' ? this.getSolarPotentialAtLocation(longitude, latitude) : null;
-        const solarCapacityFactor = technology === 'solar' ? getCapacityFactorFromSolarPotential(solarPotentialKwhPerKwp) : null;
         let grossAnnualMWh: number;
 
         if (technology === 'wind') {
@@ -295,8 +286,22 @@ export class EnergyEstimationService {
                 grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * fallbackCapacityFactor;
             }
         } else {
-            const capacityFactor = solarCapacityFactor ?? getResourceAdjustedCapacityFactor(technology, latitude);
-            grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
+            if (technology === 'solar') {
+                const kkDictionary = this.dataProviderUtils.getSolarKkData().cardinal;
+                const kkValue = getSolarKkValue(kkDictionary, solarOrientation);
+
+                if (kkValue !== null) {
+                    const installedCapacityKwp = installedCapacityMW * 1000;
+                    const annualEnergyKwh = installedCapacityKwp * kkValue * SOLAR_SHADING_FACTOR;
+                    grossAnnualMWh = annualEnergyKwh / 1000;
+                } else {
+                    const fallbackCapacityFactor = getResourceAdjustedCapacityFactor(technology, latitude);
+                    grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * fallbackCapacityFactor;
+                }
+            } else {
+                const capacityFactor = getResourceAdjustedCapacityFactor(technology, latitude);
+                grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
+            }
         }
 
         const availableAnnualMWh = grossAnnualMWh * ENERGY_ASSUMPTIONS.availabilityFactor;

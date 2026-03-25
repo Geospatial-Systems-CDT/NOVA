@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { Box, Typography, styled } from '@mui/material';
+import { Box, FormControl, InputLabel, MenuItem, Select, Typography, styled } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import StatCircle from './StatCircle';
 import type { Substation } from '../map-substations-list/SubstationsList';
 import { useMapStore } from '../../stores/useMapStore';
-import { estimateAssetStats, type EstimatedAssetStats } from '../../utils/energyEstimation';
+import { estimateAssetStats, getTechnologyFromVariant, type EstimatedAssetStats } from '../../utils/energyEstimation';
 import { fetchAssetEstimation } from '../../services/assetEstimationApi';
 
 const GridConnectFooterContainer = styled(Box)(({ theme }) => ({
@@ -124,9 +124,53 @@ const toPowerDisplay = (valueMW: number, maxMW: number): DisplayStat => {
 export default function GridConnectFooterPanel({ selectedSubstation }: GridConnectFooterPanelProps) {
     const markerPosition = useMapStore((s) => s.markerPosition);
     const markerVariant = useMapStore((s) => s.markerVariant);
+    const solarOrientation = useMapStore((s) => s.solarOrientation);
+    const setSolarOrientation = useMapStore((s) => s.setSolarOrientation);
     const lng = markerPosition && markerPosition.longitude ? markerPosition.longitude : -3.744;
     const lat = markerPosition && markerPosition.latitude ? markerPosition.latitude : 57.148;
     const [stats, setStats] = useState<EstimatedAssetStats | null>(null);
+    const [solarOrientationOptions, setSolarOrientationOptions] = useState<string[]>([
+        'south',
+        'south_west',
+        'south_east',
+        'west',
+        'east',
+        'north_west',
+        'north_east',
+        'north',
+    ]);
+
+    const isSolarSelection = getTechnologyFromVariant(markerVariant) === 'solar';
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadOrientationOptions = async () => {
+            try {
+                const response = await fetch('/api/ui/solar-orientations', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'cors',
+                    credentials: 'include',
+                });
+
+                if (!response.ok) return;
+
+                const payload = (await response.json()) as { orientations?: string[] };
+                if (!cancelled && Array.isArray(payload.orientations) && payload.orientations.length > 0) {
+                    setSolarOrientationOptions(payload.orientations);
+                }
+            } catch {
+                // Keep defaults when endpoint is unavailable.
+            }
+        };
+
+        void loadOrientationOptions();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -138,6 +182,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                     selectedSubstation,
                     latitude: lat,
                     longitude: lng,
+                    solarOrientation,
                 });
 
                 if (!cancelled) {
@@ -150,6 +195,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                     selectedSubstation,
                     latitude: lat,
                     longitude: lng,
+                    solarOrientation,
                 });
 
                 if (!cancelled) {
@@ -163,7 +209,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
         return () => {
             cancelled = true;
         };
-    }, [markerVariant, selectedSubstation, lat, lng]);
+    }, [markerVariant, selectedSubstation, lat, lng, solarOrientation]);
 
     const computedStats = useMemo(
         () =>
@@ -173,8 +219,9 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                 selectedSubstation,
                 latitude: lat,
                 longitude: lng,
+                solarOrientation,
             }),
-        [stats, markerVariant, selectedSubstation, lat, lng]
+        [stats, markerVariant, selectedSubstation, lat, lng, solarOrientation]
     );
 
     const outputEnergyDisplay = toEnergyDisplay(computedStats.outputMWh, computedStats.maxOutputMWh);
@@ -218,6 +265,23 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                 <Typography variant="caption" color="text.secondary">
                     Estimated using shared assumptions and location context.
                 </Typography>
+                {isSolarSelection && (
+                    <FormControl size="small" sx={{ mt: 1, minWidth: 210 }}>
+                        <InputLabel id="solar-orientation-select-label">Panel orientation</InputLabel>
+                        <Select
+                            labelId="solar-orientation-select-label"
+                            value={solarOrientation}
+                            label="Panel orientation"
+                            onChange={(event) => setSolarOrientation(String(event.target.value))}
+                        >
+                            {solarOrientationOptions.map((option) => (
+                                <MenuItem key={option} value={option}>
+                                    {option.replace(/_/g, ' ')}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                )}
             </MainStatSection>
 
             <StatGrid>

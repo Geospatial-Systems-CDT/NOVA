@@ -45,6 +45,7 @@ export class DataProviderUtils {
     private readonly fuelPovertyLayerDataFilePath: string;
     private readonly ancientWoodlandsLayerDataFilePath: string;
     private readonly agriculturalLandClassificationDataFilePath: string;
+    private readonly solarKkDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
     private readonly cache = new Map<string, unknown>();
 
@@ -77,6 +78,7 @@ export class DataProviderUtils {
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
         this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
+        this.solarKkDataFilePath = path.join(__dirname, '../data/solar-kk.json');
     }
 
     /**
@@ -322,6 +324,14 @@ export class DataProviderUtils {
     }
     public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.agriculturalLandClassificationDataFilePath);
+    }
+
+    public getSolarKkData(): { cardinal: Record<string, number>; degrees: Record<string, number> } {
+        return this.readCachedJsonFile<{ cardinal: Record<string, number>; degrees: Record<string, number> }>(this.solarKkDataFilePath);
+    }
+
+    public getSolarOrientationOptions(): string[] {
+        return Object.keys(this.getSolarKkData().cardinal);
     }
 }
 

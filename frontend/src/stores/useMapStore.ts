@@ -38,6 +38,8 @@ export interface MapState {
 
     markerVariant: Variation | null;
     setMarkerVariant: (variant: Variation | null) => void;
+    solarOrientation: string;
+    setSolarOrientation: (orientation: string) => void;
     markerStatus: MarkerStatus;
     setMarkerStatus: (status: MarkerStatus) => void;
 
@@ -97,6 +99,8 @@ export const useMapStore = create<MapState>((set, get) => ({
     setMarkerBearing: (bearing) => set({ markerBearing: bearing }),
     markerVariant: null,
     setMarkerVariant: (variant) => set({ markerVariant: variant }),
+    solarOrientation: 'south',
+    setSolarOrientation: (orientation) => set({ solarOrientation: orientation }),
     markerStatus: MarkerStatus.Draft,
     setMarkerStatus: (status) => set({ markerStatus: status }),
 
