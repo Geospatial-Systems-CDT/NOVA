@@ -81,6 +81,8 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const setCachedHeatmap = useMapStore((s) => s.setCachedHeatmap);
     const [tempLayerSettings, setTempLayerSettings] = useState<Record<string, Record<string, AttributeValue>>>({});
     const setCachedReport = useMapStore((s) => s.setCachedReport);
+    const setReportJobId = useMapStore((s) => s.setReportJobId);
+    const setReportLoading = useMapStore((s) => s.setReportLoading);
 
     const fetchLayers = async () => {
         try {
@@ -297,11 +299,15 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                 throw new Error('Failed to submit analysis request');
             }
 
-            const { heatmap, report } = await response.json();
-            console.log('[REPORT]', report);
+            const { heatmap, jobId } = await response.json();
 
             setCachedHeatmap(heatmap);
-            setCachedReport(report);
+            // Clear any previously cached report and signal that a new one is loading.
+            setCachedReport(null);
+            if (jobId) {
+                setReportJobId(jobId);
+                setReportLoading(true);
+            }
             MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, heatmap);
             setLayersPanelOpen(false);
         } catch (err) {

@@ -204,10 +204,18 @@ describe('ReportService', () => {
                 getBuiltupAreasLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getAreasOfNaturalBeautyLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getAgriculturalLandClassificationData: () => makeMultiPolygonFC({ ALC_GRADE: 'Grade 3' }),
+                readGridSupplyPointData: () => ({
+                    type: 'FeatureCollection' as const,
+                    features: [{
+                        type: 'Feature' as const,
+                        properties: { Locality: 'Newport', 'Operating Area': '', 'Owner Name': 'SSEN' },
+                        geometry: { type: 'Point' as const, coordinates: [-1.5, 51.5] },
+                    }],
+                }),
             } as unknown as DataProviderUtils;
         }
 
-        it('returns a layerValue entry for each active layer plus ALC grade', () => {
+        it('returns a layerValue entry for each active layer plus ALC grade and nearest substation', () => {
             const serviceWithData = new ReportService(makeMockDataProviderUtils());
             const activeLayers = [
                 { id: 'windSpeed', analyze: true, attributes: [] },
@@ -216,8 +224,14 @@ describe('ReportService', () => {
 
             const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, activeLayers);
 
-            expect(regions[0].layerValues).toHaveLength(3);
-            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual(['agriculturalLandClassification', 'windSpeed', 'solarPotential']);
+            expect(regions[0].layerValues).toHaveLength(5);
+            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual([
+                'agriculturalLandClassification',
+                'nearestSubstationName',
+                'nearestSubstationDistance',
+                'windSpeed',
+                'solarPotential',
+            ]);
         });
 
         it('returns the correct wind speed value when the centroid falls within a grid cell', () => {
@@ -242,14 +256,29 @@ describe('ReportService', () => {
             expect(sssiEntry?.unit).toBe('km');
         });
 
-        it('returns only the ALC grade when activeDataLayers is empty', () => {
+        it('returns the nearest substation name and distance when the dataset is populated', () => {
+            const serviceWithData = new ReportService(makeMockDataProviderUtils());
+
+            const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, []);
+            const nameEntry = regions[0].layerValues.find((v) => v.layerId === 'nearestSubstationName');
+            const distEntry = regions[0].layerValues.find((v) => v.layerId === 'nearestSubstationDistance');
+
+            expect(nameEntry?.value).toBe('Newport-SSEN');
+            expect(distEntry?.unit).toBe('km');
+            expect(typeof distEntry?.value).toBe('number');
+        });
+
+        it('returns only ALC grade and substation entries when activeDataLayers is empty', () => {
             const serviceWithData = new ReportService(makeMockDataProviderUtils());
 
             const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, []);
 
-            expect(regions[0].layerValues).toHaveLength(1);
-            expect(regions[0].layerValues[0].layerId).toBe('agriculturalLandClassification');
-            expect(regions[0].layerValues[0].value).toBe('Grade 3');
+            expect(regions[0].layerValues).toHaveLength(3);
+            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual([
+                'agriculturalLandClassification',
+                'nearestSubstationName',
+                'nearestSubstationDistance',
+            ]);
         });
     });
 });
