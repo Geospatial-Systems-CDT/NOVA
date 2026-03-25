@@ -22,6 +22,14 @@ This is a React + Vite application featuring a full-screen 3D map powered by Map
     VITE_MAPTILER_API_KEY=your_maptiler_access_token
     ```
 
+Optional map startup overrides (UK centroid and initial zoom):
+
+```
+VITE_INITIAL_MAP_LONGITUDE=-1.611
+VITE_INITIAL_MAP_LATITUDE=54.5
+VITE_INITIAL_MAP_ZOOM=5.6
+```
+
 ## Getting a Maptiler Access Token
 
 To use this application, you need a Maptiler access token:

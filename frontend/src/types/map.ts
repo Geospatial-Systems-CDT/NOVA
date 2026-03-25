@@ -3,6 +3,17 @@
 
 export const MAPTILER_TOKEN = import.meta.env.VITE_MAPTILER_API_KEY;
 
+const readNumberEnv = (value: string | undefined, fallback: number): number => {
+    if (!value) return fallback;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+// Map startup view can be overridden from .env.local for temporary tuning.
+export const INITIAL_MAP_LONGITUDE = readNumberEnv(import.meta.env.VITE_INITIAL_MAP_LONGITUDE, -1.611);
+export const INITIAL_MAP_LATITUDE = readNumberEnv(import.meta.env.VITE_INITIAL_MAP_LATITUDE, 54.5);
+export const INITIAL_MAP_ZOOM = readNumberEnv(import.meta.env.VITE_INITIAL_MAP_ZOOM, 5.6);
+
 export type MapStyle = 'basic' | 'osm' | 'hybrid' | 'bright' | 'satellite';
 
 export const MAP_STYLES: Record<MapStyle, string> = {

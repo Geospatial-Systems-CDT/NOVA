@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import * as mapStore from '../../stores/useMapStore';
+import type { Scenario } from '../../types/scenario';
 import { MapVisualHelper } from '../../utils/MapVisualHelper';
 import LayerControlPanel from './LayerControlPanel';
 
@@ -66,10 +67,14 @@ describe('LayerControlPanel', () => {
     let fetchSpy: MockInstance;
     let mockLayersPanelOpen = true;
     let mockSetLayersPanelOpen: ReturnType<typeof vi.fn>;
+    let selectedScenario: Scenario | null = null;
+    let scenarioIsCustom = false;
 
     beforeEach(() => {
         vi.clearAllMocks();
         mockLayersPanelOpen = true;
+        selectedScenario = null;
+        scenarioIsCustom = false;
         mockSetLayersPanelOpen = vi.fn((open: boolean) => {
             mockLayersPanelOpen = open;
         });
@@ -81,6 +86,17 @@ describe('LayerControlPanel', () => {
                 setLayersPanelOpen: mockSetLayersPanelOpen,
                 setCachedHeatmap: vi.fn(),
                 setCachedReport: vi.fn(),
+                setReportJobId: vi.fn(),
+                setReportLoading: vi.fn(),
+                selectedScenario,
+                scenarioIsCustom,
+                setScenarioIsCustom: vi.fn((value: boolean) => {
+                    scenarioIsCustom = value;
+                }),
+                creatingScenario: false,
+                setCreatingScenario: vi.fn(),
+                setSelectedScenario: vi.fn(),
+                bumpUserScenariosVersion: vi.fn(),
             } as unknown as mapStore.MapState)
         );
 
@@ -90,6 +106,17 @@ describe('LayerControlPanel', () => {
             setLayersPanelOpen: mockSetLayersPanelOpen,
             setCachedHeatmap: vi.fn(),
             setCachedReport: vi.fn(),
+            setReportJobId: vi.fn(),
+            setReportLoading: vi.fn(),
+            selectedScenario,
+            scenarioIsCustom,
+            setScenarioIsCustom: vi.fn((value: boolean) => {
+                scenarioIsCustom = value;
+            }),
+            creatingScenario: false,
+            setCreatingScenario: vi.fn(),
+            setSelectedScenario: vi.fn(),
+            bumpUserScenariosVersion: vi.fn(),
         });
 
         fetchSpy = vi.spyOn(global, 'fetch' as any).mockImplementation((...args: unknown[]) => {
@@ -234,5 +261,37 @@ describe('LayerControlPanel', () => {
         const input = await screen.findByLabelText('Distance from layer');
         expect(input).toBeInTheDocument();
         expect((input as HTMLInputElement).value).toBe('2');
+    });
+
+    it('prefills checked layers and values from selected scenario', async () => {
+        selectedScenario = {
+            id: 'test-scenario',
+            name: 'Test Scenario',
+            layers: [
+                {
+                    layerId: 'aonb',
+                    attributes: [
+                        {
+                            id: 'distance',
+                            value: 5,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        render(<LayerControlPanel mapRef={mockMapRef} drawRef={mockDrawRef} resetLayers={mockResetLayers} setResetLayers={mockSetResetLayers} />);
+
+        const aonbCheckbox = await screen.findByLabelText('Areas of outstanding natural beauty');
+        const windCheckbox = await screen.findByLabelText('Wind speed');
+
+        expect((aonbCheckbox as HTMLInputElement).checked).toBe(true);
+        expect((windCheckbox as HTMLInputElement).checked).toBe(false);
+
+        const targetBtn = screen.getAllByRole('button').find((btn) => btn.parentElement?.textContent?.includes('Areas of outstanding natural beauty'));
+        await userEvent.click(targetBtn!);
+
+        const input = await screen.findByLabelText('Distance from layer');
+        expect((input as HTMLInputElement).value).toBe('5');
     });
 });
