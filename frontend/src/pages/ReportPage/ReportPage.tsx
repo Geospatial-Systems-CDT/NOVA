@@ -53,11 +53,9 @@ const ReportPage = () => {
 
                     <Slide>
                         <section className="report-slide table-only" data-auto-animate>
-                            <h2>Layer Values Overview</h2>
-                            <p className="subtitle">Assumptions and layer values applicable to all regions.</p>
+                            <h2>Analysis Constraints</h2>
                             {assumptions.length > 0 && (
                                 <>
-                                    <h4>Analysis Assumptions</h4>
                                     <div className="layer-table">
                                         <table>
                                             <thead>
@@ -110,7 +108,7 @@ const ReportPage = () => {
                         <Slide>
                             <section className="report-slide">
                                 <h3>No Regions Available</h3>
-                                <p className="subtitle">No cached report data was found to build region slides.</p>
+                                <p className="subtitle">No regions found that match the selected constraints</p>
                             </section>
                         </Slide>
                     ) : (
