@@ -146,13 +146,21 @@ export interface ReportRegionDTO {
  *         totalRegions:
  *           type: integer
  *           description: Total number of candidate regions found across all issue-count levels (0 to maxIssues).
+ *         selectedPolygon:
+ *           oneOf:
+ *             - $ref: '#/components/schemas/GeoJSONDTO'
+ *             - nullable: true
+ *           description: The polygon selected by the user on the map, or null if no polygon has been selected.
  *       required:
  *         - regions
  *         - totalRegions
+ *         - selectedPolygon
  */
 export interface ReportDTO {
     /** Candidate regions, each with at most maxIssues distinct issue types */
     regions: ReportRegionDTO[];
     /** Total number of candidate regions found (equals regions.length since filtering is applied during generation) */
     totalRegions: number;
+    /** The polygon drawn by the user on the map, or null if none was provided */
+    selectedPolygon: Feature<Polygon> | null;
 }

@@ -31,7 +31,12 @@ export class ReportService {
      * @param maxIssues - Include regions with at most this many distinct issue types.
      * @param activeDataLayers - The data layers (with `analyze: true`) used during this analysis.
      */
-    public generateReport(analysisResult: FeatureCollection<Geometry>, maxIssues: number, activeDataLayers: DataLayerDto[] = []): ReportDTO {
+    public generateReport(
+        analysisResult: FeatureCollection<Geometry>,
+        maxIssues: number,
+        activeDataLayers: DataLayerDto[] = [],
+        selectedPolygon: Feature<Polygon> | null = null
+    ): ReportDTO {
         const _t0 = performance.now();
 
         // 1. Separate green baseline from issue features
@@ -40,7 +45,7 @@ export class ReportService {
             | undefined;
 
         if (!greenFeature) {
-            return { regions: [], totalRegions: 0 };
+            return { regions: [], totalRegions: 0, selectedPolygon };
         }
 
         const issueFeatures = analysisResult.features.filter((f) => f.properties?.suitability !== 'green') as Feature<
@@ -102,7 +107,7 @@ export class ReportService {
         console.debug(`[generateReport] computeLayerValuesForRegion total: ${_tLayerValuesTotal.toFixed(1)}ms`);
         console.debug(`[generateReport] total: ${(performance.now() - _t0).toFixed(1)}ms`);
 
-        return { regions, totalRegions: regions.length };
+        return { regions, totalRegions: regions.length, selectedPolygon };
     }
 
     /**

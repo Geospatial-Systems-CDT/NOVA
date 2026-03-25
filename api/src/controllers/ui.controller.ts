@@ -392,7 +392,8 @@ export class UIController {
                 setImmediate(() => {
                     try {
                         const _tReport = performance.now();
-                        const report = this.reportService.generateReport(heatmap, maxIssues, activeDataLayers);
+                        const selectedPolygon = analysisRequest.location.features[0] ?? null;
+                        const report = this.reportService.generateReport(heatmap, maxIssues, activeDataLayers, selectedPolygon);
                         console.debug(`[analyseLocation] generateReport (async): ${(performance.now() - _tReport).toFixed(1)}ms`);
                         reportJobStore.complete(capturedJobId, report);
                     } catch (err) {
