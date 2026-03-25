@@ -1,4 +1,5 @@
-import { CssBaseline, ThemeProvider } from '@mui/material';
+import { Button, CssBaseline, ThemeProvider } from '@mui/material';
+import PrintIcon from '@mui/icons-material/Print';
 import theme from '../../theme';
 import './ReportPage.css';
 import { Deck, Slide } from '@revealjs/react';
@@ -29,6 +30,25 @@ const ReportPage = () => {
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
+            {!isPrintView && (
+                <Button
+                    variant="contained"
+                    startIcon={<PrintIcon />}
+                    onClick={() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('print-pdf', '');
+                        window.open(url.toString(), '_blank');
+                    }}
+                    sx={{
+                        position: 'fixed',
+                        top: 16,
+                        right: 16,
+                        zIndex: 9999,
+                    }}
+                >
+                    Printable Format
+                </Button>
+            )}
             <div className={isPrintView ? undefined : 'report-page'}>
                 <Deck>
                     <Slide>

@@ -227,6 +227,16 @@ body {
     }
 }
 
+@media print {
+    .report-slide .report-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+    }
+
+    .report-slide .image-wrap {
+        min-height: unset;
+    }
+}
+
 .reveal .slides section[data-state='title-page'] {
     background-color: #001e3f;
     color: #fff;
