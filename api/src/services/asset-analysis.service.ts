@@ -454,6 +454,56 @@ export class AssetAnalysisService {
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(ancientWoodlandsLayerData, location, 'darkRed', 'Ancient woodland')
                 );
+            } else if (dataLayer.id === 'scheduledAncientMonuments750mBuffer') {
+                const scheduledAncientMonumentsLayerData = this.dataProviderUtils.getScheduledAncientMonuments750mBufferLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        scheduledAncientMonumentsLayerData,
+                        location,
+                        'darkRed',
+                        'Scheduled Ancient Monuments-750m Buffer'
+                    )
+                );
+            } else if (dataLayer.id === 'specialProtectionAreas2kmBuffer') {
+                const specialProtectionAreasLayerData = this.dataProviderUtils.getSpecialProtectionAreas2kmBufferLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        specialProtectionAreasLayerData,
+                        location,
+                        'darkRed',
+                        'Special Protection Areas (2km buffer)'
+                    )
+                );
+            } else if (dataLayer.id === 'ramsarWetlands') {
+                const ramsarWetlandsLayerData = this.dataProviderUtils.getRamsarWetlandsLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(ramsarWetlandsLayerData, location, 'darkRed', 'Ramsar Wetland')
+                );
+            } else if (dataLayer.id === 'coastalErosionProjection') {
+                const coastalErosionProjectionLayerData = this.dataProviderUtils.getCoastalErosionProjectionLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        coastalErosionProjectionLayerData,
+                        location,
+                        'darkRed',
+                        'Coastal Erosion'
+                    )
+                );
+            } else if (dataLayer.id === 'dissolvedRiverFloodRisk') {
+                const dissolvedRiverFloodRiskLayerData = this.dataProviderUtils.getDissolvedRiverFloodRiskLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        dissolvedRiverFloodRiskLayerData,
+                        location,
+                        'darkRed',
+                        'Flood risk within 200m of river'
+                    )
+                );
             } else if (dataLayer.id === 'fuelPoverty') {
                 const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
                 const povertyPercentages = fuelPovertyLayerData.features

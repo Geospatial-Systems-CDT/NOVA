@@ -47,6 +47,26 @@
                     "id": "ancientWoodlands",
                     "name": "Ancient woodland",
                     "attributes": []
+                },
+                {
+                    "id": "scheduledAncientMonuments750mBuffer",
+                    "name": "Scheduled Ancient Monuments-750m Buffer",
+                    "attributes": []
+                },
+                {
+                    "id": "specialProtectionAreas2kmBuffer",
+                    "name": "Special Protection Areas (2km buffer)",
+                    "attributes": []
+                },
+                {
+                    "id": "ramsarWetlands",
+                    "name": "Ramsar Wetlands",
+                    "attributes": []
+                },
+                {
+                    "id": "coastalErosionProjection",
+                    "name": "Coastal Erosion",
+                    "attributes": []
                 }
             ]
         },
@@ -69,6 +89,16 @@
                 {
                     "id": "fuelPoverty",
                     "name": "Fuel poverty",
+                    "attributes": []
+                }
+            ]
+        },
+        {
+            "name": "Flood risk",
+            "items": [
+                {
+                    "id": "dissolvedRiverFloodRisk",
+                    "name": "Dissolved River-200m Buffer (Flood Risk)",
                     "attributes": []
                 }
             ]
