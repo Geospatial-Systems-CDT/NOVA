@@ -84,6 +84,16 @@
             ]
         },
         {
+            "name": "Flood risk",
+            "items": [
+                {
+                    "id": "dissolvedRiverFloodRisk",
+                    "name": "Dissolved River-200m Buffer (Flood Risk)",
+                    "attributes": []
+                }
+            ]
+        },
+        {
             "name": "Rural constraints",
             "items": [
                 {

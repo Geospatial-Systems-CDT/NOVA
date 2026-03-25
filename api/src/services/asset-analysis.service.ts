@@ -471,6 +471,17 @@ export class AssetAnalysisService {
                         'Coastal Erosion'
                     )
                 );
+            } else if (dataLayer.id === 'dissolvedRiverFloodRisk') {
+                const dissolvedRiverFloodRiskLayerData = this.dataProviderUtils.getDissolvedRiverFloodRiskLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        dissolvedRiverFloodRiskLayerData,
+                        location,
+                        'darkRed',
+                        'Flood risk within 200m of river'
+                    )
+                );
             } else if (dataLayer.id === 'fuelPoverty') {
                 const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
                 const povertyPercentages = fuelPovertyLayerData.features
