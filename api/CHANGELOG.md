@@ -96,12 +96,14 @@ Additional updates (terrain suitability):
     - `Slopes_WGS84.geojson`
 - Added `Terrain` category to layer metadata (`layers.json`) with:
     - `Slope` layer and configurable `maxSlope` threshold (default: 30 degrees)
+    - `Slope (Wind)` layer (`slopeWind`) and configurable `maxSlope` threshold (default: 10 degrees)
     - `Aspect` layer (categorical classes)
 - Extended `DataProviderUtils` with terrain loaders:
     - `getAspectLayerData()`
     - `getSlopesLayerData()`
 - Implemented terrain suitability logic in `AssetAnalysisService`:
     - Slope rule: red when slope exceeds configured `maxSlope`
+    - Wind slope rule: red when slope exceeds configured wind threshold (default: 10 degrees)
     - Aspect rule for solar suitability:
         - amber for East/West classes (3, 7)
         - red for North/North-East/North-West classes (1, 2, 8)
