@@ -8,8 +8,8 @@ import { ReportDTO, ReportIssueDTO, ReportRegionDTO, ReportRegionLayerValueDTO }
 import { DataLayerDto } from '../models/data-layer.model';
 import { DataProviderUtils } from '../utils/data-provider.utils';
 
-/** Minimum area in m² below which a region is discarded as a geometric sliver */
-const MIN_AREA_M2 = 1000;
+/** Minimum area in m² below which a region is discarded as a geometric sliver (0.01 km²) */
+const MIN_AREA_M2 = 10000;
 
 interface IssueUnion {
     description: string;
