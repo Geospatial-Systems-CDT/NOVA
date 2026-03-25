@@ -465,6 +465,17 @@ export class AssetAnalysisService {
                         'Scheduled Ancient Monuments-750m Buffer'
                     )
                 );
+            } else if (dataLayer.id === 'specialProtectionAreas2kmBuffer') {
+                const specialProtectionAreasLayerData = this.dataProviderUtils.getSpecialProtectionAreas2kmBufferLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        specialProtectionAreasLayerData,
+                        location,
+                        'darkRed',
+                        'Special Protection Areas (2km buffer)'
+                    )
+                );
             } else if (dataLayer.id === 'ramsarWetlands') {
                 const ramsarWetlandsLayerData = this.dataProviderUtils.getRamsarWetlandsLayerData();
 

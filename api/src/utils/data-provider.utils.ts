@@ -48,6 +48,7 @@ export class DataProviderUtils {
     private readonly fuelPovertyLayerDataFilePath: string;
     private readonly ancientWoodlandsLayerDataFilePath: string;
     private readonly scheduledAncientMonuments750mBufferLayerDataFilePath: string;
+    private readonly specialProtectionAreas2kmBufferLayerDataFilePath: string;
     private readonly ramsarWetlandsLayerDataFilePath: string;
     private readonly coastalErosionProjectionLayerDataFilePath: string;
     private readonly dissolvedRiverFloodRiskLayerDataFilePath: string;
@@ -87,6 +88,7 @@ export class DataProviderUtils {
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
         this.scheduledAncientMonuments750mBufferLayerDataFilePath = path.join(__dirname, '../data/Scheduled_Ancient_Monuments_IoW.geojson');
+        this.specialProtectionAreas2kmBufferLayerDataFilePath = path.join(__dirname, '../data/Special_protection_areas.geojson');
         this.ramsarWetlandsLayerDataFilePath = path.join(__dirname, '../data/ramsar_wetlands.geojson');
         this.coastalErosionProjectionLayerDataFilePath = path.join(__dirname, '../data/coastal_erosion_projection.geojson');
         this.dissolvedRiverFloodRiskLayerDataFilePath = path.join(__dirname, '../data/dissolved_river_200m_buffer.geojson');
@@ -349,6 +351,12 @@ export class DataProviderUtils {
 
     public getScheduledAncientMonuments750mBufferLayerData(): FeatureCollection<MultiPolygon | Polygon> {
         const fileContent = fs.readFileSync(this.scheduledAncientMonuments750mBufferLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getSpecialProtectionAreas2kmBufferLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.specialProtectionAreas2kmBufferLayerDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }

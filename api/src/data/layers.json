@@ -54,6 +54,11 @@
                     "attributes": []
                 },
                 {
+                    "id": "specialProtectionAreas2kmBuffer",
+                    "name": "Special Protection Areas (2km buffer)",
+                    "attributes": []
+                },
+                {
                     "id": "ramsarWetlands",
                     "name": "Ramsar Wetlands",
                     "attributes": []
