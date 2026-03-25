@@ -172,6 +172,12 @@ body {
     letter-spacing: 0.06em;
 }
 
+.report-slide .issue-pill.darkRed {
+    background: rgb(102, 0, 8);
+    color: #ff9ba4;
+    border: 1px solid rgba(168, 49, 57, 0.55);
+}
+
 .report-slide .issue-pill.red {
     background: rgba(219, 52, 66);
     color: #ffccd0;
