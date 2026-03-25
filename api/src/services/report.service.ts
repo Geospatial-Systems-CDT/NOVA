@@ -30,7 +30,7 @@ export class ReportService {
      * @param analysisResult - The FeatureCollection returned by AssetAnalysisService.analyzeLocation.
      * @param maxIssues - Include regions with at most this many distinct issue types.
      * @param dataLayers - All data layers submitted in the analysis request (both analyzed and non-analyzed).
-     *                     Used to derive `assumptions` (all layers) and `layerValues` (analyze=true layers).
+     *                     Used to derive `assumptions` and `layerValues` for analyze=true layers only.
      * @param selectedPolygon - The polygon drawn by the user, or null.
      */
     public generateReport(
@@ -40,7 +40,7 @@ export class ReportService {
         selectedPolygon: Feature<Polygon> | null = null
     ): ReportDTO {
         const activeDataLayers = dataLayers.filter((l) => l.analyze);
-        const assumptions = this.buildAssumptions(dataLayers);
+        const assumptions = this.buildAssumptions(activeDataLayers);
         const _t0 = performance.now();
 
         // 1. Separate green baseline from issue features
