@@ -1,13 +1,29 @@
+:root {
+    --heading1-size: 1.3em;
+    --heading2-size: 1.1em;
+    --heading3-size: 1em;
+    --heading4-size: 0.8em;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 2rem;
 }
 
-h1,
-h2,
-h3 {
-    color: #1976d2;
-    font-size: 2px;
+.reveal .slides h1 {
+    font-size: var(--heading1-size);
+}
+
+.reveal .slides h2 {
+    font-size: var(--heading2-size);
+}
+
+.reveal .slides h3 {
+    font-size: var(--heading3-size);
+}
+
+.reveal .slides h4 {
+    font-size: var(--heading4-size);
 }
 .area {
     font-size: 1.2rem;
@@ -95,7 +111,7 @@ h3 {
 .report-slide .image-caption {
     margin-top: 8px;
     color: #000000;
-    font-size: 0.48em;
+    font-size: 0.3em;
 }
 
 .report-slide .stats {
@@ -122,7 +138,7 @@ h3 {
 
 .report-slide .stat-value {
     font-size: 0.74em;
-    font-weight: 600;
+    font-weight: 400;
 }
 
 /* Override just the Area number styling */
