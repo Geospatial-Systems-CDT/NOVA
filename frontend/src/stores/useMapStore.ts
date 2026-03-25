@@ -40,6 +40,10 @@ export interface MapState {
 
     markerVariant: Variation | null;
     setMarkerVariant: (variant: Variation | null) => void;
+    solarOrientation: string;
+    setSolarOrientation: (orientation: string) => void;
+    assetCount: number;
+    setAssetCount: (count: number) => void;
     markerStatus: MarkerStatus;
     setMarkerStatus: (status: MarkerStatus) => void;
 
@@ -114,6 +118,10 @@ export const useMapStore = create<MapState>((set, get) => ({
     setMarkerBearing: (bearing) => set({ markerBearing: bearing }),
     markerVariant: null,
     setMarkerVariant: (variant) => set({ markerVariant: variant }),
+    solarOrientation: 'south',
+    setSolarOrientation: (orientation) => set({ solarOrientation: orientation }),
+    assetCount: 1,
+    setAssetCount: (count) => set({ assetCount: Math.max(1, Math.floor(count)) }),
     markerStatus: MarkerStatus.Draft,
     setMarkerStatus: (status) => set({ markerStatus: status }),
 
@@ -160,6 +168,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     layersPanelOpen: true,
     setLayersPanelOpen: (open) => set({ layersPanelOpen: open }),
 
+    clearMarkerValues: () => set({ markerBearing: null, markerVariant: null, markerPosition: null, assetCount: 1 }),
     selectedScenario: null,
     setSelectedScenario: (scenario) => set({ selectedScenario: scenario, scenarioIsCustom: false }),
 
@@ -175,7 +184,6 @@ export const useMapStore = create<MapState>((set, get) => ({
     userScenariosVersion: 0,
     bumpUserScenariosVersion: () => set((state) => ({ userScenariosVersion: state.userScenariosVersion + 1 })),
 
-    clearMarkerValues: () => set({ markerBearing: null, markerVariant: null, markerPosition: null }),
 
     handleMapClick: (e: MapLayerMouseEvent) => {
         if (get().placing) {

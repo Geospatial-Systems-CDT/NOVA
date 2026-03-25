@@ -53,6 +53,7 @@ export class DataProviderUtils {
     private readonly coastalErosionProjectionLayerDataFilePath: string;
     private readonly dissolvedRiverFloodRiskLayerDataFilePath: string;
     private readonly agriculturalLandClassificationDataFilePath: string;
+    private readonly solarKkDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
     private readonly cache = new Map<string, unknown>();
 
@@ -93,6 +94,7 @@ export class DataProviderUtils {
         this.coastalErosionProjectionLayerDataFilePath = path.join(__dirname, '../data/coastal_erosion_projection.geojson');
         this.dissolvedRiverFloodRiskLayerDataFilePath = path.join(__dirname, '../data/dissolved_river_200m_buffer.geojson');
         this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
+        this.solarKkDataFilePath = path.join(__dirname, '../data/solar-kk.json');
     }
 
     /**
@@ -375,6 +377,14 @@ export class DataProviderUtils {
 
     public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.agriculturalLandClassificationDataFilePath);
+    }
+
+    public getSolarKkData(): { cardinal: Record<string, number>; degrees: Record<string, number> } {
+        return this.readCachedJsonFile<{ cardinal: Record<string, number>; degrees: Record<string, number> }>(this.solarKkDataFilePath);
+    }
+
+    public getSolarOrientationOptions(): string[] {
+        return Object.keys(this.getSolarKkData().cardinal);
     }
 }
 
