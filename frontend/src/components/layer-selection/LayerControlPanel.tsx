@@ -486,9 +486,9 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                                 <Button variant="contained" onClick={handleApply} sx={{ px: 4 }}>
                                     APPLY
                                 </Button>
-                                <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
+                                {/* <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
                                     Generate Report
-                                </Button>
+                                </Button> */}
                             </Box>
                         </>
                     )}
