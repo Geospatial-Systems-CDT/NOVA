@@ -49,6 +49,11 @@
                     "attributes": []
                 },
                 {
+                    "id": "scheduledAncientMonuments750mBuffer",
+                    "name": "Scheduled Ancient Monuments-750m Buffer",
+                    "attributes": []
+                },
+                {
                     "id": "ramsarWetlands",
                     "name": "Ramsar Wetlands",
                     "attributes": []

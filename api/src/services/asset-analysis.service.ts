@@ -454,6 +454,17 @@ export class AssetAnalysisService {
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(ancientWoodlandsLayerData, location, 'darkRed', 'Ancient woodland')
                 );
+            } else if (dataLayer.id === 'scheduledAncientMonuments750mBuffer') {
+                const scheduledAncientMonumentsLayerData = this.dataProviderUtils.getScheduledAncientMonuments750mBufferLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        scheduledAncientMonumentsLayerData,
+                        location,
+                        'darkRed',
+                        'Scheduled Ancient Monuments-750m Buffer'
+                    )
+                );
             } else if (dataLayer.id === 'ramsarWetlands') {
                 const ramsarWetlandsLayerData = this.dataProviderUtils.getRamsarWetlandsLayerData();
 

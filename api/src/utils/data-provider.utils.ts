@@ -47,6 +47,7 @@ export class DataProviderUtils {
     private readonly iowPalLayerDataFilePath: string;
     private readonly fuelPovertyLayerDataFilePath: string;
     private readonly ancientWoodlandsLayerDataFilePath: string;
+    private readonly scheduledAncientMonuments750mBufferLayerDataFilePath: string;
     private readonly ramsarWetlandsLayerDataFilePath: string;
     private readonly coastalErosionProjectionLayerDataFilePath: string;
     private readonly dissolvedRiverFloodRiskLayerDataFilePath: string;
@@ -85,6 +86,7 @@ export class DataProviderUtils {
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
         this.fuelPovertyLayerDataFilePath = path.join(__dirname, '../data/Fuel_Poverty_WGS84.geojson');
         this.ancientWoodlandsLayerDataFilePath = path.join(__dirname, '../data/AncientWoodlands_IOW.geojson');
+        this.scheduledAncientMonuments750mBufferLayerDataFilePath = path.join(__dirname, '../data/Scheduled_Ancient_Monuments_IoW.geojson');
         this.ramsarWetlandsLayerDataFilePath = path.join(__dirname, '../data/ramsar_wetlands.geojson');
         this.coastalErosionProjectionLayerDataFilePath = path.join(__dirname, '../data/coastal_erosion_projection.geojson');
         this.dissolvedRiverFloodRiskLayerDataFilePath = path.join(__dirname, '../data/dissolved_river_200m_buffer.geojson');
@@ -341,6 +343,12 @@ export class DataProviderUtils {
 
     public getAncientWoodlandsLayerData(): FeatureCollection<MultiPolygon | Polygon> {
         const fileContent = fs.readFileSync(this.ancientWoodlandsLayerDataFilePath, 'utf8');
+
+        return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
+    }
+
+    public getScheduledAncientMonuments750mBufferLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        const fileContent = fs.readFileSync(this.scheduledAncientMonuments750mBufferLayerDataFilePath, 'utf8');
 
         return JSON.parse(fileContent) as FeatureCollection<MultiPolygon | Polygon>;
     }
