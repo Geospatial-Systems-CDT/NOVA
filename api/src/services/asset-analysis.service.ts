@@ -460,6 +460,17 @@ export class AssetAnalysisService {
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(ramsarWetlandsLayerData, location, 'darkRed', 'Ramsar Wetland')
                 );
+            } else if (dataLayer.id === 'coastalErosionProjection') {
+                const coastalErosionProjectionLayerData = this.dataProviderUtils.getCoastalErosionProjectionLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(
+                        coastalErosionProjectionLayerData,
+                        location,
+                        'darkRed',
+                        'Coastal Erosion'
+                    )
+                );
             } else if (dataLayer.id === 'fuelPoverty') {
                 const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
                 const povertyPercentages = fuelPovertyLayerData.features

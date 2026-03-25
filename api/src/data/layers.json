@@ -52,6 +52,11 @@
                     "id": "ramsarWetlands",
                     "name": "Ramsar Wetlands",
                     "attributes": []
+                },
+                {
+                    "id": "coastalErosionProjection",
+                    "name": "Coastal Erosion",
+                    "attributes": []
                 }
             ]
         },
