@@ -7,6 +7,7 @@ import { AssetEstimationRequestDto } from '../models/asset-estimation-request.mo
 import { AssetEstimationResponseDto, AssetTechnologyDto } from '../models/asset-estimation-response.model';
 
 const HOURS_PER_YEAR = 8760;
+const HOURS_PER_SEASON = HOURS_PER_YEAR / 4;
 
 const ENERGY_ASSUMPTIONS = {
     availabilityFactor: 0.97,
@@ -23,6 +24,12 @@ const ENERGY_ASSUMPTIONS = {
     },
     assumedSubstationHeadroomMW: 60,
     assumedLocalDemandMW: 8,
+    defaultWindParameters: {
+        powerCoefficient: 0.45,
+        airDensityKgPerM3: 1.225,
+        cutInSpeedMs: 3,
+        cutOutSpeedMs: 25,
+    },
 } as const;
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
@@ -58,6 +65,24 @@ const parseDistanceKm = (distanceText: unknown): number => {
     const parsed = parseFirstNumber(distanceText);
     if (parsed === null) return 0;
     return Math.max(parsed, 0);
+};
+
+const getSpecificationValue = (
+    variant: AssetEstimationRequestDto['variant'],
+    matches: (name: string) => boolean
+): string | null => {
+    if (!variant) return null;
+
+    const spec = variant.specification.find((item) => matches(item.name.toLowerCase()));
+    return spec?.value ?? null;
+};
+
+const getSpecificationNumber = (
+    variant: AssetEstimationRequestDto['variant'],
+    matches: (name: string) => boolean
+): number | null => {
+    const value = getSpecificationValue(variant, matches);
+    return parseFirstNumber(value);
 };
 
 const getTechnologyFromVariant = (variant: AssetEstimationRequestDto['variant']): AssetTechnologyDto => {
@@ -138,32 +163,70 @@ const getCapacityFactorFromSolarPotential = (solarPotentialKwhPerKwp: number | n
     return clamp(value / HOURS_PER_YEAR, 0.08, 0.25);
 };
 
-const getAnnualWindspeedMs = (properties: Record<string, unknown> | undefined): number | null => {
-    if (!properties) return null;
-
-    const seasonalKeys = ['ws_spring1', 'ws_summer1', 'ws_autumn1', 'ws_winter1'] as const;
-    const seasonalValues = seasonalKeys
-        .map((key) => Number(properties[key]))
-        .filter((value) => Number.isFinite(value) && value > 0);
-
-    if (seasonalValues.length === seasonalKeys.length) {
-        const avg = seasonalValues.reduce((sum, current) => sum + current, 0) / seasonalValues.length;
-        return Number.isFinite(avg) ? avg : null;
-    }
-
-    const fallback = Number(properties.ws_spring1);
-    return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
+type SeasonalWindspeed = {
+    spring: number;
+    summer: number;
+    autumn: number;
+    winter: number;
 };
 
-const getCapacityFactorFromWindspeed = (windspeedMs: number | null): number | null => {
-    if (!Number.isFinite(windspeedMs)) return null;
+const getSeasonalWindspeed = (properties: Record<string, unknown> | undefined): SeasonalWindspeed | null => {
+    if (!properties) return null;
 
-    const value = Number(windspeedMs);
-    if (value <= 0) return null;
+    const spring = Number(properties.ws_spring1);
+    const summer = Number(properties.ws_summer1);
+    const autumn = Number(properties.ws_autumn1);
+    const winter = Number(properties.ws_winter1);
 
-    // Approximate CF curve for utility-scale onshore wind in planning-stage screening.
-    const rawCapacityFactor = 0.02 + 0.0065 * value ** 2;
-    return clamp(rawCapacityFactor, 0.15, 0.6);
+    const values = [spring, summer, autumn, winter];
+    if (!values.every((value) => Number.isFinite(value) && value > 0)) {
+        return null;
+    }
+
+    return { spring, summer, autumn, winter };
+};
+
+const getWindSeasonalEnergyMWh = (
+    seasonalWindspeed: SeasonalWindspeed,
+    ratedPowerMW: number,
+    rotorDiameterM: number,
+    powerCoefficient: number,
+    airDensityKgPerM3: number,
+    cutInSpeedMs: number,
+    cutOutSpeedMs: number
+): number => {
+    const radiusM = rotorDiameterM / 2;
+    const sweptAreaM2 = Math.PI * radiusM ** 2;
+
+    const seasonalSpeeds = [seasonalWindspeed.spring, seasonalWindspeed.summer, seasonalWindspeed.autumn, seasonalWindspeed.winter];
+
+    const seasonalPowerMW = seasonalSpeeds.map((windSpeedMs) => {
+        if (windSpeedMs < cutInSpeedMs || windSpeedMs > cutOutSpeedMs) {
+            return 0;
+        }
+
+        const powerW = 0.5 * airDensityKgPerM3 * sweptAreaM2 * windSpeedMs ** 3 * powerCoefficient;
+        const powerMW = powerW / 1_000_000;
+        return clamp(powerMW, 0, ratedPowerMW);
+    });
+
+    return seasonalPowerMW.reduce((sum, powerMW) => sum + powerMW * HOURS_PER_SEASON, 0);
+};
+
+const getWindParameters = (variant: AssetEstimationRequestDto['variant']) => {
+    const rotorDiameterM = getSpecificationNumber(variant, (name) => name.includes('rotor') && name.includes('diameter'));
+    const powerCoefficient = getSpecificationNumber(variant, (name) => name.includes('power coefficient') || name.includes('(cp)'));
+    const airDensityKgPerM3 = getSpecificationNumber(variant, (name) => name.includes('air density'));
+    const cutInSpeedMs = getSpecificationNumber(variant, (name) => name.includes('cut-in'));
+    const cutOutSpeedMs = getSpecificationNumber(variant, (name) => name.includes('cut-out'));
+
+    return {
+        rotorDiameterM,
+        powerCoefficient: powerCoefficient ?? ENERGY_ASSUMPTIONS.defaultWindParameters.powerCoefficient,
+        airDensityKgPerM3: airDensityKgPerM3 ?? ENERGY_ASSUMPTIONS.defaultWindParameters.airDensityKgPerM3,
+        cutInSpeedMs: cutInSpeedMs ?? ENERGY_ASSUMPTIONS.defaultWindParameters.cutInSpeedMs,
+        cutOutSpeedMs: cutOutSpeedMs ?? ENERGY_ASSUMPTIONS.defaultWindParameters.cutOutSpeedMs,
+    };
 };
 
 export class EnergyEstimationService {
@@ -186,7 +249,7 @@ export class EnergyEstimationService {
         return null;
     }
 
-    private getWindspeedAtLocation(longitude: number, latitude: number): number | null {
+    private getSeasonalWindspeedAtLocation(longitude: number, latitude: number): SeasonalWindspeed | null {
         const windspeedLayer = this.dataProviderUtils.getWindspeedLayerData();
         const targetPoint = turf.point([longitude, latitude]);
 
@@ -194,7 +257,7 @@ export class EnergyEstimationService {
             for (const coordinates of feature.geometry.coordinates) {
                 const polygon = turf.polygon(coordinates);
                 if (turf.booleanPointInPolygon(targetPoint, polygon)) {
-                    return getAnnualWindspeedMs(feature.properties as Record<string, unknown> | undefined);
+                    return getSeasonalWindspeed(feature.properties as Record<string, unknown> | undefined);
                 }
             }
         }
@@ -211,11 +274,31 @@ export class EnergyEstimationService {
 
         const solarPotentialKwhPerKwp = technology === 'solar' ? this.getSolarPotentialAtLocation(longitude, latitude) : null;
         const solarCapacityFactor = technology === 'solar' ? getCapacityFactorFromSolarPotential(solarPotentialKwhPerKwp) : null;
-        const windspeedMs = technology === 'wind' ? this.getWindspeedAtLocation(longitude, latitude) : null;
-        const windCapacityFactor = technology === 'wind' ? getCapacityFactorFromWindspeed(windspeedMs) : null;
-        const capacityFactor = solarCapacityFactor ?? windCapacityFactor ?? getResourceAdjustedCapacityFactor(technology, latitude);
+        let grossAnnualMWh: number;
 
-        const grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
+        if (technology === 'wind') {
+            const seasonalWindspeed = this.getSeasonalWindspeedAtLocation(longitude, latitude);
+            const windParameters = getWindParameters(variant);
+
+            if (seasonalWindspeed && windParameters.rotorDiameterM && windParameters.rotorDiameterM > 0) {
+                grossAnnualMWh = getWindSeasonalEnergyMWh(
+                    seasonalWindspeed,
+                    installedCapacityMW,
+                    windParameters.rotorDiameterM,
+                    windParameters.powerCoefficient,
+                    windParameters.airDensityKgPerM3,
+                    windParameters.cutInSpeedMs,
+                    windParameters.cutOutSpeedMs
+                );
+            } else {
+                const fallbackCapacityFactor = getResourceAdjustedCapacityFactor(technology, latitude);
+                grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * fallbackCapacityFactor;
+            }
+        } else {
+            const capacityFactor = solarCapacityFactor ?? getResourceAdjustedCapacityFactor(technology, latitude);
+            grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
+        }
+
         const availableAnnualMWh = grossAnnualMWh * ENERGY_ASSUMPTIONS.availabilityFactor;
         const netAnnualMWh = availableAnnualMWh * (1 - ENERGY_ASSUMPTIONS.lossesFactor);
 
