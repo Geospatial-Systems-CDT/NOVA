@@ -55,6 +55,12 @@ export interface MapState {
     reportLoading: boolean;
     setReportLoading: (loading: boolean) => void;
 
+    reportLayerVisible: boolean;
+    setReportLayerVisible: (visible: boolean) => void;
+
+    reportLayerData: FeatureCollection | null;
+    setReportLayerData: (featureCollection: FeatureCollection | null) => void;
+
     gridConnectViewActive: boolean;
     setGridConnectViewActive: (active: boolean) => void;
 
@@ -150,6 +156,12 @@ export const useMapStore = create<MapState>((set, get) => ({
 
     reportLoading: false,
     setReportLoading: (loading) => set({ reportLoading: loading }),
+
+    reportLayerVisible: false,
+    setReportLayerVisible: (visible) => set({ reportLayerVisible: visible }),
+
+    reportLayerData: null,
+    setReportLayerData: (featureCollection) => set({ reportLayerData: featureCollection }),
 
     cachedAssets: null,
     setCachedAssets: (assets) => set({ cachedAssets: assets }),

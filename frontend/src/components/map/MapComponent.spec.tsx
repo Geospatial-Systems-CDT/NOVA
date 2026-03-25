@@ -50,6 +50,12 @@ const createMockMapState = (overrides: Partial<MapState> = {}): MapState => ({
     reportLoading: false,
     setReportLoading: vi.fn(),
 
+    reportLayerVisible: false,
+    setReportLayerVisible: vi.fn(),
+
+    reportLayerData: null,
+    setReportLayerData: vi.fn(),
+
     gridConnectViewActive: false,
     setGridConnectViewActive: vi.fn(),
 

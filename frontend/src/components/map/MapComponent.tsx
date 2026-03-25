@@ -55,6 +55,8 @@ const MapComponent = () => {
     const showPlanningControls = polygonStatus === 'confirmed';
     const planningMode = useMapStore((s) => s.planningMode);
     const setPlanningMode = useMapStore((s) => s.setPlanningMode);
+    const reportLayerVisible = useMapStore((s) => s.reportLayerVisible);
+    const reportLayerData = useMapStore((s) => s.reportLayerData);
     const { handleMapClick, mousePos, isInsidePolygon, suitability } = useMarkerPlacement();
     const [resetLayers, setResetLayers] = useState(false);
 
@@ -63,7 +65,13 @@ const MapComponent = () => {
         const userDrawnPolygon = drawRef.current ? MapVisualHelper.getFirstPolygon(drawRef.current) : null;
         if (mapRef.current && userDrawnPolygon && cachedHeatMap) {
             mapRef.current.getMap().once('styledata', () => {
-                MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, cachedHeatMap);
+                if (reportLayerVisible && reportLayerData) {
+                    MapVisualHelper.removeHeatmapLayer(mapRef);
+                    MapVisualHelper.addOrUpdateReportLayer(mapRef, reportLayerData);
+                } else {
+                    MapVisualHelper.removeReportLayer(mapRef);
+                    MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, cachedHeatMap);
+                }
                 MapVisualHelper.applyDimmedMaskAndPanToPolygon(mapRef.current.getMap(), userDrawnPolygon);
             });
         }
@@ -103,6 +111,21 @@ const MapComponent = () => {
             console.info(`[perf] layers panel first shown in ${(performance.now() - renderStartRef.current).toFixed(2)}ms`);
         }
     }, [planningMode, showPlanningControls]);
+
+    useEffect(() => {
+        if (!isMapInitialized) return;
+
+        if (reportLayerVisible && reportLayerData) {
+            MapVisualHelper.removeHeatmapLayer(mapRef);
+            MapVisualHelper.addOrUpdateReportLayer(mapRef, reportLayerData);
+            return;
+        }
+
+        MapVisualHelper.removeReportLayer(mapRef);
+        if (cachedHeatMap) {
+            MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, cachedHeatMap);
+        }
+    }, [cachedHeatMap, isMapInitialized, reportLayerData, reportLayerVisible]);
 
     const handleMapLoad = () => {
         setIsMapInitialized(true);

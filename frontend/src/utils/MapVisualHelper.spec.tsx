@@ -176,6 +176,26 @@ describe('MapVisualHelper', () => {
         expect(map.removeSource).toHaveBeenCalledWith('heatmap-layer');
     });
 
+    it('addOrUpdateReportLayer adds source and layer', () => {
+        const mapRef = { current: { getMap: () => map } };
+        map.getSource.mockReturnValue(undefined);
+        MapVisualHelper.addOrUpdateReportLayer(mapRef as any, {
+            type: 'FeatureCollection',
+            features: [],
+        });
+        expect(map.addSource).toHaveBeenCalledWith('report-layer', expect.any(Object));
+        expect(map.addLayer).toHaveBeenCalled();
+    });
+
+    it('removeReportLayer removes source and layer', () => {
+        const mapRef = { current: { getMap: () => map } };
+        map.getSource.mockReturnValue(true);
+        map.getLayer.mockReturnValue(true);
+        MapVisualHelper.removeReportLayer(mapRef as any);
+        expect(map.removeLayer).toHaveBeenCalledWith('report-layer');
+        expect(map.removeSource).toHaveBeenCalledWith('report-layer');
+    });
+
     it('_parseIssueFromFeature returns issue as array when present', () => {
         const feature = { properties: { issue: 'Example issue' } };
         const result = (MapVisualHelper as any)._parseIssueFromFeature(feature);
