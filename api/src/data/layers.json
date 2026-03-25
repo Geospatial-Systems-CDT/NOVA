@@ -102,12 +102,22 @@
             "items": [
                 {
                     "id": "roadBuffer",
-                    "name": "Road buffer (10 m)",
+                    "name": "Road buffer (100 m)",
+                    "attributes": []
+                },
+                {
+                    "id": "roadBufferSolar",
+                    "name": "Road buffer (Solar) 5m/7m",
                     "attributes": []
                 },
                 {
                     "id": "railBuffer",
-                    "name": "Railway buffer (10 m)",
+                    "name": "Railway buffer (100 m)",
+                    "attributes": []
+                },
+                {
+                    "id": "railBufferSolar",
+                    "name": "Railway buffer (Solar, 5 m)",
                     "attributes": []
                 }
             ]
