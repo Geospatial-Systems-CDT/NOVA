@@ -357,37 +357,6 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
     const hasSearchResults = filteredLayerEntries.some(Boolean);
 
-    if (!layersLoaded && !loadError) {
-        return null;
-    }
-
-    if (loadError) {
-        return (
-            <Box
-                sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: 'rgba(255,255,255,0.6)',
-                    zIndex: 1400,
-                }}
-            >
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                    Failed to load layers. Please try again.
-                </Typography>
-                <Button variant="contained" onClick={fetchLayers}>
-                    Retry
-                </Button>
-            </Box>
-        );
-    }
-
     const isVisible = polygonStatus === 'confirmed';
     if (!isVisible) return null;
     const handleGenerateReport = () => {
@@ -452,6 +421,25 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                         <Typography variant="subtitle1">Layers</Typography>
                     </Box>
 
+                    {!layersLoaded && !loadError && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                            <CircularProgress size={32} />
+                        </Box>
+                    )}
+
+                    {loadError && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
+                            <Typography variant="body2" sx={{ mb: 2 }}>
+                                Failed to load layers. Please try again.
+                            </Typography>
+                            <Button variant="contained" onClick={fetchLayers}>
+                                Retry
+                            </Button>
+                        </Box>
+                    )}
+
+                    {layersLoaded && !loadError && (
+                    <>
                     <Box className="layer-panel-search">
                         <TextField
                             fullWidth
@@ -501,6 +489,9 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                             Generate Report
                         </Button>
                     </Box>
+                    </>
+                    )}
+
                 </Paper>
             )}
 

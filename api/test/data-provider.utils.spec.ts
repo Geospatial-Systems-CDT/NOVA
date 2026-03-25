@@ -536,7 +536,7 @@ describe('DataProviderUtils', () => {
             expect(result).toEqual(mockBuiltupAreas1KmLayerData);
         });
     });
-
+    
     describe('getAspectLayerData', () => {
         it('should read and parse the aspect layer data from file', () => {
             (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockAspectLayerData));

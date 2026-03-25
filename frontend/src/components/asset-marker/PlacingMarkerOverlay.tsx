@@ -6,6 +6,8 @@ import windTurbineIcon from '../../assets/pending_turbine.svg';
 import BlockIcon from '@mui/icons-material/Block';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useMapStore } from '../../stores/useMapStore';
+import { isSolarAssetSelected } from './assetIconResolver';
 
 interface PlacingMarkerOverlayProps {
     mousePos: { x: number; y: number } | null;
@@ -14,7 +16,14 @@ interface PlacingMarkerOverlayProps {
 }
 
 const PlacingMarkerOverlay: React.FC<PlacingMarkerOverlayProps> = ({ mousePos, isInsidePolygon, suitability }) => {
+    const markerVariant = useMapStore((s) => s.markerVariant);
+    const cachedAssets = useMapStore((s) => s.cachedAssets);
+
     if (!mousePos) return null;
+
+    const isSolar = isSolarAssetSelected(markerVariant, cachedAssets);
+    const markerIcon = isSolar ? markerVariant?.icon || '/images/solar-icon.png' : windTurbineIcon;
+    const markerAlt = isSolar ? 'Solar Panel pending' : 'Wind Turbine pending';
 
     return (
         <div
@@ -29,8 +38,8 @@ const PlacingMarkerOverlay: React.FC<PlacingMarkerOverlayProps> = ({ mousePos, i
         >
             <div style={{ position: 'relative' }}>
                 <img
-                    src={windTurbineIcon}
-                    alt="Wind Turbine pending"
+                    src={markerIcon}
+                    alt={markerAlt}
                     style={{
                         width: '60px',
                         height: '60px',

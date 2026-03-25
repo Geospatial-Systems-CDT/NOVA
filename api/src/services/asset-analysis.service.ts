@@ -209,6 +209,17 @@ export class AssetAnalysisService {
                         `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`
                     )
                 );
+            } else if (dataLayer.id === 'roadBuffer') {
+                const roadBufferLayerData = this.dataProviderUtils.getRoadBufferLayerData();
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(roadBufferLayerData, location, 'red', 'Too close to road - <= 10m')
+                );
+            } else if (dataLayer.id === 'railBuffer') {
+                const railBufferLayerData = this.dataProviderUtils.getRailBufferLayerData();
+
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 10m'))
             } else if (dataLayer.id === 'aspect') {
                 const aspectLayer = this.dataProviderUtils.getAspectLayerData();
                 const amberAspect = new Set([3, 7]);

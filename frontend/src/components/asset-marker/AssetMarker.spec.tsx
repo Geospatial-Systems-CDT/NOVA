@@ -153,4 +153,32 @@ describe('AssetMarker', () => {
         fireEvent.click(screen.getByLabelText('Edit'));
         expect(setPanelOpenMock).toHaveBeenCalledWith(true);
     });
+
+    it('shows a solar symbol when a solar variant is selected', () => {
+        (mapStore.useMapStore as unknown as { mockImplementation: (fn: (s: mapStore.MapState) => unknown) => void }).mockImplementation((selector) =>
+            selector({
+                setPlacing: setPlacingMock,
+                setMarkerPosition: setMarkerPositionMock,
+                markerStatus: MarkerStatus.Draft,
+                markerVariant: { name: 'Roof', icon: '/images/solar-icon.png' },
+                cachedAssets: [
+                    {
+                        id: 'solarPanel',
+                        name: 'Solar Panel',
+                        variations: [
+                            {
+                                name: 'Roof',
+                                icon: '/images/solar-icon.png',
+                                specification: [{ name: 'Power', value: '400W' }],
+                            },
+                        ],
+                    },
+                ],
+            } as unknown as mapStore.MapState)
+        );
+
+        render(<AssetMarker longitude={lng} latitude={lat} />);
+        const img = screen.getByAltText('Solar Panel') as HTMLImageElement;
+        expect(img).toHaveAttribute('src', '/images/solar-icon.png');
+    });
 });

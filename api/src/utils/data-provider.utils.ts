@@ -3,12 +3,18 @@
 
 import * as fs from 'fs';
 import Fuse, { FuseResult } from 'fuse.js';
-import { FeatureCollection, GeoJSON, MultiPolygon, Polygon } from 'geojson';
+import { FeatureCollection, GeoJSON, Geometry, MultiPolygon, Polygon } from 'geojson';
 import * as path from 'path';
+import proj4 from 'proj4';
 import { AssetsDTO } from '../models/asset.model';
 import { LayersDTO } from '../models/layers.model';
 import { LocationsDTO } from '../models/location.model';
 import { SearchOptionDTO } from '../models/search.model';
+
+proj4.defs(
+    'EPSG:27700',
+    '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs'
+);
 
 /**
  * Utility class for data providers
@@ -31,6 +37,8 @@ export class DataProviderUtils {
     private readonly builtupAreas1KmLayerDataFilePath: string;
     private readonly areasOfNaturalBeautyLayerDataFilePath: string;
     private readonly areasOfNaturalBeauty1KmLayerDataFilePath: string;
+    private readonly roadBufferLayerDataFilePath: string;
+    private readonly railBufferLayerDataFilePath: string;
     private readonly aspectLayerDataFilePath: string;
     private readonly slopesLayerDataFilePath: string;
     private readonly iowPalLayerDataFilePath: string;
@@ -61,6 +69,8 @@ export class DataProviderUtils {
         this.builtupAreas1KmLayerDataFilePath = path.join(__dirname, '../data/bua-1km.geojson');
         this.areasOfNaturalBeautyLayerDataFilePath = path.join(__dirname, '../data/areanb.geojson');
         this.areasOfNaturalBeauty1KmLayerDataFilePath = path.join(__dirname, '../data/areanb-1km.geojson');
+        this.roadBufferLayerDataFilePath = path.join(__dirname, '../data/road_10m_buffer.geojson');
+        this.railBufferLayerDataFilePath = path.join(__dirname, '../data/rail_10m_buffer.geojson');
         this.aspectLayerDataFilePath = path.join(__dirname, '../data/Aspect_WGS84.geojson');
         this.slopesLayerDataFilePath = path.join(__dirname, '../data/Slopes_WGS84.geojson');
         this.iowPalLayerDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
@@ -86,6 +96,8 @@ export class DataProviderUtils {
     public readLayersData(): LayersDTO {
         const fileContent = fs.readFileSync(this.layersDataFilePath, 'utf8');
         const layersData = JSON.parse(fileContent) as LayersDTO;
+        console.log('Layers data categories:', layersData.categories.map(c => ({ name: c.name, itemsCount: c.items.length })));
+        console.log('Weather items:', layersData.categories.find(c => c.name === 'Weather')?.items.map(i => i.name));
         return layersData;
     }
 
@@ -157,6 +169,90 @@ export class DataProviderUtils {
 
         return (this.fuse?.search(query) ?? []).slice(0, 10).map((r: FuseResult<SearchOptionDTO>) => r.item);
     }
+
+    private readGeoJsonLayerData<T extends Geometry>(filePath: string): FeatureCollection<T> {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const layerData = JSON.parse(fileContent) as FeatureCollection<T>;
+
+        return this.normalizeToWgs84(layerData);
+    }
+
+    private normalizeToWgs84<T extends Geometry>(featureCollection: FeatureCollection<T>): FeatureCollection<T> {
+        const sampleCoordinate = this.getFirstCoordinate(this.getGeometryCoordinates(featureCollection.features[0]?.geometry));
+
+        if (!sampleCoordinate || this.isWgs84Coordinate(sampleCoordinate)) {
+            return featureCollection;
+        }
+
+        return {
+            ...featureCollection,
+            features: featureCollection.features.map((feature) => ({
+                ...feature,
+                geometry: this.reprojectGeometry(feature.geometry),
+            })),
+        };
+    }
+
+    private getGeometryCoordinates(geometry: Geometry | undefined): unknown {
+        if (!geometry || geometry.type === 'GeometryCollection') {
+            return null;
+        }
+
+        return geometry.coordinates;
+    }
+
+    private getFirstCoordinate(coordinates: unknown): [number, number] | null {
+        if (!Array.isArray(coordinates) || coordinates.length === 0) {
+            return null;
+        }
+
+        if (typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+            return [coordinates[0], coordinates[1]];
+        }
+
+        return this.getFirstCoordinate(coordinates[0]);
+    }
+
+    private isWgs84Coordinate([longitude, latitude]: [number, number]): boolean {
+        return longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90;
+    }
+
+    private reprojectCoordinates(coordinates: unknown): unknown {
+        if (!Array.isArray(coordinates) || coordinates.length === 0) {
+            return coordinates;
+        }
+
+        if (typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+            const [longitude, latitude] = proj4('EPSG:27700', 'EPSG:4326', [coordinates[0], coordinates[1]]);
+            return [longitude, latitude, ...coordinates.slice(2)];
+        }
+
+        return coordinates.map((coordinate) => this.reprojectCoordinates(coordinate));
+    }
+
+    private reprojectGeometry<T extends Geometry>(geometry: T): T {
+        if (geometry.type === 'GeometryCollection') {
+            return {
+                ...geometry,
+                geometries: geometry.geometries.map((childGeometry) => this.reprojectGeometry(childGeometry)),
+            } as T;
+        }
+
+        return {
+            ...geometry,
+            coordinates: this.reprojectCoordinates(geometry.coordinates),
+        } as T;
+    }
+
+
+    public getRoadBufferLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.roadBufferLayerDataFilePath);
+    }
+
+    public getRailBufferLayerData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.railBufferLayerDataFilePath);
+    }
+
 
     public getWindspeedLayerData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.windspeedLayerDataFilePath);

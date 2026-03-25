@@ -53,13 +53,24 @@ const AddAssetPanel = ({ onClose, onSelect }: AddAssetPanelProps) => {
         const fetchAssets = async () => {
             try {
                 const res = await fetch('/data/assets.json');
-                const data = await res.json();
+                const data: Asset[] = await res.json();
                 setAssets(data);
 
                 if (data.length > 0) {
-                    setSelectedAsset(data[0]);
-                    if (data[0].variations.length > 0) {
-                        setSelectedVariant(data[0].variations[0]);
+                    // If there's already a variant in the store, find and restore
+                    // its parent asset so the UI shows the correct type/variant.
+                    // Only fall back to defaults when nothing is selected yet.
+                    const currentVariant = useMapStore.getState().markerVariant;
+                    if (currentVariant) {
+                        const parentAsset = data.find((a) =>
+                            a.variations.some((v) => v.name === currentVariant.name)
+                        );
+                        setSelectedAsset(parentAsset ?? data[0]);
+                    } else {
+                        setSelectedAsset(data[0]);
+                        if (data[0].variations.length > 0) {
+                            setSelectedVariant(data[0].variations[0]);
+                        }
                     }
                 }
             } catch (err) {
@@ -97,7 +108,12 @@ const AddAssetPanel = ({ onClose, onSelect }: AddAssetPanelProps) => {
             </PanelContent>
             <PanelFooter>
                 <Button onClick={onClose}>CANCEL</Button>
-                <Button variant="contained" color="secondary" onClick={() => selectedVariant && onSelect(selectedVariant)} disabled={!selectedVariant}>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => selectedVariant && onSelect(selectedVariant)}
+                    disabled={!selectedVariant}
+                >
                     SELECT
                 </Button>
             </PanelFooter>
