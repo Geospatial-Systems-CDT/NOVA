@@ -76,9 +76,9 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
     const snapshotMetrics: { label: string; value: string }[] = [
         { label: 'Nearest substation', value: substationName ? formatLayerValue(substationName.value, '') : '—' },
         { label: 'Distance to substation', value: substationDist ? formatLayerValue(substationDist.value, 'km') : '—' },
-        { label: 'Within 10km fuel poverty', value: fuelPovertyWithin10km === null ? '—' : fuelPovertyWithin10km ? 'Yes' : 'No' },
-        { label: 'Wind speed', value: windSpeed ? formatLayerValue(windSpeed.value, 'm/s') : '—' },
-        { label: 'Solar potential', value: solarPotential ? formatLayerValue(solarPotential.value, 'kWh/kWp/yr') : '—' },
+        ...(fuelPovertyWithin10km !== null ? [{ label: 'Within 10km fuel poverty', value: fuelPovertyWithin10km ? 'Yes' : 'No' }] : []),
+        ...(windSpeed ? [{ label: 'Wind speed', value: formatLayerValue(windSpeed.value, 'm/s') }] : []),
+        ...(solarPotential ? [{ label: 'Solar potential', value: formatLayerValue(solarPotential.value, 'kWh/kWp/yr') }] : []),
         { label: 'Solar annual energy', value: solarAnnualMWhText },
         { label: 'Wind annual energy', value: windAnnualMWhText },
         { label: 'Solar asset count', value: solarAssetCountText },
