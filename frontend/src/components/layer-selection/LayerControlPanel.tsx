@@ -405,6 +405,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         const payload = {
             location: featureCollection,
             dataLayers,
+            maxIssues: 1,
         };
 
         setLoading(true);
