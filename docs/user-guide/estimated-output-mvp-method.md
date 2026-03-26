@@ -4,7 +4,7 @@
 
 This section describes how NOVA currently computes the Estimated output contribution values after an asset is connected to a selected substation.
 
-The current implementation utalizes calculations performed on the backend and returned to the UI. It is suitable for screening and demonstration, not for investment-grade engineering decisions.
+The current implementation uses calculations performed on the backend and returned to the UI. It is suitable for screening and demonstration, not for investment-grade engineering decisions.
 
 ## Implementation Location
 
@@ -14,6 +14,7 @@ The current implementation utalizes calculations performed on the backend and re
 - API controller wiring: api/src/controllers/ui.controller.ts and api/src/routes/ui.routes.ts
 - UI consumer of backend result: frontend/src/components/grid-connect/GridConnectFooterPanel.tsx
 - Frontend fallback utility (used only if API call fails): frontend/src/utils/energyEstimation.ts
+- Report potential logic (per report region): api/src/services/report.service.ts
 
 ## Inputs Used
 
@@ -74,7 +75,7 @@ The current implementation utalizes calculations performed on the backend and re
 Solar (primary method)
 
 - Installed capacity is converted from MW to kWp.
-- Kk is looked up from orientation (for example: south=1023, south_west=962).
+- Kk is looked up from orientation (for example: south=1023, south_west=954).
 - Annual AC energy is computed as:
 
 E_solar_kWh = kWp x Kk x SF
@@ -186,6 +187,55 @@ Interpretation:
 - Output represents the selected number of identical assets, all assumed connected to the same selected substation.
 - MWh/year is converted to MW and then normalized against assumed headroom and local demand to get percentages.
 
+## Report generation potential estimation (region-level)
+
+This section describes the additional estimation used during asynchronous report generation for candidate regions.
+
+Implementation location:
+
+- API report generation: api/src/services/report.service.ts
+- Report DTO shape: api/src/models/report.model.ts
+- Frontend report rendering: frontend/src/pages/ReportPage/components/RegionSlide/RegionSlide.tsx
+
+### Report outputs added per region
+
+Each report region includes:
+
+- `solarAnnualMWh` (annual solar potential)
+- `windAnnualMWh` (annual wind potential)
+- `solarMaxAssets` (theoretical max number of solar assets)
+- `windMaxAssets` (theoretical max number of wind assets)
+
+### Eligibility rules
+
+- Potential values are computed only for regions with 1 issue or less.
+- For regions with more than 1 issue, potential fields are returned as null.
+- If the only issue is a solar slope suitability issue, only wind potential is computed.
+- If the only issue is a wind slope suitability issue, only solar potential is computed.
+
+### Solar potential in report
+
+- Per-asset solar capacity is derived from the Farm solar variation specification when available (with safe fallback).
+- Annual solar energy per asset uses the same orientation-based Kk method with south orientation and SF = 1.0.
+- Max solar assets use a simple area-density rule:
+
+solarMaxAssets = floor((area_km2 x solarDensity_MW_per_km2) / solarAssetCapacity_MW)
+
+### Wind potential in report
+
+- Wind turbine model uses the best available wind variation currently loaded from asset data.
+- Annual wind energy per turbine uses the same seasonal physics approach where data is available, with fallback to capacity factor when needed.
+- Max wind assets use a spacing-based siting approximation (more realistic than simple MW/km2):
+  - Typical spacing: 7D downwind x 4D crosswind (D = rotor diameter)
+  - Minimum one-turbine fit check uses a conservative circular footprint threshold
+  - Counts are integer-floor based on region area and spacing cell area
+
+### Interpretation notes
+
+- Region-level report potential is a screening estimate, not a detailed layout design.
+- The spacing method does not account for exact polygon shape constraints, setbacks, micro-siting, wake optimization by wind rose, or access/constructability constraints.
+- Solar and wind potentials are assessed independently per eligible region.
+
 ## Known Limitations
 
 1. No hourly weather time series or plant-specific performance model
@@ -196,4 +246,5 @@ Interpretation:
 6. Solar uses orientation-based annual Kk values; it does not yet model hourly irradiance, temperature, or tilt as dynamic time-series inputs
 7. Wind uses seasonal-average wind speeds and simplified physical assumptions; it does not include hub-height correction or full manufacturer power-curve interpolation
 8. Multi-asset mode assumes all assets connect to one selected substation with shared connection context
+9. Report-region max asset counts are screening approximations based on area-density (solar) and spacing heuristics (wind), not a full engineering site layout
 
