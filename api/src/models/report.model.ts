@@ -71,6 +71,47 @@ export interface ReportRegionLayerValueDTO {
  * @swagger
  * components:
  *   schemas:
+ *     ReportRegionEnergyPotentialDTO:
+ *       type: object
+ *       description: Annual generation potential and theoretical maximum asset counts for a candidate region.
+ *       properties:
+ *         solarAnnualMWh:
+ *           type: number
+ *           nullable: true
+ *           description: Annual solar generation potential in MWh/year, or null when not applicable for this region.
+ *         windAnnualMWh:
+ *           type: number
+ *           nullable: true
+ *           description: Annual wind generation potential in MWh/year, or null when not applicable for this region.
+ *         solarMaxAssets:
+ *           type: integer
+ *           nullable: true
+ *           description: Theoretical maximum number of 1 MWp solar assets that could be placed, or null when not applicable.
+ *         windMaxAssets:
+ *           type: integer
+ *           nullable: true
+ *           description: Theoretical maximum number of wind turbines (best available model) that could be placed, or null when not applicable.
+ *       required:
+ *         - solarAnnualMWh
+ *         - windAnnualMWh
+ *         - solarMaxAssets
+ *         - windMaxAssets
+ */
+export interface ReportRegionEnergyPotentialDTO {
+    /** Annual solar generation potential in MWh/year, or null when not applicable */
+    solarAnnualMWh: number | null;
+    /** Annual wind generation potential in MWh/year, or null when not applicable */
+    windAnnualMWh: number | null;
+    /** Theoretical maximum number of 1 MWp solar assets, or null when not applicable */
+    solarMaxAssets: number | null;
+    /** Theoretical maximum number of wind turbines (best available model), or null when not applicable */
+    windMaxAssets: number | null;
+}
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
  *     ReportRegionDTO:
  *       type: object
  *       description: A candidate region suitable for asset placement, with spatial and issue metadata.
@@ -104,6 +145,9 @@ export interface ReportRegionLayerValueDTO {
  *           items:
  *             $ref: '#/components/schemas/ReportRegionLayerValueDTO'
  *           description: Computed values for each active data layer used during analysis.
+ *         energyPotential:
+ *           $ref: '#/components/schemas/ReportRegionEnergyPotentialDTO'
+ *           description: Annual generation potential and theoretical max asset counts for this region.
  *       required:
  *         - id
  *         - polygon
@@ -112,6 +156,7 @@ export interface ReportRegionLayerValueDTO {
  *         - issueCount
  *         - issues
  *         - layerValues
+ *         - energyPotential
  */
 export interface ReportRegionDTO {
     /** Stable identifier for this region within the report, e.g. "region-1" */
@@ -128,6 +173,8 @@ export interface ReportRegionDTO {
     issues: ReportIssueDTO[];
     /** Computed values for each active data layer used during analysis */
     layerValues: ReportRegionLayerValueDTO[];
+    /** Annual generation potential and theoretical max asset counts for this region */
+    energyPotential: ReportRegionEnergyPotentialDTO;
 }
 
 /**

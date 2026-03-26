@@ -13,6 +13,12 @@ export interface ReportLayerFeatureProperties {
     suitability: ReportLayerSuitability;
     issues: ReportIssueDTO[];
     layerValues: ReportRegionLayerValueDTO[];
+    energyPotential: {
+        solarAnnualMWh: number | null;
+        windAnnualMWh: number | null;
+        solarMaxAssets: number | null;
+        windMaxAssets: number | null;
+    };
 }
 
 function getSuitabilityFromIssueCount(issueCount: number): ReportLayerSuitability {
@@ -33,6 +39,7 @@ export function mapReportToLayerFeatureCollection(report: ReportDTO): FeatureCol
             suitability: getSuitabilityFromIssueCount(region.issueCount),
             issues: region.issues,
             layerValues: region.layerValues,
+            energyPotential: region.energyPotential,
         },
     }));
 
