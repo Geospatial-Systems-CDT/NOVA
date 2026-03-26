@@ -64,7 +64,7 @@
         "image": "https://via.placeholder.com/300/D9C635/FFFFFF?text=Farm",
         "specification": [
           { "name": "Model", "value": "F-500" },
-          { "name": "Wattage", "value": "5 kW" }
+          { "name": "Wattage", "value": "1000 kW" }
         ]
       }
     ]
