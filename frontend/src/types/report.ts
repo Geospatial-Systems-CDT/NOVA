@@ -15,6 +15,13 @@ export interface ReportRegionLayerValueDTO {
     unit: string;
 }
 
+export interface ReportRegionEnergyPotentialDTO {
+    solarAnnualMWh: number | null;
+    windAnnualMWh: number | null;
+    solarMaxAssets: number | null;
+    windMaxAssets: number | null;
+}
+
 export interface ReportRegionDTO {
     id: string;
     polygon: Feature<Polygon>;
@@ -23,6 +30,7 @@ export interface ReportRegionDTO {
     issueCount: number;
     issues: ReportIssueDTO[];
     layerValues: ReportRegionLayerValueDTO[];
+    energyPotential: ReportRegionEnergyPotentialDTO;
 }
 
 export interface ReportAssumptionDTO {
