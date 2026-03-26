@@ -469,9 +469,10 @@ describe('ReportService', () => {
             } as unknown as DataProviderUtils;
         }
 
-        it('returns a layerValue entry for each active layer plus ALC grade and nearest substation', () => {
+        it('returns a layerValue entry for each active layer including ALC when specified', () => {
             const serviceWithData = new ReportService(makeMockDataProviderUtils());
             const activeLayers = [
+                { id: 'agriculturalLandClassification', analyze: true, attributes: [] },
                 { id: 'windSpeed', analyze: true, attributes: [] },
                 { id: 'solarPotential', analyze: true, attributes: [] },
             ];
@@ -480,9 +481,9 @@ describe('ReportService', () => {
 
             expect(regions[0].layerValues).toHaveLength(5);
             expect(regions[0].layerValues.map((v) => v.layerId)).toEqual([
-                'agriculturalLandClassification',
                 'nearestSubstationName',
                 'nearestSubstationDistance',
+                'agriculturalLandClassification',
                 'windSpeed',
                 'solarPotential',
             ]);
@@ -522,17 +523,13 @@ describe('ReportService', () => {
             expect(typeof distEntry?.value).toBe('number');
         });
 
-        it('returns only ALC grade and substation entries when activeDataLayers is empty', () => {
+        it('returns only substation entries when activeDataLayers is empty', () => {
             const serviceWithData = new ReportService(makeMockDataProviderUtils());
 
             const { regions } = serviceWithData.generateReport(makeResult(greenPolygon), 0, []);
 
-            expect(regions[0].layerValues).toHaveLength(3);
-            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual([
-                'agriculturalLandClassification',
-                'nearestSubstationName',
-                'nearestSubstationDistance',
-            ]);
+            expect(regions[0].layerValues).toHaveLength(2);
+            expect(regions[0].layerValues.map((v) => v.layerId)).toEqual(['nearestSubstationName', 'nearestSubstationDistance']);
         });
     });
 });

@@ -166,6 +166,24 @@ describe('LayerControlPanel', () => {
         expect((checkbox as HTMLInputElement).checked).toBe(false);
     });
 
+    it('toggles all layers in a category using section action', async () => {
+        render(<LayerControlPanel mapRef={mockMapRef} drawRef={mockDrawRef} resetLayers={mockResetLayers} setResetLayers={mockSetResetLayers} />);
+
+        const weatherCheckbox = await screen.findByLabelText('Wind speed');
+        expect((weatherCheckbox as HTMLInputElement).checked).toBe(true);
+
+        const categoryToggle = screen.getByRole('button', { name: /toggle Weather layers/i });
+        expect(categoryToggle).toHaveTextContent('Uncheck all');
+
+        await userEvent.click(categoryToggle);
+        expect((weatherCheckbox as HTMLInputElement).checked).toBe(false);
+        expect(categoryToggle).toHaveTextContent('Check all');
+
+        await userEvent.click(categoryToggle);
+        expect((weatherCheckbox as HTMLInputElement).checked).toBe(true);
+        expect(categoryToggle).toHaveTextContent('Uncheck all');
+    });
+
     it('filters layers by search input', async () => {
         render(<LayerControlPanel mapRef={mockMapRef} drawRef={mockDrawRef} resetLayers={mockResetLayers} setResetLayers={mockSetResetLayers} />);
         const searchInput = await screen.findByPlaceholderText('Search for layers');

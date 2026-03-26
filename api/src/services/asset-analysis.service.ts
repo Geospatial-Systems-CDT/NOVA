@@ -253,13 +253,7 @@ export class AssetAnalysisService {
                         : `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`;
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        slopesBadLayerData,
-                        location,
-                        'red',
-                        slopeIssue,
-                        dataLayer.id
-                    )
+                    this.getMatchedPolygonsForLayer(slopesBadLayerData, location, 'red', slopeIssue, dataLayer.id)
                 );
             } else if (dataLayer.id === 'roadBuffer') {
                 const roadBufferLayerData = this.dataProviderUtils.getRoadBufferLayerData();
