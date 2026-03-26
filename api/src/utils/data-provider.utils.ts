@@ -91,7 +91,7 @@ export class DataProviderUtils {
         this.ramsarWetlandsLayerDataFilePath = path.join(__dirname, '../data/ramsar_wetlands.geojson');
         this.coastalErosionProjectionLayerDataFilePath = path.join(__dirname, '../data/coastal_erosion_projection.geojson');
         this.dissolvedRiverFloodRiskLayerDataFilePath = path.join(__dirname, '../data/dissolved_river_200m_buffer.geojson');
-        this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
+        this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/PAL_IOW_WGS84.geojson');
         this.solarKkDataFilePath = path.join(__dirname, '../data/solar-kk.json');
         this.coastlineDataFilePath = path.join(__dirname, '../data/IoW_coastline.geojson');
     }
