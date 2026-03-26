@@ -200,7 +200,7 @@
                         {
                             "id": "maxSlope",
                             "description": "Set maximum terrain slope (degrees)",
-                            "defaultValue": 30,
+                            "defaultValue": 14.275,
                             "valueType": "number",
                             "maxValue": "90"
                         }
@@ -213,7 +213,7 @@
                         {
                             "id": "maxSlope",
                             "description": "Set maximum terrain slope for wind (degrees)",
-                            "defaultValue": 10,
+                            "defaultValue": 5.71,
                             "valueType": "number",
                             "maxValue": "90"
                         }

@@ -190,7 +190,7 @@ export class AssetAnalysisService {
                     this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
                 );
             } else if (dataLayer.id === 'slope' || dataLayer.id === 'slopeWind') {
-                const defaultMaxSlope = dataLayer.id === 'slopeWind' ? 10 : 30;
+                const defaultMaxSlope = dataLayer.id === 'slopeWind' ? 5.71 : 14.275;
                 const maxSlope =
                     dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value || defaultMaxSlope;
                 const slopesLayer = this.dataProviderUtils.getSlopesLayerData();
@@ -240,8 +240,8 @@ export class AssetAnalysisService {
                 const aspectLayer = this.dataProviderUtils.getAspectLayerData();
                 const amberAspect = new Set([3, 7]);
                 const redAspect = new Set([1, 2, 8]);
-                const amberAspectIssue = 'Moderate solar terrain suitability - aspect category East/West (3 or 7)';
-                const redAspectIssue = 'Unfavourable solar terrain suitability - north-facing aspect category (North/North-East/North-West; 1, 2, 8)';
+                const amberAspectIssue = 'Moderate solar terrain suitability - east/west-facing aspect';
+                const redAspectIssue = 'Unfavourable solar terrain suitability - north-facing aspect';
 
                 const aspectAmberLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
