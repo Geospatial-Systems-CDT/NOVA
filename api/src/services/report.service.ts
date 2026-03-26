@@ -4,12 +4,85 @@
 import { Feature, FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Point, Polygon } from 'geojson';
 import * as turf from '@turf/turf';
 import { performance } from 'perf_hooks';
-import { ReportAssumptionDTO, ReportDTO, ReportIssueDTO, ReportRegionDTO, ReportRegionLayerValueDTO } from '../models/report.model';
+import {
+    ReportAssumptionDTO,
+    ReportDTO,
+    ReportIssueDTO,
+    ReportRegionDTO,
+    ReportRegionEnergyPotentialDTO,
+    ReportRegionLayerValueDTO,
+} from '../models/report.model';
 import { DataLayerDto } from '../models/data-layer.model';
 import { DataProviderUtils } from '../utils/data-provider.utils';
 
 /** Minimum area in m² below which a region is discarded as a geometric sliver (0.01 km²) */
 const MIN_AREA_M2 = 10000;
+const HOURS_PER_YEAR = 8760;
+const HOURS_PER_SEASON = HOURS_PER_YEAR / 4;
+const SOLAR_SHADING_FACTOR = 1.0;
+const SOLAR_ORIENTATION_SOUTH = 'south';
+const SOLAR_DENSITY_MW_PER_KM2 = 40;
+const DEFAULT_SOLAR_KK = 1023;
+const DEFAULT_SOLAR_ASSET_CAPACITY_MW = 1;
+const DEFAULT_WIND_CAPACITY_FACTOR = 0.34;
+const WIND_SPACING_DOWNWIND_DIAMETERS = 7;
+const WIND_SPACING_CROSSWIND_DIAMETERS = 4;
+const WIND_SINGLE_TURBINE_MIN_RADIUS_M = 300;
+
+const DEFAULT_WIND_MODEL = {
+    capacityMW: 4.3,
+    rotorDiameterM: 120,
+    powerCoefficient: 0.45,
+    airDensityKgPerM3: 1.225,
+    cutInSpeedMs: 3,
+    cutOutSpeedMs: 25,
+};
+
+type SeasonalWindspeed = {
+    spring: number;
+    summer: number;
+    autumn: number;
+    winter: number;
+};
+
+type WindModel = {
+    capacityMW: number;
+    rotorDiameterM: number;
+    powerCoefficient: number;
+    airDensityKgPerM3: number;
+    cutInSpeedMs: number;
+    cutOutSpeedMs: number;
+};
+
+const roundTo = (value: number, decimals: number): number => {
+    const p = 10 ** decimals;
+    return Math.round(value * p) / p;
+};
+
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const parseFirstNumber = (raw: unknown): number | null => {
+    if (raw === null || raw === undefined) return null;
+    const text = String(raw);
+    const match = text.match(/-?\d+(\.\d+)?/);
+    if (!match) return null;
+    const parsed = Number.parseFloat(match[0]);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parsePowerToMW = (rawValue: unknown): number | null => {
+    if (rawValue === null || rawValue === undefined) return null;
+    const text = String(rawValue);
+    const n = parseFirstNumber(text);
+    if (n === null) return null;
+
+    const normalized = text.toLowerCase();
+    if (normalized.includes('gw')) return n * 1000;
+    if (normalized.includes('mw')) return n;
+    if (normalized.includes('kw')) return n / 1000;
+    if (normalized.includes('wp') || normalized.includes(' w')) return n / 1_000_000;
+    return null;
+};
 
 interface IssueUnion {
     description: string;
@@ -111,6 +184,7 @@ export class ReportService {
                     const _tLV = performance.now();
                     const layerValues = this.computeLayerValuesForRegion(regionPolygon, activeDataLayers);
                     _tLayerValuesTotal += performance.now() - _tLV;
+                    const energyPotential = this.computeRegionEnergyPotential(regionPolygon, area / 1e6, issues);
 
                     regions.push({
                         id: `region-${regionIndex++}`,
@@ -120,6 +194,7 @@ export class ReportService {
                         issueCount: combo.length,
                         issues,
                         layerValues,
+                        energyPotential,
                     });
                 }
             }
@@ -196,6 +271,37 @@ export class ReportService {
     }
 
     /**
+     * Merge many polygon features into one geometry with a stack-safe strategy.
+     * Uses `combine` first (fast and non-recursive), then falls back to geometric
+     * union only if needed.
+     */
+    private mergeGeometryFeatures(features: Feature<Polygon | MultiPolygon, GeoJsonProperties>[]): Feature<Polygon | MultiPolygon, GeoJsonProperties> | null {
+        if (features.length === 0) return null;
+        if (features.length === 1) return features[0];
+
+        try {
+            const combined = turf.combine(turf.featureCollection(features));
+            const merged = combined.features[0] as Feature<Polygon | MultiPolygon, GeoJsonProperties> | undefined;
+            if (merged) {
+                return merged;
+            }
+        } catch {
+            // Fall through to topology-union fallback below.
+        }
+
+        try {
+            return this.unionAll(features);
+        } catch (error) {
+            if (error instanceof RangeError) {
+                console.warn('[generateReport] geometry merge fallback used after stack overflow in unionAll');
+                const bbox = turf.bbox(turf.featureCollection(features));
+                return turf.bboxPolygon(bbox) as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
+            }
+            throw error;
+        }
+    }
+
+    /**
      * Compute the geometry for regions that have EXACTLY the issues in `combo`
      * and none of the issues in `otherUnions`.
      *
@@ -247,9 +353,7 @@ export class ReportService {
      * but dramatically reduces the risk of polygon-clipping library stack overflows
      * on high-detail geometries (coastline, SAC/SSSI buffers, etc.).
      */
-    private simplifyFeature<T extends Polygon | MultiPolygon>(
-        feature: Feature<T, GeoJsonProperties>
-    ): Feature<T, GeoJsonProperties> {
+    private simplifyFeature<T extends Polygon | MultiPolygon>(feature: Feature<T, GeoJsonProperties>): Feature<T, GeoJsonProperties> {
         try {
             return turf.simplify(feature, { tolerance: 0.0001, highQuality: false, mutate: false }) as Feature<T, GeoJsonProperties>;
         } catch {
@@ -428,6 +532,242 @@ export class ReportService {
         }
 
         return results;
+    }
+
+    /**
+     * Compute annual energy potential and theoretical max asset counts for a region.
+     * Rules:
+     * - Only compute for regions with at most one issue.
+     * - If the only issue is a slope suitability issue for one technology,
+     *   only compute potential for the other suitable technology.
+     */
+    private computeRegionEnergyPotential(region: Feature<Polygon>, areaSqKm: number, issues: ReportIssueDTO[]): ReportRegionEnergyPotentialDTO {
+        const eligibility = this.getTechnologyEligibilityForPotential(issues);
+        if (!eligibility.includeRegion) {
+            return {
+                solarAnnualMWh: null,
+                windAnnualMWh: null,
+                solarMaxAssets: null,
+                windMaxAssets: null,
+            };
+        }
+
+        const windModel = this.getBestWindModel();
+        const solarAssetCapacityMW = this.getSolarAssetCapacityMW();
+
+        const solarMaxAssets = eligibility.solarEligible ? Math.max(0, Math.floor((areaSqKm * SOLAR_DENSITY_MW_PER_KM2) / solarAssetCapacityMW)) : null;
+        const windMaxAssets = eligibility.windEligible ? this.getWindMaxAssetsFromSpacing(areaSqKm, windModel) : null;
+
+        const solarPerAssetAnnualMWh = this.getSolarAnnualMWhPerAsset(solarAssetCapacityMW);
+        const windPerAssetAnnualMWh = this.getWindAnnualMWhPerAssetAtRegion(region, windModel);
+
+        return {
+            solarAnnualMWh: solarMaxAssets !== null ? roundTo(solarPerAssetAnnualMWh * solarMaxAssets, 3) : null,
+            windAnnualMWh: windMaxAssets !== null ? roundTo(windPerAssetAnnualMWh * windMaxAssets, 3) : null,
+            solarMaxAssets,
+            windMaxAssets,
+        };
+    }
+
+    private getTechnologyEligibilityForPotential(issues: ReportIssueDTO[]): { includeRegion: boolean; solarEligible: boolean; windEligible: boolean } {
+        if (issues.length > 1) {
+            return { includeRegion: false, solarEligible: false, windEligible: false };
+        }
+
+        if (issues.length === 0) {
+            return { includeRegion: true, solarEligible: true, windEligible: true };
+        }
+
+        const issueText = issues[0].description.toLowerCase();
+        const isSlopeSuitabilityIssue = issueText.includes('terrain suitability') && issueText.includes('steep slope');
+
+        if (!isSlopeSuitabilityIssue) {
+            return { includeRegion: true, solarEligible: true, windEligible: true };
+        }
+
+        if (issueText.includes('solar terrain suitability')) {
+            return { includeRegion: true, solarEligible: false, windEligible: true };
+        }
+
+        if (issueText.includes('wind terrain suitability')) {
+            return { includeRegion: true, solarEligible: true, windEligible: false };
+        }
+
+        return { includeRegion: true, solarEligible: true, windEligible: true };
+    }
+
+    private getSolarAnnualMWhPerAsset(solarAssetCapacityMW: number): number {
+        const kk = this.dataProviderUtils?.getSolarKkData().cardinal[SOLAR_ORIENTATION_SOUTH] ?? DEFAULT_SOLAR_KK;
+        return (solarAssetCapacityMW * 1000 * kk * SOLAR_SHADING_FACTOR) / 1000;
+    }
+
+    private getSolarAssetCapacityMW(): number {
+        if (!this.dataProviderUtils) return DEFAULT_SOLAR_ASSET_CAPACITY_MW;
+
+        const assets = this.dataProviderUtils.readAssetsData();
+        const solarAsset = assets.find((asset) => String(asset.id).toLowerCase().includes('solar'));
+        if (!solarAsset || !Array.isArray(solarAsset.variations) || solarAsset.variations.length === 0) {
+            return DEFAULT_SOLAR_ASSET_CAPACITY_MW;
+        }
+
+        const farmVariation = solarAsset.variations.find((variation) => String(variation.name).toLowerCase().includes('farm'));
+        if (farmVariation) {
+            const farmCapacity = this.getVariationPowerSpecMW(farmVariation, ['capacity', 'rated wattage', 'rated power', 'wattage']);
+            if (farmCapacity !== null && farmCapacity > 0) {
+                return farmCapacity;
+            }
+        }
+
+        let bestSolarCapacityMW: number | null = null;
+        for (const variation of solarAsset.variations) {
+            const capacity = this.getVariationPowerSpecMW(variation, ['capacity', 'rated wattage', 'rated power', 'wattage']);
+            if (capacity !== null && capacity > 0 && (bestSolarCapacityMW === null || capacity > bestSolarCapacityMW)) {
+                bestSolarCapacityMW = capacity;
+            }
+        }
+
+        return bestSolarCapacityMW ?? DEFAULT_SOLAR_ASSET_CAPACITY_MW;
+    }
+
+    private getWindAnnualMWhPerAssetAtRegion(region: Feature<Polygon>, model: WindModel): number {
+        const seasonal = this.getSeasonalWindspeedAtRegionCentroid(region);
+        if (!seasonal) {
+            return model.capacityMW * HOURS_PER_YEAR * DEFAULT_WIND_CAPACITY_FACTOR;
+        }
+
+        const radiusM = model.rotorDiameterM / 2;
+        const sweptAreaM2 = Math.PI * radiusM ** 2;
+        const seasonalSpeeds = [seasonal.spring, seasonal.summer, seasonal.autumn, seasonal.winter];
+        const seasonalPowerMW = seasonalSpeeds.map((windSpeedMs) => {
+            if (windSpeedMs < model.cutInSpeedMs || windSpeedMs > model.cutOutSpeedMs) {
+                return 0;
+            }
+            const powerW = 0.5 * model.airDensityKgPerM3 * sweptAreaM2 * windSpeedMs ** 3 * model.powerCoefficient;
+            const powerMW = powerW / 1_000_000;
+            return clamp(powerMW, 0, model.capacityMW);
+        });
+
+        return seasonalPowerMW.reduce((sum, powerMW) => sum + powerMW * HOURS_PER_SEASON, 0);
+    }
+
+    /**
+     * Estimate the theoretical maximum number of wind turbines from area using a typical
+     * spacing rule (7D x 4D) and a minimum one-turbine fit check.
+     */
+    private getWindMaxAssetsFromSpacing(areaSqKm: number, model: WindModel): number {
+        const rotorDiameterM = model.rotorDiameterM;
+        if (!Number.isFinite(rotorDiameterM) || rotorDiameterM <= 0) {
+            return 0;
+        }
+
+        const singleTurbineMinAreaSqKm = (Math.PI * WIND_SINGLE_TURBINE_MIN_RADIUS_M ** 2) / 1_000_000;
+        if (areaSqKm < singleTurbineMinAreaSqKm) {
+            return 0;
+        }
+
+        const spacingCellAreaSqKm = (WIND_SPACING_DOWNWIND_DIAMETERS * rotorDiameterM * (WIND_SPACING_CROSSWIND_DIAMETERS * rotorDiameterM)) / 1_000_000;
+        if (areaSqKm < spacingCellAreaSqKm) {
+            return 1;
+        }
+
+        return Math.max(1, Math.floor(areaSqKm / spacingCellAreaSqKm));
+    }
+
+    private getSeasonalWindspeedAtRegionCentroid(region: Feature<Polygon>): SeasonalWindspeed | null {
+        if (!this.dataProviderUtils) return null;
+
+        const centroid = turf.centroid(region) as Feature<Point>;
+        const windspeedLayer = this.dataProviderUtils.getWindspeedLayerData();
+
+        for (const feature of windspeedLayer.features) {
+            for (const coordinates of feature.geometry.coordinates) {
+                const polygon = turf.polygon(coordinates);
+                if (turf.booleanPointInPolygon(centroid, polygon)) {
+                    const spring = Number(feature.properties?.ws_spring1);
+                    const summer = Number(feature.properties?.ws_summer1);
+                    const autumn = Number(feature.properties?.ws_autumn1);
+                    const winter = Number(feature.properties?.ws_winter1);
+
+                    const values = [spring, summer, autumn, winter];
+                    if (values.every((value) => Number.isFinite(value) && value > 0)) {
+                        return { spring, summer, autumn, winter };
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private getBestWindModel(): WindModel {
+        if (!this.dataProviderUtils) {
+            return { ...DEFAULT_WIND_MODEL };
+        }
+
+        const assets = this.dataProviderUtils.readAssetsData();
+        const windAsset = assets.find((asset) => String(asset.id).toLowerCase().includes('wind'));
+        if (!windAsset || !Array.isArray(windAsset.variations) || windAsset.variations.length === 0) {
+            return { ...DEFAULT_WIND_MODEL };
+        }
+
+        let best: WindModel | null = null;
+        for (const variation of windAsset.variations) {
+            const capacityMW = this.getVariationSpecNumber(variation, ['capacity', 'rated wattage', 'rated power']) ?? DEFAULT_WIND_MODEL.capacityMW;
+            const model: WindModel = {
+                capacityMW,
+                rotorDiameterM: this.getVariationSpecNumber(variation, ['rotor diameter']) ?? DEFAULT_WIND_MODEL.rotorDiameterM,
+                powerCoefficient: this.getVariationSpecNumber(variation, ['power coefficient', '(cp)']) ?? DEFAULT_WIND_MODEL.powerCoefficient,
+                airDensityKgPerM3: this.getVariationSpecNumber(variation, ['air density']) ?? DEFAULT_WIND_MODEL.airDensityKgPerM3,
+                cutInSpeedMs: this.getVariationSpecNumber(variation, ['cut-in']) ?? DEFAULT_WIND_MODEL.cutInSpeedMs,
+                cutOutSpeedMs: this.getVariationSpecNumber(variation, ['cut-out']) ?? DEFAULT_WIND_MODEL.cutOutSpeedMs,
+            };
+
+            if (!best || model.capacityMW > best.capacityMW) {
+                best = model;
+            }
+        }
+
+        return best ?? { ...DEFAULT_WIND_MODEL };
+    }
+
+    private getVariationSpecNumber(variation: unknown, specNameHints: string[]): number | null {
+        const specs = (variation as { specification?: unknown[] })?.specification;
+        if (!Array.isArray(specs)) return null;
+
+        for (const spec of specs) {
+            const specName = String((spec as { name?: unknown; key?: unknown }).name ?? (spec as { key?: unknown }).key ?? '').toLowerCase();
+            if (!specNameHints.some((hint) => specName.includes(hint))) {
+                continue;
+            }
+
+            const rawValue = (spec as { value?: unknown }).value;
+            const parsed = parseFirstNumber(rawValue);
+            if (parsed !== null && parsed > 0) {
+                return parsed;
+            }
+        }
+
+        return null;
+    }
+
+    private getVariationPowerSpecMW(variation: unknown, specNameHints: string[]): number | null {
+        const specs = (variation as { specification?: unknown[] })?.specification;
+        if (!Array.isArray(specs)) return null;
+
+        for (const spec of specs) {
+            const specName = String((spec as { name?: unknown; key?: unknown }).name ?? (spec as { key?: unknown }).key ?? '').toLowerCase();
+            if (!specNameHints.some((hint) => specName.includes(hint))) {
+                continue;
+            }
+
+            const rawValue = (spec as { value?: unknown }).value;
+            const parsed = parsePowerToMW(rawValue);
+            if (parsed !== null && parsed > 0) {
+                return parsed;
+            }
+        }
+
+        return null;
     }
 
     /**

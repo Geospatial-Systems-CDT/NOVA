@@ -66,12 +66,23 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
     const windSpeed = getLv('windSpeed');
     const solarPotential = getLv('solarPotential');
 
+    const solarAnnualMWhText =
+        region.energyPotential.solarAnnualMWh !== null ? `${formatNumber(region.energyPotential.solarAnnualMWh, 3)} MWh/year` : 'Not applicable';
+    const windAnnualMWhText =
+        region.energyPotential.windAnnualMWh !== null ? `${formatNumber(region.energyPotential.windAnnualMWh, 3)} MWh/year` : 'Not applicable';
+    const solarAssetCountText = region.energyPotential.solarMaxAssets !== null ? String(region.energyPotential.solarMaxAssets) : 'Not applicable';
+    const windAssetCountText = region.energyPotential.windMaxAssets !== null ? String(region.energyPotential.windMaxAssets) : 'Not applicable';
+
     const snapshotMetrics: { label: string; value: string }[] = [
         { label: 'Nearest substation', value: substationName ? formatLayerValue(substationName.value, '') : '—' },
         { label: 'Distance to substation', value: substationDist ? formatLayerValue(substationDist.value, 'km') : '—' },
         { label: 'Within 10km fuel poverty', value: fuelPovertyWithin10km === null ? '—' : fuelPovertyWithin10km ? 'Yes' : 'No' },
         { label: 'Wind speed', value: windSpeed ? formatLayerValue(windSpeed.value, 'm/s') : '—' },
         { label: 'Solar potential', value: solarPotential ? formatLayerValue(solarPotential.value, 'kWh/kWp/yr') : '—' },
+        { label: 'Solar annual energy', value: solarAnnualMWhText },
+        { label: 'Wind annual energy', value: windAnnualMWhText },
+        { label: 'Solar asset count', value: solarAssetCountText },
+        { label: 'Wind asset count', value: windAssetCountText },
     ];
 
     return (

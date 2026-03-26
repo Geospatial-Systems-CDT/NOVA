@@ -723,11 +723,28 @@ export class MapVisualHelper {
             issueCount?: number;
             issues?: Array<{ description?: string; suitability?: string }>;
             layerValues?: Array<{ label?: string; value?: string | number | null; unit?: string }>;
+            energyPotential?: {
+                solarAnnualMWh?: number | null;
+                windAnnualMWh?: number | null;
+                solarMaxAssets?: number | null;
+                windMaxAssets?: number | null;
+            };
         };
 
         const issues = Array.isArray(properties.issues) ? properties.issues : [];
         const layerValues = Array.isArray(properties.layerValues) ? properties.layerValues : [];
         const issueCount = properties.issueCount ?? issues.length;
+        const energyPotential = properties.energyPotential;
+
+        const renderPotentialValue = (value: number | null | undefined, unit: string): string => {
+            if (value === null || value === undefined) return 'Not applicable';
+            return `${Number(value).toFixed(3)} ${unit}`;
+        };
+
+        const renderAssetCount = (value: number | null | undefined): string => {
+            if (value === null || value === undefined) return 'Not applicable';
+            return String(value);
+        };
 
         const issueHtml =
             issues.length > 0
@@ -753,6 +770,13 @@ export class MapVisualHelper {
                 <ul style="margin: 0 0 8px 16px; padding: 0;">${issueHtml}</ul>
                 <div style="font-weight: 600; margin-bottom: 4px;">Layer values</div>
                 <table style="width: 100%; border-collapse: collapse;">${valuesHtml}</table>
+                <div style="font-weight: 600; margin: 8px 0 4px;">Energy potential</div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding:2px 8px 2px 0;">Solar annual</td><td>${renderPotentialValue(energyPotential?.solarAnnualMWh, 'MWh/year')}</td></tr>
+                    <tr><td style="padding:2px 8px 2px 0;">Wind annual</td><td>${renderPotentialValue(energyPotential?.windAnnualMWh, 'MWh/year')}</td></tr>
+                    <tr><td style="padding:2px 8px 2px 0;">Max solar assets</td><td>${renderAssetCount(energyPotential?.solarMaxAssets)}</td></tr>
+                    <tr><td style="padding:2px 8px 2px 0;">Max wind assets</td><td>${renderAssetCount(energyPotential?.windMaxAssets)}</td></tr>
+                </table>
             </div>
         `;
 

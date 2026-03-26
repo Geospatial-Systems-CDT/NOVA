@@ -92,6 +92,17 @@ describe('ReportService', () => {
 
             expect(regions[0].layerValues).toEqual([]);
         });
+
+        it('region includes solar and wind energy potential with theoretical max asset counts', () => {
+            const { regions } = service.generateReport(makeResult(greenPolygon), 0);
+
+            expect(regions[0].energyPotential.solarMaxAssets).not.toBeNull();
+            expect(regions[0].energyPotential.windMaxAssets).not.toBeNull();
+            expect(regions[0].energyPotential.solarAnnualMWh).not.toBeNull();
+            expect(regions[0].energyPotential.windAnnualMWh).not.toBeNull();
+            expect(regions[0].energyPotential.solarAnnualMWh).toBeGreaterThan(0);
+            expect(regions[0].energyPotential.windAnnualMWh).toBeGreaterThan(0);
+        });
     });
 
     describe('generateReport — maxIssues=0 with issues present', () => {
@@ -166,6 +177,56 @@ describe('ReportService', () => {
         });
     });
 
+    describe('generateReport — energy potential eligibility rules', () => {
+        it('does not compute potential for regions with more than one issue', () => {
+            const issueA = makePolygonFeature(-2, 51, -1.5, 52, { suitability: 'red', issue: 'Issue A' });
+            const issueB = makePolygonFeature(-2, 51, -1.5, 52, { suitability: 'red', issue: 'Issue B' });
+
+            const report = service.generateReport(makeResult(greenPolygon, issueA, issueB), 2);
+            const twoIssueRegions = report.regions.filter((r) => r.issueCount > 1);
+
+            expect(twoIssueRegions.length).toBeGreaterThan(0);
+            for (const region of twoIssueRegions) {
+                expect(region.energyPotential.solarAnnualMWh).toBeNull();
+                expect(region.energyPotential.windAnnualMWh).toBeNull();
+                expect(region.energyPotential.solarMaxAssets).toBeNull();
+                expect(region.energyPotential.windMaxAssets).toBeNull();
+            }
+        });
+
+        it('for a single solar slope issue, computes wind potential only', () => {
+            const solarSlopeIssue = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Unfavourable solar terrain suitability - steep slope (> 14.275°)',
+            });
+
+            const report = service.generateReport(makeResult(greenPolygon, solarSlopeIssue), 1);
+            const singleIssueRegion = report.regions.find((r) => r.issueCount === 1);
+
+            expect(singleIssueRegion).toBeDefined();
+            expect(singleIssueRegion?.energyPotential.solarAnnualMWh).toBeNull();
+            expect(singleIssueRegion?.energyPotential.solarMaxAssets).toBeNull();
+            expect(singleIssueRegion?.energyPotential.windAnnualMWh).not.toBeNull();
+            expect(singleIssueRegion?.energyPotential.windMaxAssets).not.toBeNull();
+        });
+
+        it('for a single wind slope issue, computes solar potential only', () => {
+            const windSlopeIssue = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Unfavourable wind terrain suitability - steep slope (> 5.71°)',
+            });
+
+            const report = service.generateReport(makeResult(greenPolygon, windSlopeIssue), 1);
+            const singleIssueRegion = report.regions.find((r) => r.issueCount === 1);
+
+            expect(singleIssueRegion).toBeDefined();
+            expect(singleIssueRegion?.energyPotential.windAnnualMWh).toBeNull();
+            expect(singleIssueRegion?.energyPotential.windMaxAssets).toBeNull();
+            expect(singleIssueRegion?.energyPotential.solarAnnualMWh).not.toBeNull();
+            expect(singleIssueRegion?.energyPotential.solarMaxAssets).not.toBeNull();
+        });
+    });
+
     describe('generateReport — layerValues computed when a DataProviderUtils is supplied', () => {
         /** Build a minimal MultiPolygon FeatureCollection covering the green test polygon area */
         function makeMultiPolygonFC(properties: Record<string, unknown>) {
@@ -203,6 +264,27 @@ describe('ReportService', () => {
                 getSpecialAreasOfConservationLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getBuiltupAreasLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getAreasOfNaturalBeautyLayerData: () => ({ type: 'FeatureCollection', features: [] }),
+                getCoastlineData: () => makeMultiPolygonFC({}),
+                getSolarKkData: () => ({ cardinal: { south: 1023 }, degrees: {} }),
+                readAssetsData: () => [
+                    {
+                        id: 'windTurbine',
+                        name: 'Wind Turbine',
+                        variations: [
+                            {
+                                name: 'Best Turbine',
+                                specification: [
+                                    { name: 'Capacity (MW)', value: '4.3 MW' },
+                                    { name: 'Rotor diameter', value: '120 m' },
+                                    { name: 'Power Coefficient (Cp)', value: '0.45' },
+                                    { name: 'Air Density (kg/m3)', value: '1.225' },
+                                    { name: 'Cut-in speed', value: '3 m/s' },
+                                    { name: 'Cut-out speed', value: '25 m/s' },
+                                ],
+                            },
+                        ],
+                    },
+                ],
                 getAgriculturalLandClassificationData: () => makeMultiPolygonFC({ ALC_GRADE: 'Grade 3' }),
                 readGridSupplyPointData: () => ({
                     type: 'FeatureCollection' as const,
