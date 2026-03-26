@@ -51,11 +51,13 @@ export class MapVisualHelper {
     private static readonly maskLayerSourceId = 'mask';
     private static readonly maskLayerId = 'mask-layer';
     private static readonly heatmapLayerId = 'heatmap-layer';
+    private static readonly reportLayerId = 'report-layer';
     private static readonly threeDimensionalAssetsLayer = '3d-assets-layer';
     private static readonly substationLayerId = 'substation-layer';
     private static readonly powerLineLayerId = 'power-line-layer';
     private static readonly connectionLineLayerId = 'connection-line-layer';
     private static readonly powerLineColor = '#007AFF';
+    private static reportLayerPopup: Popup | null = null;
 
     /**
      * Applies a dimmed mask over the entire map except inside the given polygon and centers the map on that polygon.
@@ -248,6 +250,49 @@ export class MapVisualHelper {
         if (!map) return;
 
         const id = this.heatmapLayerId;
+        if (map.getLayer(id)) map.removeLayer(id);
+        if (map.getSource(id)) map.removeSource(id);
+    }
+
+    static addOrUpdateReportLayer(mapRef: React.RefObject<MapRef>, geojson: FeatureCollection) {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const id = this.reportLayerId;
+
+        if (!map.getSource(id)) {
+            map.addSource(id, { type: 'geojson', data: geojson });
+            map.addLayer({
+                id,
+                type: 'fill',
+                source: id,
+                paint: {
+                    'fill-color': ['match', ['get', 'suitability'], 'darkRed', '#620d05', 'red', '#d64333', 'amber', '#d18910', 'green', '#198754', '#666666'],
+                    'fill-opacity': 0.5,
+                    'fill-outline-color': '#1f1f1f',
+                },
+            });
+        } else {
+            const source = map.getSource(id) as GeoJSONSource;
+            source.setData(geojson);
+        }
+
+        map.off('click', id, this._handleReportLayerClick);
+        map.on('click', id, this._handleReportLayerClick);
+    }
+
+    static removeReportLayer(mapRef: React.RefObject<MapRef>) {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const id = this.reportLayerId;
+        map.off('click', id, this._handleReportLayerClick);
+
+        if (this.reportLayerPopup) {
+            this.reportLayerPopup.remove();
+            this.reportLayerPopup = null;
+        }
+
         if (map.getLayer(id)) map.removeLayer(id);
         if (map.getSource(id)) map.removeSource(id);
     }
@@ -621,6 +666,11 @@ export class MapVisualHelper {
         return Array.from(issuesByTopic.values()).map((entry) => entry.issue);
     }
 
+    private static _parseIssueFromFeature(feature: Feature): string[] {
+        const issue = feature.properties?.issue;
+        return typeof issue === 'string' && issue.length > 0 ? [issue] : [];
+    }
+
     /**
      * Shows a popup when a polygon on the heatmap is clicked, listing all issues.
      *
@@ -661,5 +711,56 @@ export class MapVisualHelper {
         `;
 
         new Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+    }
+
+    private static _handleReportLayerClick(e: FeatureEvent) {
+        const map = e.target as MapLibreMap;
+        const feature = (e.features ?? []).find((item) => (item as MapGeoJSONFeature).layer?.id === MapVisualHelper.reportLayerId);
+        if (!feature?.properties) return;
+
+        const properties = feature.properties as {
+            areaSqKm?: number;
+            issueCount?: number;
+            issues?: Array<{ description?: string; suitability?: string }>;
+            layerValues?: Array<{ label?: string; value?: string | number | null; unit?: string }>;
+        };
+
+        const issues = Array.isArray(properties.issues) ? properties.issues : [];
+        const layerValues = Array.isArray(properties.layerValues) ? properties.layerValues : [];
+        const issueCount = properties.issueCount ?? issues.length;
+
+        const issueHtml =
+            issues.length > 0
+                ? issues.map((issue) => `<li>${issue.description ?? 'Issue'}${issue.suitability ? ` (${issue.suitability})` : ''}</li>`).join('')
+                : '<li>No issues</li>';
+
+        const valuesHtml =
+            layerValues.length > 0
+                ? layerValues
+                      .map(
+                          (value) =>
+                              `<tr><td style="padding:2px 8px 2px 0;">${value.label ?? 'Value'}</td><td>${value.value ?? '-'}</td><td>${value.unit ?? ''}</td></tr>`
+                      )
+                      .join('')
+                : '<tr><td colspan="3">No layer values</td></tr>';
+
+        const html = `
+            <div style="max-width: 320px;">
+                <div style="font-weight: 600; margin-bottom: 4px;">Report region</div>
+                <div style="margin-bottom: 4px;">Area: ${(properties.areaSqKm ?? 0).toFixed(3)} km²</div>
+                <div style="margin-bottom: 8px;">Issue count: ${issueCount}</div>
+                <div style="font-weight: 600; margin-bottom: 4px;">Issues</div>
+                <ul style="margin: 0 0 8px 16px; padding: 0;">${issueHtml}</ul>
+                <div style="font-weight: 600; margin-bottom: 4px;">Layer values</div>
+                <table style="width: 100%; border-collapse: collapse;">${valuesHtml}</table>
+            </div>
+        `;
+
+        if (this.reportLayerPopup) {
+            this.reportLayerPopup.remove();
+            this.reportLayerPopup = null;
+        }
+
+        this.reportLayerPopup = new Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
     }
 }

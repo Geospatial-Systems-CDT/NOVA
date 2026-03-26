@@ -25,4 +25,6 @@ export interface AssetEstimationRequestDto {
     selectedSubstation: EstimationSubstationDto;
     latitude: number;
     longitude: number;
+    solarOrientation?: string;
+    assetCount?: number;
 }

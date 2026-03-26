@@ -5,6 +5,19 @@ import type { Variation } from '../components/search/add-asset/AddAsset';
 import type { Substation } from '../components/map-substations-list/SubstationsList';
 
 const HOURS_PER_YEAR = 8760;
+const SOLAR_SHADING_FACTOR = 1.0;
+const DEFAULT_SOLAR_ORIENTATION = 'south';
+
+const SOLAR_KK_BY_ORIENTATION: Record<string, number> = {
+    south: 1023,
+    south_west: 962,
+    south_east: 962,
+    west: 857,
+    east: 857,
+    north_west: 857,
+    north_east: 857,
+    north: 857,
+};
 
 export const ENERGY_ASSUMPTIONS = {
     availabilityFactor: 0.97,
@@ -48,8 +61,14 @@ interface EstimationInput {
     selectedSubstation: Substation;
     latitude: number;
     longitude: number;
-    solarPotentialKwhPerKwp?: number | null;
+    solarOrientation?: string;
+    assetCount?: number;
 }
+
+const sanitizeAssetCount = (assetCount: number | undefined): number => {
+    if (!Number.isFinite(assetCount)) return 1;
+    return Math.max(1, Math.floor(assetCount as number));
+};
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
@@ -114,15 +133,19 @@ export const getInstalledCapacityMW = (variant: Variation | null): number => {
     const technology = getTechnologyFromVariant(variant);
     if (!variant) return ENERGY_ASSUMPTIONS.defaultInstalledCapacityMW[technology];
 
-    const capacityLikeSpec = variant.specification.find((spec) => {
+    const capacityLikeSpecs = variant.specification.filter((spec) => {
         const key = spec.name.toLowerCase();
         return key.includes('capacity') || key.includes('rated power') || key.includes('wattage');
     });
 
-    const parsedMW = capacityLikeSpec ? parsePowerToMW(capacityLikeSpec.value) : null;
+    const parsedCandidatesMW = capacityLikeSpecs
+        .map((spec) => parsePowerToMW(spec.value))
+        .filter((value): value is number => value !== null);
 
-    // Small W/Wp entries typically represent module-level values; use scenario-scale fallback.
-    if (parsedMW !== null && parsedMW >= 0.05) {
+    // Prefer system-level capacity over module wattage by taking the largest parsed candidate.
+    const parsedMW = parsedCandidatesMW.length > 0 ? Math.max(...parsedCandidatesMW) : null;
+
+    if (parsedMW !== null && parsedMW > 0) {
         return parsedMW;
     }
 
@@ -151,23 +174,47 @@ const getResourceAdjustedCapacityFactor = (technology: AssetTechnology, latitude
     return clamp(base, 0.1, 0.4);
 };
 
-const getCapacityFactorFromSolarPotential = (solarPotentialKwhPerKwp: number | null | undefined): number | null => {
-    if (!Number.isFinite(solarPotentialKwhPerKwp)) return null;
+const normalizeOrientation = (orientation: string | undefined): string => {
+    if (!orientation) return DEFAULT_SOLAR_ORIENTATION;
 
-    const value = Number(solarPotentialKwhPerKwp);
-    if (value <= 0) return null;
-
-    return clamp(value / HOURS_PER_YEAR, 0.08, 0.25);
+    return orientation
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/-/g, '_');
 };
 
-export const estimateAssetStats = ({ variant, selectedSubstation, latitude, longitude, solarPotentialKwhPerKwp }: EstimationInput): EstimatedAssetStats => {
+const getSolarKkValue = (orientation: string | undefined): number | null => {
+    const normalizedOrientation = normalizeOrientation(orientation);
+    const kk = SOLAR_KK_BY_ORIENTATION[normalizedOrientation];
+    return Number.isFinite(kk) && kk > 0 ? kk : null;
+};
+
+export const estimateAssetStats = ({ variant, selectedSubstation, latitude, longitude, solarOrientation, assetCount }: EstimationInput): EstimatedAssetStats => {
     const technology = getTechnologyFromVariant(variant);
     const installedCapacityMW = getInstalledCapacityMW(variant);
+    const assetMultiplier = sanitizeAssetCount(assetCount);
     const connectionDistanceKm = parseDistanceKm(selectedSubstation.distanceFromTurbine);
 
-    const solarCapacityFactor = technology === 'solar' ? getCapacityFactorFromSolarPotential(solarPotentialKwhPerKwp) : null;
-    const capacityFactor = solarCapacityFactor ?? getResourceAdjustedCapacityFactor(technology, latitude);
-    const grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
+    let grossAnnualMWh: number;
+
+    if (technology === 'solar') {
+        const kkValue = getSolarKkValue(solarOrientation);
+        if (kkValue !== null) {
+            const installedCapacityKwp = installedCapacityMW * 1000;
+            const annualEnergyKwh = installedCapacityKwp * kkValue * SOLAR_SHADING_FACTOR;
+            grossAnnualMWh = annualEnergyKwh / 1000;
+        } else {
+            const fallbackCapacityFactor = getResourceAdjustedCapacityFactor(technology, latitude);
+            grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * fallbackCapacityFactor;
+        }
+    } else {
+        const capacityFactor = getResourceAdjustedCapacityFactor(technology, latitude);
+        grossAnnualMWh = installedCapacityMW * HOURS_PER_YEAR * capacityFactor;
+    }
+
+    grossAnnualMWh *= assetMultiplier;
+
     const availableAnnualMWh = grossAnnualMWh * ENERGY_ASSUMPTIONS.availabilityFactor;
     const netAnnualMWh = availableAnnualMWh * (1 - ENERGY_ASSUMPTIONS.lossesFactor);
 
@@ -189,14 +236,14 @@ export const estimateAssetStats = ({ variant, selectedSubstation, latitude, long
         location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
         connectedSubstation: selectedSubstation.name,
         connectionDistanceKm,
-        outputMWh: roundTo(deliveredMWh, 0),
-        outputMW: roundTo(outputMW, 2),
-        gridSupportMW: roundTo(gridSupportMW, 2),
+        outputMWh: roundTo(deliveredMWh, 3),
+        outputMW: roundTo(outputMW, 4),
+        gridSupportMW: roundTo(gridSupportMW, 4),
         boostPercent: roundTo(boostPercent, 1),
         localBoostPercent: roundTo(localBoostPercent, 1),
-        maxOutputMWh: Math.max(roundTo(deliveredMWh * 1.35, 0), 1000),
-        maxOutputMW: Math.max(roundTo(outputMW * 1.4, 2), 1),
-        maxGridSupportMW: Math.max(roundTo(gridSupportMW * 1.4, 2), 1),
+        maxOutputMWh: Math.max(roundTo(deliveredMWh * 1.35, 3), 1),
+        maxOutputMW: Math.max(roundTo(outputMW * 1.4, 4), 0.01),
+        maxGridSupportMW: Math.max(roundTo(gridSupportMW * 1.4, 4), 0.01),
         maxBoostPercent: 100,
         maxLocalBoostPercent: 100,
     };

@@ -48,11 +48,11 @@ No deprecated features in this release.
 ### Fixes
 
 - Improved issue hierarchy handling in map layer issue popups so only the highest-priority issue is shown per topic.
-  -Resolved duplicate/multi-level issue display where overlapping suitability levels (for example: dark red + red + amber) were shown at the same time for the same constraint.
-  -Enforced severity precedence in issue output:
-  1.darkRed
-  2.red
-  3.amber
+- Resolved duplicate/multi-level issue display where overlapping suitability levels (for example: dark red + red + amber) were shown at the same time for the same constraint.
+- Enforced severity precedence in issue output:
+  1. darkRed
+  2. red
+  3. amber
 
 ### Changes
 
@@ -60,14 +60,11 @@ Updated asset-analysis.service.ts to:
 
 - Updated popup issue aggregation logic to group related issue variants by topic (for example: “close to”, “too close to”, and “inside” for the same layer family) and retain only the most severe one.
 - Added/updated frontend unit tests covering:
-  1.Highest-priority selection per issue topic.
-  2.Suppression of lower-priority duplicate issue messages in popup content.
+  1. Highest-priority selection per issue topic.
+  2. Suppression of lower-priority duplicate issue messages in popup content.
 
 #### Changes from features/solar_data
-
-Add solar potential and windspeed resource integration to analysis and MVP output estimation.
-
-Introduce a backend-first, deterministic screening estimator across API and frontend.
+Added solar potential and windspeed resource integration to analysis and MVP output estimation, with a backend-first deterministic screening estimator across API and frontend.
 
 Backend:
 
@@ -89,8 +86,7 @@ Frontend:
 - Added helper clients: `assetEstimationApi` and `solarPotentialApi`.
 - Added unit tests for frontend energy estimation utility behavior.
 Docs:
-
-- Added and expanded the user guide method note with equations, constants, assumptions, and limitations.
+- Added and expanded the user guide methods note with equations, constants, assumptions, and limitations.
 - Documented data-source precedence (solar/wind lookup first, heuristic fallback second).
 
 Additional updates (terrain suitability):
@@ -117,17 +113,30 @@ Additional updates (terrain suitability):
     - terrain data loading in `data-provider.utils.spec.ts`
     - slope/aspect suitability behavior in `asset-analysis.service.spec.ts`
 
+Latest refinements (estimation and display):
+- Updated capacity parsing so any positive parsed asset specification value is used directly (including small solar W/kW-scale values), with fallback values used only when parsing is missing or non-positive.
+- Synced API asset specification values with UI-displayed asset values to avoid mismatch during contribution estimation checks.
+- Aligned wind asset specification schema and values between API and frontend datasets; added optional wind estimator parameters (`Power Coefficient (Cp)`, `Air Density (kg/m3)`, `Rated wind speed`) while retaining core capacity/rotor inputs.
+- Updated wind estimation to use a seasonal physics-based method with `ws_spring1`/`ws_summer1`/`ws_autumn1`/`ws_winter1` and `P = 0.5 * rho * A * v^3 * Cp`, including cut-in/cut-out handling and rated-cap clipping.
+- Migrated solar estimation from pvout-derived capacity factor to orientation-based MCS-style output using `annual kWh = kWp * Kk * SF` with `SF = 1.0`.
+- Added backend solar Kk lookup data (`solar-kk.json`) and request support for optional `solarOrientation`.
+- Added UI API route for supported orientations: `GET /api/ui/solar-orientations`.
+- Updated frontend estimation flow to pass `solarOrientation` to backend and to use the same Kk-orientation logic in fallback estimation.
+- Added multi-asset estimation support with `assetCount` (default 1) in the footer panel for both wind and solar scenarios.
+- Extended estimation request contracts (frontend API client + backend DTO) to include optional `assetCount`.
+- Updated backend and frontend fallback estimators to scale contribution outputs for multiple identical assets using a single-substation screening assumption.
+- Fixed wind multi-asset scaling so turbine count multiplies computed annual energy consistently (not only rated-cap clipping behavior).
+- Improved low-output visibility by increasing precision/scaling handling for small estimated values.
+- Updated frontend footer display to use adaptive units for small values:
+  - energy below 1 MWh is shown in kWh/year
+  - power below 1 MW is shown in kW
+- Updated methods documentation to reflect the current wind/solar estimator methodology, assumptions, fallback behavior, and multi-asset scaling.
+
 ### Notes
 
 - This change affects issue text shown in the frontend popup.
 - Geometry layer generation/order from the API was not changed in this update.
-
-### Notes
-
--Solar and wind support icon changes
-
-### Notes
-
-Added roads and rail geojson and buffer in system
+- Solar and wind support icon changes
+- Added roads and rail geojson and buffer in system
 © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.  
 Licensed under the Open Government Licence v3.0.

@@ -11,10 +11,7 @@ import { LayersDTO } from '../models/layers.model';
 import { LocationsDTO } from '../models/location.model';
 import { SearchOptionDTO } from '../models/search.model';
 
-proj4.defs(
-    'EPSG:27700',
-    '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs'
-);
+proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs');
 
 /**
  * Utility class for data providers
@@ -53,6 +50,8 @@ export class DataProviderUtils {
     private readonly coastalErosionProjectionLayerDataFilePath: string;
     private readonly dissolvedRiverFloodRiskLayerDataFilePath: string;
     private readonly agriculturalLandClassificationDataFilePath: string;
+    private readonly coastlineDataFilePath: string;
+    private readonly solarKkDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
     private readonly cache = new Map<string, unknown>();
 
@@ -93,6 +92,8 @@ export class DataProviderUtils {
         this.coastalErosionProjectionLayerDataFilePath = path.join(__dirname, '../data/coastal_erosion_projection.geojson');
         this.dissolvedRiverFloodRiskLayerDataFilePath = path.join(__dirname, '../data/dissolved_river_200m_buffer.geojson');
         this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
+        this.solarKkDataFilePath = path.join(__dirname, '../data/solar-kk.json');
+        this.coastlineDataFilePath = path.join(__dirname, '../data/IoW_coastline.geojson');
     }
 
     /**
@@ -112,8 +113,14 @@ export class DataProviderUtils {
     public readLayersData(): LayersDTO {
         const fileContent = fs.readFileSync(this.layersDataFilePath, 'utf8');
         const layersData = JSON.parse(fileContent) as LayersDTO;
-        console.log('Layers data categories:', layersData.categories.map(c => ({ name: c.name, itemsCount: c.items.length })));
-        console.log('Weather items:', layersData.categories.find(c => c.name === 'Weather')?.items.map(i => i.name));
+        console.log(
+            'Layers data categories:',
+            layersData.categories.map((c) => ({ name: c.name, itemsCount: c.items.length }))
+        );
+        console.log(
+            'Weather items:',
+            layersData.categories.find((c) => c.name === 'Weather')?.items.map((i) => i.name)
+        );
         return layersData;
     }
 
@@ -260,7 +267,6 @@ export class DataProviderUtils {
         } as T;
     }
 
-
     public getRoadBufferLayerData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.roadBufferLayerDataFilePath);
     }
@@ -280,7 +286,6 @@ export class DataProviderUtils {
     public getRoadBufferSolar5mLayerData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.roadBufferSolar5mLayerDataFilePath);
     }
-
 
     public getWindspeedLayerData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.windspeedLayerDataFilePath);
@@ -375,6 +380,22 @@ export class DataProviderUtils {
 
     public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.agriculturalLandClassificationDataFilePath);
+    }
+
+    /**
+     * Read the Isle of Wight coastline polygon (WGS84). Used to clip candidate regions
+     * so that offshore areas are excluded from suitability reports.
+     */
+    public getCoastlineData(): FeatureCollection<MultiPolygon> {
+        return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.coastlineDataFilePath);
+    }
+
+    public getSolarKkData(): { cardinal: Record<string, number>; degrees: Record<string, number> } {
+        return this.readCachedJsonFile<{ cardinal: Record<string, number>; degrees: Record<string, number> }>(this.solarKkDataFilePath);
+    }
+
+    public getSolarOrientationOptions(): string[] {
+        return Object.keys(this.getSolarKkData().cardinal);
     }
 }
 

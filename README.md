@@ -42,6 +42,7 @@ npm install
 ```
 
 ### 2. Configure environment
+
 - Frontend requires a MapTiler token:
   - Create frontend/.env.local with:
     - `VITE_MAPTILER_API_KEY=<your_maptiler_access_token>`
@@ -58,21 +59,25 @@ npm run start
 ```
 
 Access:
+
 - Frontend: http://localhost:5173
 - API base: http://localhost:3000/api
 - Swagger UI: http://localhost:3000/api/docs
 
 Notes:
+
 - CORS is preconfigured to allow the frontend origin http://localhost:5173.
 
-### 4.  Build for production
+### 4. Build for production
 
 ```sh
 npm run build
 ```
+
 This builds both workspaces (frontend and api).
 
 ## Features
+
 - Frontend
   - Full-screen 2D/3D map (MapLibre GL), layers, asset visualisation, searches, analysis tools
   - React 19 + Vite 6 toolchain, testing with Vitest and Testing Library
@@ -84,11 +89,13 @@ This builds both workspaces (frontend and api).
 ## API Documentation
 
 When the API is running in local/dev mode, Swagger UI is available at:
+
 - http://localhost:3000/api/docs
 
 In production (`NODE_ENV=production`), the Swagger route is disabled.
 
 Illustrative routes (mounted under /api):
+
 - GET /health – service health
 - GET /auth/user – current user details
 - POST /auth/logout – logout
@@ -100,6 +107,7 @@ Illustrative routes (mounted under /api):
 - POST /ui/location/analyse, POST /ui/asset/analyse – analysis endpoints
 
 ## Testing
+
 - Backend (API):
   ```sh
   cd api
@@ -114,7 +122,9 @@ Illustrative routes (mounted under /api):
   ```
 
 ## Docker
+
 Pre-build the applications, then build the images:
+
 ```sh
 # Build workspaces
 npm --workspace api run build
@@ -124,7 +134,9 @@ npm --workspace frontend run build
 docker build -f Dockerfile.backend -t nova-backend .
 docker build -f Dockerfile.frontend -t nova-frontend .
 ```
+
 Run containers locally:
+
 ```sh
 # API (listens on 3000 in the container)
 docker run -p 3000:3000 --rm nova-backend
@@ -134,7 +146,9 @@ docker run -p 8080:8080 --rm nova-frontend
 ```
 
 ## Kubernetes (manifests provided)
+
 Kustomize bases are provided under deployment/k8s for backend and frontend. Update image references (placeholders like `nova-*-image:template`) via your pipeline or overlays.
+
 - Backend deployment exposes containerPort 80 (map from service/ingress to your backend image’s port as applicable).
 - Frontend deployment exposes containerPort 8080.
 
@@ -145,6 +159,7 @@ This repository has been developed with public funding as part of the National D
 ## License
 
 This repository contains both source code and documentation, which are covered by different licenses:
+
 - **Code:** Licensed under the **[Apache License 2.0](LICENSE.md)**.
 - **Documentation:** Licensed under the **[Open Government Licence v3.0 (OGL-UK-3.0)](OGL_LICENSE.md)**.
 
@@ -169,4 +184,4 @@ For questions or support, check our Issues or contact the NDTP team on ndtp@busi
 **Maintained by the National Digital Twin Programme (NDTP).**
 
 © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
-Licensed under the Open Government Licence v3.0. 
+Licensed under the Open Government Licence v3.0.
