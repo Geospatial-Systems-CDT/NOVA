@@ -112,7 +112,8 @@ For full licensing terms, see [OGL_LICENSE.md](OGL_LICENSE.md).
 - Map store (`useMapStore.ts`) extended with report caching state and scenario/planning workflow state.
 - `App.tsx` and `main.tsx` updated to register the `/report` route.
 - updated road and rail buffers added caution buffer area for road and solar.
-added the rest of layers.
+  added the rest of layers.
+
 ## Tests
 
 - Added/updated tests for `energyEstimation`, `ScenarioPanel`, `LayerControlPanel`, `MapComponent`, report UI components, and `MapVisualHelper`.
