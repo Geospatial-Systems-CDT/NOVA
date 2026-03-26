@@ -115,10 +115,6 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#recommended-next-step-to-reach-production-grade-estimation" class="nav-link">Recommended Next Step to Reach Production-Grade Estimation</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
               </ul>
             </li>
         </ul>
@@ -128,8 +124,8 @@
 
 <h1 id="estimated-output-contribution-mvp-method-note">Estimated Output Contribution - MVP Method Note<a class="headerlink" href="#estimated-output-contribution-mvp-method-note" title="Permanent link">&para;</a></h1>
 <h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
-<p>This note describes how NOVA currently computes the Estimated output contribution values after an asset is connected to a selected substation.</p>
-<p>The current implementation is deterministic and assumption-based, with calculations performed on the backend and returned to the UI. It is suitable for screening and demonstration, not for investment-grade engineering decisions.</p>
+<p>This section describes how NOVA currently computes the Estimated output contribution values after an asset is connected to a selected substation.</p>
+<p>The current implementation utalizes calculations performed on the backend and returned to the UI. It is suitable for screening and demonstration, not for investment-grade engineering decisions.</p>
 <h2 id="implementation-location">Implementation Location<a class="headerlink" href="#implementation-location" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Core calculation logic: api/src/services/energy-estimation.service.ts</li>
@@ -267,15 +263,6 @@
 <li>Some asset specs are text-only and parsed heuristically</li>
 <li>Solar uses annual specific yield (pvout), not sub-hourly irradiance and temperature dynamics</li>
 <li>Wind uses seasonal-average speed and a simplified CF curve, not turbine-specific power curves or hub-height correction</li>
-</ol>
-<h2 id="recommended-next-step-to-reach-production-grade-estimation">Recommended Next Step to Reach Production-Grade Estimation<a class="headerlink" href="#recommended-next-step-to-reach-production-grade-estimation" title="Permanent link">&para;</a></h2>
-<p>Replace the fixed assumptions with data-driven inputs:</p>
-<ol>
-<li>Real asset engineering parameters (per variant)</li>
-<li>Location-specific resource datasets (wind/solar time series)</li>
-<li>Substation/network headroom and constraint data</li>
-<li>Explicit curtailment and losses model</li>
-<li>Validation against measured generation where available</li>
 </ol></div>
             </div>
         </div>
