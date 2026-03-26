@@ -1,4 +1,6 @@
 {
-  "amberMax": 0.33,
-  "redMax": 0.66
+    "amberMax": 0.33,
+    "redMax": 0.66,
+    "reportMaxScoreForPolygon": 1,
+    "reportMaxRegions": 20
 }

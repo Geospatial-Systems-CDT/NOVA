@@ -10,7 +10,7 @@ import { MarkerStatus } from '../components/asset-marker/AssetMarkerStatus';
 import type { Substation } from '../components/map-substations-list/SubstationsList';
 import type { Asset, Variation } from '../components/search/add-asset/AddAsset';
 import type { ReportDTO } from '../types/report';
-import type { ReportRankingMode } from '../types/reportRanking';
+import type { AnalysisMethod } from '../types/reportRanking';
 import type { Scenario } from '../types/scenario';
 import { CACHED_REPORT_STORAGE_KEY } from '../types/report';
 
@@ -66,8 +66,8 @@ export interface MapState {
     reportLayerData: FeatureCollection | null;
     setReportLayerData: (featureCollection: FeatureCollection | null) => void;
 
-    reportRankingMode: ReportRankingMode;
-    setReportRankingMode: (mode: ReportRankingMode) => void;
+    lastGeneratedAnalysisMethod: AnalysisMethod;
+    setLastGeneratedAnalysisMethod: (method: AnalysisMethod) => void;
 
     gridConnectViewActive: boolean;
     setGridConnectViewActive: (active: boolean) => void;
@@ -175,8 +175,8 @@ export const useMapStore = create<MapState>((set, get) => ({
     reportLayerData: null,
     setReportLayerData: (featureCollection) => set({ reportLayerData: featureCollection }),
 
-    reportRankingMode: 'weighted',
-    setReportRankingMode: (mode) => set({ reportRankingMode: mode }),
+    lastGeneratedAnalysisMethod: 'weighted',
+    setLastGeneratedAnalysisMethod: (method) => set({ lastGeneratedAnalysisMethod: method }),
 
     cachedAssets: null,
     setCachedAssets: (assets) => set({ cachedAssets: assets }),
@@ -202,7 +202,6 @@ export const useMapStore = create<MapState>((set, get) => ({
 
     userScenariosVersion: 0,
     bumpUserScenariosVersion: () => set((state) => ({ userScenariosVersion: state.userScenariosVersion + 1 })),
-
 
     handleMapClick: (e: MapLayerMouseEvent) => {
         if (get().placing) {

@@ -30,7 +30,9 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SearchIcon from '@mui/icons-material/Search';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { useMapStore } from '../../stores/useMapStore';
+import { DEFAULT_SUITABILITY_THRESHOLDS, loadSuitabilityThresholds } from '../../types/reportRanking';
 import type { Scenario } from '../../types/scenario';
+import type { AnalysisMethod } from '../../types/reportRanking';
 import { MapVisualHelper } from '../../utils/MapVisualHelper';
 import { createUserScenarioId, saveUserScenario } from '../../utils/scenarioStorage';
 
@@ -56,6 +58,8 @@ const LAYER_WEIGHT_ATTRIBUTE: Attribute = {
     defaultValue: 1,
     valueType: 'number',
 };
+
+const REPORT_MAX_ISSUES_CAP = 3;
 
 function withLayerWeightAttribute(attributes: Attribute[]): Attribute[] {
     if (attributes.some((attribute) => attribute.id === 'layerWeight')) return attributes;
@@ -99,6 +103,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const setCachedReport = useMapStore((s) => s.setCachedReport);
     const setReportJobId = useMapStore((s) => s.setReportJobId);
     const setReportLoading = useMapStore((s) => s.setReportLoading);
+    const setLastGeneratedAnalysisMethod = useMapStore((s) => s.setLastGeneratedAnalysisMethod);
     const selectedScenario = useMapStore((s) => s.selectedScenario);
     const scenarioIsCustom = useMapStore((s) => s.scenarioIsCustom);
     const setScenarioIsCustom = useMapStore((s) => s.setScenarioIsCustom);
@@ -108,6 +113,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const bumpUserScenariosVersion = useMapStore((s) => s.bumpUserScenariosVersion);
     const [newScenarioName, setNewScenarioName] = useState('');
     const [newScenarioDescription, setNewScenarioDescription] = useState('');
+    const [suitabilityThresholds, setSuitabilityThresholds] = useState(DEFAULT_SUITABILITY_THRESHOLDS);
 
     const buildDefaultLayerState = useCallback(
         (defaultChecked: boolean) => {
@@ -215,6 +221,18 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
     useEffect(() => {
         fetchLayers();
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+
+        loadSuitabilityThresholds().then((loaded) => {
+            if (mounted) setSuitabilityThresholds(loaded);
+        });
+
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     useEffect(() => {
@@ -370,7 +388,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         console.info(`[perf] user scenario saved in ${(performance.now() - saveStart).toFixed(2)}ms`);
     };
 
-    const handleApply = async () => {
+    const handleGenerateAnalysis = async (analysisMethod: AnalysisMethod) => {
         if (!mapRef.current || !drawRef.current) return;
 
         const userDrawnPolygon = MapVisualHelper.getFirstPolygon(drawRef.current);
@@ -399,7 +417,10 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         const payload = {
             location: featureCollection,
             dataLayers,
-            maxIssues: Math.max(dataLayers.filter((layer) => layer.analyze).length, 0),
+            maxIssues: Math.min(Math.max(dataLayers.filter((layer) => layer.analyze).length, 0), REPORT_MAX_ISSUES_CAP),
+            analysisMethod,
+            reportMaxScoreForPolygon: suitabilityThresholds.reportMaxScoreForPolygon,
+            reportMaxRegions: suitabilityThresholds.reportMaxRegions,
         };
 
         setLoading(true);
@@ -419,6 +440,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
             const { heatmap, jobId } = await response.json();
 
             setCachedHeatmap(heatmap);
+            setLastGeneratedAnalysisMethod(analysisMethod);
             // Clear any previously cached report and signal that a new one is loading.
             setCachedReport(null);
             if (jobId) {
@@ -603,12 +625,12 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
                             <Divider sx={{ my: 2, opacity: 0.3 }} />
                             <Box className="layer-panel-footer" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <Button variant="contained" onClick={handleApply} sx={{ px: 4 }}>
-                                    APPLY
+                                <Button variant="contained" onClick={() => handleGenerateAnalysis('legacy')} sx={{ px: 4 }}>
+                                    Generate Legacy Analysis
                                 </Button>
-                                {/* <Button variant="outlined" onClick={handleGenerateReport} sx={{ px: 4 }}>
-                                    Generate Report
-                                </Button> */}
+                                <Button variant="contained" onClick={() => handleGenerateAnalysis('weighted')} sx={{ px: 4 }}>
+                                    Generate Weighted Analysis
+                                </Button>
                             </Box>
                         </>
                     )}

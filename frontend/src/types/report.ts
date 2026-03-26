@@ -41,6 +41,9 @@ export interface ReportDTO {
     totalRegions: number;
     layerValues: ReportRegionLayerValueDTO[];
     assumptions: ReportAssumptionDTO[];
+    analysisMethod: 'legacy' | 'weighted';
+    reportMaxScoreForPolygonUsed: number | null;
+    reportMaxRegionsUsed?: number | null;
 }
 
 export const CACHED_REPORT_STORAGE_KEY = 'nova-cached-report';

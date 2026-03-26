@@ -10,6 +10,9 @@ import { DataProviderUtils } from '../utils/data-provider.utils';
 
 /** Minimum area in m² below which a region is discarded as a geometric sliver (0.01 km²) */
 const MIN_AREA_M2 = 10000;
+type AnalysisMethod = 'legacy' | 'weighted';
+const REPORT_MAX_REGIONS_DEFAULT = 20;
+const WEIGHTED_FAST_PATH_FEATURE_THRESHOLD = 5000;
 
 interface IssueUnion {
     description: string;
@@ -53,8 +56,14 @@ export class ReportService {
         analysisResult: FeatureCollection<Geometry>,
         maxIssues: number,
         dataLayers: DataLayerDto[] = [],
-        selectedPolygon: Feature<Polygon> | null = null
+        selectedPolygon: Feature<Polygon> | null = null,
+        analysisMethod: AnalysisMethod = 'weighted',
+        reportMaxScoreForPolygon: number = 1,
+        reportMaxRegions: number = REPORT_MAX_REGIONS_DEFAULT
     ): ReportDTO {
+        const normalizedReportMaxScoreForPolygon = Number.isFinite(reportMaxScoreForPolygon) && reportMaxScoreForPolygon >= 0 ? reportMaxScoreForPolygon : 1;
+        const normalizedReportMaxRegions =
+            Number.isFinite(reportMaxRegions) && reportMaxRegions >= 1 ? Math.floor(reportMaxRegions) : REPORT_MAX_REGIONS_DEFAULT;
         const activeDataLayers = dataLayers.filter((l) => l.analyze);
         const assumptions = this.buildAssumptions(activeDataLayers);
         const layerWeights = new Map(activeDataLayers.map((layer) => [layer.id, this.getLayerWeight(layer)]));
@@ -67,7 +76,15 @@ export class ReportService {
             | undefined;
 
         if (!greenFeature) {
-            return { regions: [], totalRegions: 0, selectedPolygon, assumptions };
+            return {
+                regions: [],
+                totalRegions: 0,
+                selectedPolygon,
+                assumptions,
+                analysisMethod,
+                reportMaxScoreForPolygonUsed: analysisMethod === 'weighted' ? normalizedReportMaxScoreForPolygon : null,
+                reportMaxRegionsUsed: analysisMethod === 'weighted' ? normalizedReportMaxRegions : null,
+            };
         }
 
         // 1a. Clip the green baseline to the IoW coastline so that all downstream
@@ -80,7 +97,15 @@ export class ReportService {
             if (coastlineUnion) {
                 const clipped = turf.intersect(turf.featureCollection([greenFeature, coastlineUnion]));
                 if (!clipped) {
-                    return { regions: [], totalRegions: 0, selectedPolygon, assumptions };
+                    return {
+                        regions: [],
+                        totalRegions: 0,
+                        selectedPolygon,
+                        assumptions,
+                        analysisMethod,
+                        reportMaxScoreForPolygonUsed: analysisMethod === 'weighted' ? normalizedReportMaxScoreForPolygon : null,
+                        reportMaxRegionsUsed: analysisMethod === 'weighted' ? normalizedReportMaxRegions : null,
+                    };
                 }
                 greenFeature = clipped as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
             }
@@ -91,6 +116,20 @@ export class ReportService {
             Polygon | MultiPolygon,
             GeoJsonProperties
         >[];
+
+        if (analysisMethod === 'weighted' && issueFeatures.length > WEIGHTED_FAST_PATH_FEATURE_THRESHOLD) {
+            return this.generateWeightedFastPathReport(
+                greenFeature,
+                issueFeatures,
+                activeDataLayers,
+                assumptions,
+                layerWeights,
+                totalLayerWeight,
+                normalizedReportMaxScoreForPolygon,
+                normalizedReportMaxRegions,
+                selectedPolygon
+            );
+        }
 
         // 2. Build one unioned polygon per distinct issue description
         const _tUnions = performance.now();
@@ -127,20 +166,23 @@ export class ReportService {
                     }));
 
                     const triggeredLayerIds = new Set(combo.map((issue) => issue.sourceLayerId).filter((layerId): layerId is string => !!layerId));
-                    const weightedIssueSum = Array.from(triggeredLayerIds).reduce(
-                        (sum, layerId) => sum + (layerWeights.get(layerId) ?? 1),
-                        0
-                    );
-                    const suitabilityScore = totalLayerWeight > 0 ? weightedIssueSum / totalLayerWeight : 0;
+                    const weightedIssueSum = Array.from(triggeredLayerIds).reduce((sum, layerId) => sum + (layerWeights.get(layerId) ?? 1), 0);
+                    const suitabilityScore =
+                        analysisMethod === 'legacy'
+                            ? maxIssues > 0
+                                ? Math.min(combo.length / maxIssues, 1)
+                                : 0
+                            : totalLayerWeight > 0
+                              ? weightedIssueSum / totalLayerWeight
+                              : 0;
 
-                    const regionPolygon = flat as Feature<Polygon>;
-                    const _tLV = performance.now();
-                    const layerValues = this.computeLayerValuesForRegion(regionPolygon, activeDataLayers);
-                    _tLayerValuesTotal += performance.now() - _tLV;
+                    if (analysisMethod === 'weighted' && suitabilityScore > normalizedReportMaxScoreForPolygon) {
+                        continue;
+                    }
 
                     regions.push({
                         id: `region-${regionIndex++}`,
-                        polygon: regionPolygon,
+                        polygon: flat as Feature<Polygon>,
                         bbox: turf.bbox(flat),
                         areaSqKm: area / 1e6,
                         issueCount: combo.length,
@@ -148,7 +190,7 @@ export class ReportService {
                         totalLayerWeight,
                         suitabilityScore,
                         issues,
-                        layerValues,
+                        layerValues: [],
                     });
                 }
             }
@@ -161,11 +203,32 @@ export class ReportService {
             return right.areaSqKm - left.areaSqKm;
         });
 
+        const rankedRegions = analysisMethod === 'weighted' ? regions.slice(0, normalizedReportMaxRegions) : regions;
+        const finalRegions = rankedRegions.map((region, index) => {
+            const _tLV = performance.now();
+            const layerValues = this.computeLayerValuesForRegion(region.polygon, activeDataLayers);
+            _tLayerValuesTotal += performance.now() - _tLV;
+
+            return {
+                ...region,
+                id: `region-${index + 1}`,
+                layerValues,
+            };
+        });
+
         console.debug(`[generateReport] combinations loop (${regions.length} regions): ${(performance.now() - _tCombos).toFixed(1)}ms`);
         console.debug(`[generateReport] computeLayerValuesForRegion total: ${_tLayerValuesTotal.toFixed(1)}ms`);
         console.debug(`[generateReport] total: ${(performance.now() - _t0).toFixed(1)}ms`);
 
-        return { regions, totalRegions: regions.length, selectedPolygon, assumptions };
+        return {
+            regions: finalRegions,
+            totalRegions: finalRegions.length,
+            selectedPolygon,
+            assumptions,
+            analysisMethod,
+            reportMaxScoreForPolygonUsed: analysisMethod === 'weighted' ? normalizedReportMaxScoreForPolygon : null,
+            reportMaxRegionsUsed: analysisMethod === 'weighted' ? normalizedReportMaxRegions : null,
+        };
     }
 
     /**
@@ -291,13 +354,118 @@ export class ReportService {
      */
     private getCombinations<T>(arr: T[], k: number): T[][] {
         if (k === 0) return [[]];
-        if (arr.length < k) return [];
+        if (arr.length < k || k < 0) return [];
 
-        const [first, ...rest] = arr;
-        const withFirst = this.getCombinations(rest, k - 1).map((combo) => [first, ...combo]);
-        const withoutFirst = this.getCombinations(rest, k);
+        const result: T[][] = [];
+        const indices = Array.from({ length: k }, (_, i) => i);
 
-        return [...withFirst, ...withoutFirst];
+        while (true) {
+            result.push(indices.map((i) => arr[i]));
+
+            let i = k - 1;
+            while (i >= 0 && indices[i] === arr.length - k + i) {
+                i--;
+            }
+
+            if (i < 0) break;
+
+            indices[i]++;
+            for (let j = i + 1; j < k; j++) {
+                indices[j] = indices[j - 1] + 1;
+            }
+        }
+
+        return result;
+    }
+
+    private generateWeightedFastPathReport(
+        greenFeature: Feature<Polygon | MultiPolygon, GeoJsonProperties>,
+        issueFeatures: Feature<Polygon | MultiPolygon, GeoJsonProperties>[],
+        activeDataLayers: DataLayerDto[],
+        assumptions: ReportAssumptionDTO[],
+        layerWeights: Map<string, number>,
+        totalLayerWeight: number,
+        reportMaxScoreForPolygon: number,
+        reportMaxRegions: number,
+        selectedPolygon: Feature<Polygon> | null
+    ): ReportDTO {
+        const _t0 = performance.now();
+        const regions: ReportRegionDTO[] = [];
+
+        const pushRegion = (polygon: Feature<Polygon>, issueCount: number, weightedIssueSum: number, suitabilityScore: number, issues: ReportIssueDTO[]) => {
+            const area = turf.area(polygon);
+            if (area < MIN_AREA_M2) return;
+            if (suitabilityScore > reportMaxScoreForPolygon) return;
+
+            regions.push({
+                id: '',
+                polygon,
+                bbox: turf.bbox(polygon),
+                areaSqKm: area / 1e6,
+                issueCount,
+                weightedIssueSum,
+                totalLayerWeight,
+                suitabilityScore,
+                issues,
+                layerValues: [],
+            });
+        };
+
+        // Keep a baseline green candidate so report can still return suitable areas when available.
+        const flattenedGreen = turf.flatten(greenFeature as Feature<Polygon | MultiPolygon>);
+        for (const green of flattenedGreen.features) {
+            pushRegion(green as Feature<Polygon>, 0, 0, 0, []);
+        }
+
+        for (const feature of issueFeatures) {
+            const sourceLayerId = feature.properties?.sourceLayerId as string | undefined;
+            const description = (feature.properties?.issue as string) ?? 'Issue';
+            const suitability = (feature.properties?.suitability as string) ?? 'red';
+            const weightedIssueSum = sourceLayerId ? (layerWeights.get(sourceLayerId) ?? 1) : 1;
+            const suitabilityScore = totalLayerWeight > 0 ? weightedIssueSum / totalLayerWeight : 0;
+            const issues: ReportIssueDTO[] = [{ description, suitability, sourceLayerId }];
+
+            const flattened = turf.flatten(feature as Feature<Polygon | MultiPolygon>);
+            for (const flat of flattened.features) {
+                pushRegion(flat as Feature<Polygon>, 1, weightedIssueSum, suitabilityScore, issues);
+            }
+        }
+
+        regions.sort((left, right) => {
+            if (left.suitabilityScore !== right.suitabilityScore) {
+                return left.suitabilityScore - right.suitabilityScore;
+            }
+            return right.areaSqKm - left.areaSqKm;
+        });
+
+        const rankedRegions = regions.slice(0, reportMaxRegions);
+        let _tLayerValuesTotal = 0;
+
+        const finalRegions = rankedRegions.map((region, index) => {
+            const _tLV = performance.now();
+            const layerValues = this.computeLayerValuesForRegion(region.polygon, activeDataLayers);
+            _tLayerValuesTotal += performance.now() - _tLV;
+
+            return {
+                ...region,
+                id: `region-${index + 1}`,
+                layerValues,
+            };
+        });
+
+        console.debug(`[generateReport] weighted fast-path regions: ${regions.length} -> ${finalRegions.length}`);
+        console.debug(`[generateReport] computeLayerValuesForRegion total: ${_tLayerValuesTotal.toFixed(1)}ms`);
+        console.debug(`[generateReport] total (fast-path): ${(performance.now() - _t0).toFixed(1)}ms`);
+
+        return {
+            regions: finalRegions,
+            totalRegions: finalRegions.length,
+            selectedPolygon,
+            assumptions,
+            analysisMethod: 'weighted',
+            reportMaxScoreForPolygonUsed: reportMaxScoreForPolygon,
+            reportMaxRegionsUsed: reportMaxRegions,
+        };
     }
 
     /**

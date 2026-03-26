@@ -26,6 +26,7 @@ const ReportPage = () => {
     const regions = report?.regions ?? [];
     const sharedLayerValues = report?.layerValues ?? [];
     const assumptions = report?.assumptions ?? [];
+    const analysisMethod = report?.analysisMethod === 'legacy' ? 'Legacy' : 'Weighted';
 
     return (
         <ThemeProvider theme={theme}>
@@ -74,6 +75,9 @@ const ReportPage = () => {
                     <Slide>
                         <section className="report-slide table-only" data-auto-animate>
                             <h2>Analysis Constraints</h2>
+                            <p>
+                                <strong>Analysis method:</strong> {analysisMethod}
+                            </p>
                             {assumptions.length > 0 && (
                                 <>
                                     <div className="layer-table">

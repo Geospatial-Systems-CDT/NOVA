@@ -719,6 +719,9 @@ export class MapVisualHelper {
             weightedIssueSum?: number;
             totalLayerWeight?: number;
             suitabilityScore?: number;
+            analysisMethod?: 'legacy' | 'weighted';
+            weightedThresholdText?: string | null;
+            reportMaxScoreForPolygonUsed?: number | null;
             issues?: Array<{ description?: string; suitability?: string }>;
             layerValues?: Array<{ label?: string; value?: string | number | null; unit?: string }>;
         };
@@ -729,6 +732,9 @@ export class MapVisualHelper {
         const weightedIssueSum = properties.weightedIssueSum ?? 0;
         const totalLayerWeight = properties.totalLayerWeight ?? 0;
         const suitabilityScore = properties.suitabilityScore ?? 0;
+        const analysisMethod = properties.analysisMethod === 'legacy' ? 'legacy' : 'weighted';
+        const weightedThresholdText = typeof properties.weightedThresholdText === 'string' ? properties.weightedThresholdText : null;
+        const reportMaxScoreForPolygonUsed = typeof properties.reportMaxScoreForPolygonUsed === 'number' ? properties.reportMaxScoreForPolygonUsed : null;
 
         const issueHtml =
             issues.length > 0
@@ -753,6 +759,16 @@ export class MapVisualHelper {
                 <div style="margin-bottom: 4px;">Weighted issue sum: ${weightedIssueSum.toFixed(3)}</div>
                 <div style="margin-bottom: 4px;">Total layer weight: ${totalLayerWeight.toFixed(3)}</div>
                 <div style="margin-bottom: 8px;">Suitability score: ${suitabilityScore.toFixed(3)}</div>
+                ${
+                    analysisMethod === 'weighted' && weightedThresholdText
+                        ? `<div style="margin-bottom: 4px;">Computed weighted threshold: ${weightedThresholdText}</div>`
+                        : ''
+                }
+                ${
+                    analysisMethod === 'weighted' && reportMaxScoreForPolygonUsed !== null
+                        ? `<div style="margin-bottom: 8px;">Weighted polygon cutoff: ${reportMaxScoreForPolygonUsed.toFixed(3)}</div>`
+                        : ''
+                }
                 <div style="font-weight: 600; margin-bottom: 4px;">Issues</div>
                 <ul style="margin: 0 0 8px 16px; padding: 0;">${issueHtml}</ul>
                 <div style="font-weight: 600; margin-bottom: 4px;">Layer values</div>

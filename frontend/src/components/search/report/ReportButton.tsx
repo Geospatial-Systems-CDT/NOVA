@@ -35,6 +35,15 @@ const StyledContainer = styled(Box)({
 /** How often (ms) to poll the report job endpoint while waiting for results. */
 const POLL_INTERVAL_MS = 1000;
 
+function normalizeReport(report: ReportDTO): ReportDTO {
+    return {
+        ...report,
+        analysisMethod: report.analysisMethod === 'legacy' ? 'legacy' : 'weighted',
+        reportMaxScoreForPolygonUsed: typeof report.reportMaxScoreForPolygonUsed === 'number' ? report.reportMaxScoreForPolygonUsed : null,
+        reportMaxRegionsUsed: typeof report.reportMaxRegionsUsed === 'number' ? report.reportMaxRegionsUsed : null,
+    };
+}
+
 const ReportButton = () => {
     const cachedHeatmap = useMapStore((s) => s.cachedHeatmap);
     const reportJobId = useMapStore((s) => s.reportJobId);
@@ -46,8 +55,6 @@ const ReportButton = () => {
     const reportLayerVisible = useMapStore((s) => s.reportLayerVisible);
     const setReportLayerVisible = useMapStore((s) => s.setReportLayerVisible);
     const setReportLayerData = useMapStore((s) => s.setReportLayerData);
-    const reportRankingMode = useMapStore((s) => s.reportRankingMode);
-    const setReportRankingMode = useMapStore((s) => s.setReportRankingMode);
     const [reportLayerMessage, setReportLayerMessage] = useState<string | null>(null);
     const [thresholds, setThresholds] = useState(DEFAULT_SUITABILITY_THRESHOLDS);
 
@@ -76,7 +83,7 @@ const ReportButton = () => {
 
                 if (res.ok) {
                     const { report } = await res.json();
-                    setCachedReport(report);
+                    setCachedReport(normalizeReport(report as ReportDTO));
                 } else {
                     console.error(`[ReportButton] Report job failed (${res.status})`);
                 }
@@ -113,6 +120,11 @@ const ReportButton = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (!reportLayerVisible || !cachedReport) return;
+        setReportLayerData(mapReportToLayerFeatureCollection(cachedReport, thresholds));
+    }, [cachedReport, reportLayerVisible, setReportLayerData, thresholds]);
+
     const openReportPage = () => {
         window.open('/report', '_blank', 'noopener,noreferrer');
     };
@@ -120,7 +132,7 @@ const ReportButton = () => {
     const loadReportFromStorage = (): ReportDTO | null => {
         try {
             const raw = localStorage.getItem(CACHED_REPORT_STORAGE_KEY);
-            return raw ? (JSON.parse(raw) as ReportDTO) : null;
+            return raw ? normalizeReport(JSON.parse(raw) as ReportDTO) : null;
         } catch {
             return null;
         }
@@ -141,27 +153,14 @@ const ReportButton = () => {
         }
 
         setCachedReport(reportToUse);
-        setReportLayerData(mapReportToLayerFeatureCollection(reportToUse, reportRankingMode, thresholds));
+        setReportLayerData(mapReportToLayerFeatureCollection(reportToUse, thresholds));
         setReportLayerVisible(true);
         setReportLayerMessage(null);
-    };
-
-    const handleRankingModeToggle = () => {
-        const nextMode = reportRankingMode === 'weighted' ? 'legacyIssueCount' : 'weighted';
-        setReportRankingMode(nextMode);
-
-        if (!reportLayerVisible) return;
-
-        const reportToUse = cachedReport ?? loadReportFromStorage();
-        if (!reportToUse) return;
-
-        setReportLayerData(mapReportToLayerFeatureCollection(reportToUse, nextMode, thresholds));
     };
 
     const isActive = reportLayerVisible;
     const toggleLayerLabel = reportLayerVisible ? 'Show model layer' : 'Show report layer';
     const toggleLayerIcon = reportLayerVisible ? '/icons/report_layer.svg' : '/icons/model_layer.svg';
-    const rankingModeLabel = reportRankingMode === 'weighted' ? 'Ranking: weighted' : 'Ranking: legacy';
 
     if (!cachedHeatmap) return null;
 
@@ -180,9 +179,6 @@ const ReportButton = () => {
                 <ControlIcon onClick={handleReportLayerToggle} isActive={isActive} aria-label={toggleLayerLabel} showTooltip={true} disabled={reportLoading}>
                     <img src={toggleLayerIcon} alt={toggleLayerLabel} width={24} height={24} />
                 </ControlIcon>
-                <ControlButton onClick={handleRankingModeToggle} aria-label={rankingModeLabel} disabled={reportLoading}>
-                    <span>{rankingModeLabel}</span>
-                </ControlButton>
             </Box>
 
             {reportLayerMessage && (

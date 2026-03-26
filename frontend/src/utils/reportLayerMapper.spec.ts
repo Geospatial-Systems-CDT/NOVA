@@ -26,6 +26,8 @@ const basePolygon = {
 describe('mapReportToLayerFeatureCollection', () => {
     it('maps report regions to feature collection with popup properties', () => {
         const report: ReportDTO = {
+            analysisMethod: 'legacy',
+            reportMaxScoreForPolygonUsed: null,
             regions: [
                 {
                     id: 'region-1',
@@ -45,7 +47,7 @@ describe('mapReportToLayerFeatureCollection', () => {
             assumptions: [],
         };
 
-        const result = mapReportToLayerFeatureCollection(report, 'legacyIssueCount', DEFAULT_SUITABILITY_THRESHOLDS);
+        const result = mapReportToLayerFeatureCollection(report, DEFAULT_SUITABILITY_THRESHOLDS);
 
         expect(result.type).toBe('FeatureCollection');
         expect(result.features).toHaveLength(1);
@@ -54,10 +56,14 @@ describe('mapReportToLayerFeatureCollection', () => {
         expect(result.features[0].properties.suitabilityScore).toBe(0.5);
         expect(result.features[0].properties.layerValues[0].label).toBe('Wind');
         expect(result.features[0].properties.suitability).toBe('red');
+        expect(result.features[0].properties.analysisMethod).toBe('legacy');
+        expect(result.features[0].properties.weightedThresholdText).toBeNull();
     });
 
     it('maps zero-issue regions to green suitability using weighted mode', () => {
         const report: ReportDTO = {
+            analysisMethod: 'weighted',
+            reportMaxScoreForPolygonUsed: 1,
             regions: [
                 {
                     id: 'region-2',
@@ -77,12 +83,14 @@ describe('mapReportToLayerFeatureCollection', () => {
             assumptions: [],
         };
 
-        const result = mapReportToLayerFeatureCollection(report, 'weighted', DEFAULT_SUITABILITY_THRESHOLDS);
+        const result = mapReportToLayerFeatureCollection(report, DEFAULT_SUITABILITY_THRESHOLDS);
         expect(result.features[0].properties.suitability).toBe('green');
     });
 
     it('maps weighted score to amber/red/darkRed using configured thresholds', () => {
         const report: ReportDTO = {
+            analysisMethod: 'weighted',
+            reportMaxScoreForPolygonUsed: 1,
             regions: [
                 {
                     id: 'region-amber',
@@ -126,15 +134,18 @@ describe('mapReportToLayerFeatureCollection', () => {
             assumptions: [],
         };
 
-        const result = mapReportToLayerFeatureCollection(report, 'weighted', { amberMax: 0.33, redMax: 0.66 });
+        const result = mapReportToLayerFeatureCollection(report, { amberMax: 0.33, redMax: 0.66, reportMaxScoreForPolygon: 1, reportMaxRegions: 20 });
 
         expect(result.features[0].properties.suitability).toBe('amber');
         expect(result.features[1].properties.suitability).toBe('red');
         expect(result.features[2].properties.suitability).toBe('darkRed');
+        expect(result.features[1].properties.weightedThresholdText).toBe('red (score <= 0.660)');
     });
 
     it('still supports legacy issue-count suitability mapping', () => {
         const report: ReportDTO = {
+            analysisMethod: 'legacy',
+            reportMaxScoreForPolygonUsed: null,
             regions: [
                 {
                     id: 'region-legacy',
@@ -154,7 +165,7 @@ describe('mapReportToLayerFeatureCollection', () => {
             assumptions: [],
         };
 
-        const result = mapReportToLayerFeatureCollection(report, 'legacyIssueCount', DEFAULT_SUITABILITY_THRESHOLDS);
+        const result = mapReportToLayerFeatureCollection(report, DEFAULT_SUITABILITY_THRESHOLDS);
         expect(result.features[0].properties.suitability).toBe('amber');
     });
 });

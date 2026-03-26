@@ -3,7 +3,7 @@
 
 import type { Feature, FeatureCollection, Polygon } from 'geojson';
 import type { ReportDTO, ReportIssueDTO, ReportRegionLayerValueDTO } from '../types/report';
-import { DEFAULT_SUITABILITY_THRESHOLDS, type ReportRankingMode, type SuitabilityThresholds } from '../types/reportRanking';
+import { DEFAULT_SUITABILITY_THRESHOLDS, type SuitabilityThresholds } from '../types/reportRanking';
 
 type ReportLayerSuitability = 'green' | 'amber' | 'red' | 'darkRed';
 
@@ -15,6 +15,9 @@ export interface ReportLayerFeatureProperties {
     totalLayerWeight: number;
     suitabilityScore: number;
     suitability: ReportLayerSuitability;
+    analysisMethod: 'legacy' | 'weighted';
+    weightedThresholdText: string | null;
+    reportMaxScoreForPolygonUsed: number | null;
     issues: ReportIssueDTO[];
     layerValues: ReportRegionLayerValueDTO[];
 }
@@ -33,11 +36,18 @@ function getSuitabilityFromWeightedScore(score: number, thresholds: SuitabilityT
     return 'darkRed';
 }
 
+function getWeightedThresholdText(score: number, thresholds: SuitabilityThresholds): string {
+    if (score <= 0) return 'green (score <= 0.000)';
+    if (score <= thresholds.amberMax) return `amber (score <= ${thresholds.amberMax.toFixed(3)})`;
+    if (score <= thresholds.redMax) return `red (score <= ${thresholds.redMax.toFixed(3)})`;
+    return `darkRed (score > ${thresholds.redMax.toFixed(3)})`;
+}
+
 export function mapReportToLayerFeatureCollection(
     report: ReportDTO,
-    rankingMode: ReportRankingMode,
     thresholds: SuitabilityThresholds = DEFAULT_SUITABILITY_THRESHOLDS
 ): FeatureCollection<Polygon, ReportLayerFeatureProperties> {
+    const analysisMethod = report.analysisMethod === 'legacy' ? 'legacy' : 'weighted';
     const features: Feature<Polygon, ReportLayerFeatureProperties>[] = report.regions.map((region) => ({
         type: 'Feature',
         geometry: region.polygon.geometry,
@@ -49,9 +59,12 @@ export function mapReportToLayerFeatureCollection(
             totalLayerWeight: region.totalLayerWeight,
             suitabilityScore: region.suitabilityScore,
             suitability:
-                rankingMode === 'legacyIssueCount'
+                analysisMethod === 'legacy'
                     ? getSuitabilityFromIssueCount(region.issueCount)
                     : getSuitabilityFromWeightedScore(region.suitabilityScore, thresholds),
+            analysisMethod,
+            weightedThresholdText: analysisMethod === 'weighted' ? getWeightedThresholdText(region.suitabilityScore, thresholds) : null,
+            reportMaxScoreForPolygonUsed: report.reportMaxScoreForPolygonUsed,
             issues: region.issues,
             layerValues: region.layerValues,
         },

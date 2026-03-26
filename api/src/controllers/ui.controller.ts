@@ -17,6 +17,11 @@ import { AssetEstimationRequestDto } from '../models/asset-estimation-request.mo
 import { performance } from 'perf_hooks';
 import { reportJobStore } from '../services/report-job.store';
 
+const REPORT_MAX_ISSUES_CAP = 3;
+const WEIGHTED_MAX_ISSUES_ABSOLUTE_CAP = 8;
+const REPORT_MAX_REGIONS_DEFAULT = 20;
+const REPORT_MAX_REGIONS_HARD_CAP = 200;
+
 /**
  * Controller for UI-related endpoints
  */
@@ -396,14 +401,40 @@ export class UIController {
             if (analysisRequest.maxIssues !== undefined) {
                 jobId = reportJobStore.create();
                 const capturedJobId = jobId;
-                const allDataLayers = analysisRequest.dataLayers;
-                const maxIssues = analysisRequest.maxIssues;
+                const allDataLayers = Array.isArray(analysisRequest.dataLayers) ? analysisRequest.dataLayers : [];
+                const analysisMethod = analysisRequest.analysisMethod === 'legacy' ? 'legacy' : 'weighted';
+                const activeLayerCount = allDataLayers.filter((layer) => layer.analyze).length;
+                const reportMaxScoreForPolygon = Number(analysisRequest.reportMaxScoreForPolygon);
+                const normalizedReportMaxScoreForPolygon =
+                    Number.isFinite(reportMaxScoreForPolygon) && reportMaxScoreForPolygon >= 0 ? reportMaxScoreForPolygon : 1;
+                const reportMaxRegions = Number(analysisRequest.reportMaxRegions);
+                const normalizedReportMaxRegions =
+                    Number.isFinite(reportMaxRegions) && reportMaxRegions >= 1
+                        ? Math.min(Math.floor(reportMaxRegions), REPORT_MAX_REGIONS_HARD_CAP)
+                        : REPORT_MAX_REGIONS_DEFAULT;
+                const requestedMaxIssues = Number(analysisRequest.maxIssues);
+                const normalizedRequestedMaxIssues = Number.isFinite(requestedMaxIssues) ? Math.floor(requestedMaxIssues) : 0;
+                const legacyMaxIssues = Math.min(Math.max(normalizedRequestedMaxIssues, 0), REPORT_MAX_ISSUES_CAP, activeLayerCount);
+                // Weighted reports can explode combinatorially if maxIssues tracks active layers exactly.
+                // Bound by cutoff-derived issue count and an absolute cap to keep report generation stable.
+                const weightedMaxIssuesFromCutoff =
+                    normalizedReportMaxScoreForPolygon <= 0 ? 0 : Math.ceil(activeLayerCount * normalizedReportMaxScoreForPolygon);
+                const weightedMaxIssues = Math.min(activeLayerCount, WEIGHTED_MAX_ISSUES_ABSOLUTE_CAP, weightedMaxIssuesFromCutoff);
+                const maxIssues = analysisMethod === 'weighted' ? weightedMaxIssues : legacyMaxIssues;
 
                 setImmediate(() => {
                     try {
                         const _tReport = performance.now();
                         const selectedPolygon = analysisRequest.location.features[0] ?? null;
-                        const report = this.reportService.generateReport(heatmap, maxIssues, allDataLayers, selectedPolygon);
+                        const report = this.reportService.generateReport(
+                            heatmap,
+                            maxIssues,
+                            allDataLayers,
+                            selectedPolygon,
+                            analysisMethod,
+                            normalizedReportMaxScoreForPolygon,
+                            normalizedReportMaxRegions
+                        );
                         console.debug(`[analyseLocation] generateReport (async): ${(performance.now() - _tReport).toFixed(1)}ms`);
                         reportJobStore.complete(capturedJobId, report);
                     } catch (err) {

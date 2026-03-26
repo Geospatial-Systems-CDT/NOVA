@@ -215,11 +215,22 @@ export interface ReportAssumptionDTO {
  *           items:
  *             $ref: '#/components/schemas/ReportAssumptionDTO'
  *           description: User-configured parameters (e.g. buffer distances) used during analysis.
+ *         analysisMethod:
+ *           type: string
+ *           enum: [legacy, weighted]
+ *           description: Scoring method used to generate the report.
+ *         reportMaxScoreForPolygonUsed:
+ *           type: number
+ *           description: Score cutoff used to include weighted polygons in the report (weighted mode only).
+ *         reportMaxRegionsUsed:
+ *           type: number
+ *           description: Maximum number of weighted regions retained after ranking (weighted mode only).
  *       required:
  *         - regions
  *         - totalRegions
  *         - selectedPolygon
  *         - assumptions
+ *         - analysisMethod
  */
 export interface ReportDTO {
     /** Candidate regions, each with at most maxIssues distinct issue types */
@@ -230,4 +241,10 @@ export interface ReportDTO {
     selectedPolygon: Feature<Polygon> | null;
     /** User-configured parameters (e.g. buffer distances) recorded at the time of analysis */
     assumptions: ReportAssumptionDTO[];
+    /** Scoring method used to generate this report */
+    analysisMethod: 'legacy' | 'weighted';
+    /** Weighted cutoff used to include report polygons; null for legacy mode */
+    reportMaxScoreForPolygonUsed: number | null;
+    /** Weighted top-N cap used after ranking; null for legacy mode */
+    reportMaxRegionsUsed: number | null;
 }

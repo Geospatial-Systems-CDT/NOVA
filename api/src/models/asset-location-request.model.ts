@@ -8,4 +8,7 @@ export interface AssetLocationRequestDto {
     location: FeatureCollection<Polygon>;
     dataLayers: DataLayerDto[];
     maxIssues?: number;
+    analysisMethod?: 'legacy' | 'weighted';
+    reportMaxScoreForPolygon?: number;
+    reportMaxRegions?: number;
 }

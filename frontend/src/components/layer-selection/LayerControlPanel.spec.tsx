@@ -88,6 +88,7 @@ describe('LayerControlPanel', () => {
                 setCachedReport: vi.fn(),
                 setReportJobId: vi.fn(),
                 setReportLoading: vi.fn(),
+                setLastGeneratedAnalysisMethod: vi.fn(),
                 selectedScenario,
                 scenarioIsCustom,
                 setScenarioIsCustom: vi.fn((value: boolean) => {
@@ -108,6 +109,7 @@ describe('LayerControlPanel', () => {
             setCachedReport: vi.fn(),
             setReportJobId: vi.fn(),
             setReportLoading: vi.fn(),
+            setLastGeneratedAnalysisMethod: vi.fn(),
             selectedScenario,
             scenarioIsCustom,
             setScenarioIsCustom: vi.fn((value: boolean) => {
@@ -129,21 +131,24 @@ describe('LayerControlPanel', () => {
             }
             return Promise.resolve({
                 ok: true,
-                json: async () => fakeGeoJSON,
+                json: async () => ({ heatmap: fakeGeoJSON, jobId: 'job-1' }),
             }) as unknown as Promise<Response>;
         });
 
         vi.spyOn(MapVisualHelper, 'addOrUpdateHeatmapLayer').mockImplementation(() => {});
+        vi.spyOn(MapVisualHelper, 'getFirstPolygon').mockReturnValue({ type: 'Polygon', coordinates: [] as any });
+        vi.spyOn(MapVisualHelper, 'getFeatureCollection').mockReturnValue(fakeGeoJSON as any);
     });
 
     afterEach(() => {
         fetchSpy.mockRestore();
     });
 
-    it('renders panel with header and apply button', async () => {
+    it('renders panel with header and dual analysis buttons', async () => {
         render(<LayerControlPanel mapRef={mockMapRef} drawRef={mockDrawRef} resetLayers={mockResetLayers} setResetLayers={mockSetResetLayers} />);
         expect(await screen.findByText('Layers')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /apply/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /generate legacy analysis/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /generate weighted analysis/i })).toBeInTheDocument();
     });
 
     it('renders some layer names and their checkboxes', async () => {
@@ -293,5 +298,20 @@ describe('LayerControlPanel', () => {
 
         const input = await screen.findByLabelText('Distance from layer');
         expect((input as HTMLInputElement).value).toBe('5');
+    });
+
+    it('sends the selected analysis method in analyse payload', async () => {
+        render(<LayerControlPanel mapRef={mockMapRef} drawRef={mockDrawRef} resetLayers={mockResetLayers} setResetLayers={mockSetResetLayers} />);
+        await screen.findByText('Layers');
+
+        const legacyButton = screen.getByRole('button', { name: /generate legacy analysis/i });
+        await userEvent.click(legacyButton);
+
+        const analyseCall = fetchSpy.mock.calls.find((call) => call[0] === '/api/ui/location/analyse');
+        expect(analyseCall).toBeDefined();
+
+        const requestBody = JSON.parse((analyseCall?.[1] as RequestInit).body as string);
+        expect(requestBody.analysisMethod).toBe('legacy');
+        expect(requestBody.reportMaxRegions).toBe(20);
     });
 });

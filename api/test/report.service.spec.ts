@@ -249,6 +249,91 @@ describe('ReportService', () => {
             expect(highestIssueRegion!.totalLayerWeight).toBeCloseTo(0.6);
             expect(highestIssueRegion!.suitabilityScore).toBeCloseTo(1);
         });
+
+        it('filters weighted regions by reportMaxScoreForPolygon cutoff', () => {
+            const issueA = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Issue A',
+                sourceLayerId: 'builtUpAreas',
+            });
+
+            const issueB = makePolygonFeature(-1.5, 51, -1, 51.5, {
+                suitability: 'darkRed',
+                issue: 'Issue B',
+                sourceLayerId: 'sitesOfSpecialScientificInterest',
+            });
+
+            const layers = [
+                { id: 'builtUpAreas', analyze: true, attributes: [] },
+                { id: 'sitesOfSpecialScientificInterest', analyze: true, attributes: [] },
+            ];
+
+            const report = service.generateReport(makeResult(greenPolygon, issueA, issueB), 2, layers, null, 'weighted', 0.25);
+
+            expect(report.reportMaxScoreForPolygonUsed).toBeCloseTo(0.25);
+            expect(report.regions.every((region) => region.suitabilityScore <= 0.25)).toBe(true);
+            expect(report.regions.some((region) => region.suitabilityScore === 0)).toBe(true);
+        });
+
+        it('keeps only top weighted regions when reportMaxRegions is provided', () => {
+            const issueA = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Issue A',
+                sourceLayerId: 'builtUpAreas',
+            });
+
+            const issueB = makePolygonFeature(-1.5, 51, -1, 51.5, {
+                suitability: 'darkRed',
+                issue: 'Issue B',
+                sourceLayerId: 'sitesOfSpecialScientificInterest',
+            });
+
+            const layers = [
+                { id: 'builtUpAreas', analyze: true, attributes: [] },
+                { id: 'sitesOfSpecialScientificInterest', analyze: true, attributes: [] },
+            ];
+
+            const report = service.generateReport(makeResult(greenPolygon, issueA, issueB), 2, layers, null, 'weighted', 1, 1);
+
+            expect(report.reportMaxRegionsUsed).toBe(1);
+            expect(report.totalRegions).toBe(1);
+            expect(report.regions).toHaveLength(1);
+            expect(report.regions[0].suitabilityScore).toBeCloseTo(0);
+        });
+    });
+
+    describe('generateReport — legacy suitability scoring', () => {
+        it('uses issue-count-based suitability score when analysisMethod is legacy', () => {
+            const issueA = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Issue A',
+                sourceLayerId: 'builtUpAreas',
+            });
+
+            const issueB = makePolygonFeature(-1.5, 51, -1, 51.5, {
+                suitability: 'darkRed',
+                issue: 'Issue B',
+                sourceLayerId: 'sitesOfSpecialScientificInterest',
+            });
+
+            const { regions, analysisMethod } = service.generateReport(
+                makeResult(greenPolygon, issueA, issueB),
+                2,
+                [
+                    { id: 'builtUpAreas', analyze: true, attributes: [] },
+                    { id: 'sitesOfSpecialScientificInterest', analyze: true, attributes: [] },
+                ],
+                null,
+                'legacy'
+            );
+
+            const oneIssueRegion = regions.find((region) => region.issueCount === 1);
+            const zeroIssueRegion = regions.find((region) => region.issueCount === 0);
+
+            expect(analysisMethod).toBe('legacy');
+            expect(zeroIssueRegion?.suitabilityScore).toBeCloseTo(0);
+            expect(oneIssueRegion?.suitabilityScore).toBeCloseTo(0.5);
+        });
     });
 
     describe('generateReport — layerValues computed when a DataProviderUtils is supplied', () => {
