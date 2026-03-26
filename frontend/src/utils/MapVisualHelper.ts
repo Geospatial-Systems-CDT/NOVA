@@ -13,6 +13,7 @@ import { useMapStore } from '../stores/useMapStore';
 import type { MapGeoJSONFeature } from 'maplibre-gl';
 import { point } from '@turf/helpers';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+import { CACHED_REPORT_STORAGE_KEY } from '../types/report';
 
 // Used to ensure mouse events include feature information. any type is used as property could be of any object.
 type FeatureEvent = MapMouseEvent & {
@@ -58,6 +59,71 @@ export class MapVisualHelper {
     private static readonly connectionLineLayerId = 'connection-line-layer';
     private static readonly powerLineColor = '#007AFF';
     private static reportLayerPopup: Popup | null = null;
+
+    private static _parseSerializedValue<T>(value: unknown): T | null {
+        if (value === null || value === undefined) return null;
+        if (typeof value !== 'string') return value as T;
+
+        try {
+            return JSON.parse(value) as T;
+        } catch {
+            return null;
+        }
+    }
+
+    private static _parseArrayProperty<T>(value: unknown): T[] {
+        if (Array.isArray(value)) return value as T[];
+        const parsed = this._parseSerializedValue<unknown>(value);
+        return Array.isArray(parsed) ? (parsed as T[]) : [];
+    }
+
+    private static _parseObjectProperty<T>(value: unknown): T | null {
+        if (value && typeof value === 'object' && !Array.isArray(value)) return value as T;
+        const parsed = this._parseSerializedValue<unknown>(value);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as T;
+        return null;
+    }
+
+    private static _getCachedReportRegionData(reportRegionId: string): {
+        issues: Array<{ description?: string; suitability?: string }>;
+        layerValues: Array<{ label?: string; value?: string | number | null; unit?: string }>;
+        energyPotential: {
+            solarAnnualMWh?: number | null;
+            windAnnualMWh?: number | null;
+            solarMaxAssets?: number | null;
+            windMaxAssets?: number | null;
+        } | null;
+    } | null {
+        try {
+            const raw = localStorage.getItem(CACHED_REPORT_STORAGE_KEY);
+            if (!raw) return null;
+
+            const report = JSON.parse(raw) as {
+                regions?: Array<{
+                    id?: string;
+                    issues?: Array<{ description?: string; suitability?: string }>;
+                    layerValues?: Array<{ label?: string; value?: string | number | null; unit?: string }>;
+                    energyPotential?: {
+                        solarAnnualMWh?: number | null;
+                        windAnnualMWh?: number | null;
+                        solarMaxAssets?: number | null;
+                        windMaxAssets?: number | null;
+                    };
+                }>;
+            };
+
+            const region = report.regions?.find((item) => item?.id === reportRegionId);
+            if (!region) return null;
+
+            return {
+                issues: Array.isArray(region.issues) ? region.issues : [],
+                layerValues: Array.isArray(region.layerValues) ? region.layerValues : [],
+                energyPotential: region.energyPotential ?? null,
+            };
+        } catch {
+            return null;
+        }
+    }
 
     /**
      * Applies a dimmed mask over the entire map except inside the given polygon and centers the map on that polygon.
@@ -714,6 +780,7 @@ export class MapVisualHelper {
         if (!feature?.properties) return;
 
         const properties = feature.properties as {
+            reportRegionId?: string;
             areaSqKm?: number;
             issueCount?: number;
             weightedIssueSum?: number;
@@ -732,10 +799,26 @@ export class MapVisualHelper {
             };
         };
 
-        const issues = Array.isArray(properties.issues) ? properties.issues : [];
-        const layerValues = Array.isArray(properties.layerValues) ? properties.layerValues : [];
+        const reportRegionId = typeof properties.reportRegionId === 'string' ? properties.reportRegionId : null;
+        let issues = MapVisualHelper._parseArrayProperty<{ description?: string; suitability?: string }>(properties.issues);
+        let layerValues = MapVisualHelper._parseArrayProperty<{ label?: string; value?: string | number | null; unit?: string }>(properties.layerValues);
+        let energyPotential = MapVisualHelper._parseObjectProperty<{
+            solarAnnualMWh?: number | null;
+            windAnnualMWh?: number | null;
+            solarMaxAssets?: number | null;
+            windMaxAssets?: number | null;
+        }>(properties.energyPotential);
+
+        if ((issues.length === 0 || layerValues.length === 0 || !energyPotential) && reportRegionId) {
+            const cachedRegionData = MapVisualHelper._getCachedReportRegionData(reportRegionId);
+            if (cachedRegionData) {
+                if (issues.length === 0) issues = cachedRegionData.issues;
+                if (layerValues.length === 0) layerValues = cachedRegionData.layerValues;
+                if (!energyPotential) energyPotential = cachedRegionData.energyPotential;
+            }
+        }
+
         const issueCount = properties.issueCount ?? issues.length;
-        const energyPotential = properties.energyPotential;
 
         const renderPotentialValue = (value: number | null | undefined, unit: string): string => {
             if (value === null || value === undefined) return 'Not applicable';
@@ -800,11 +883,11 @@ export class MapVisualHelper {
             </div>
         `;
 
-        if (this.reportLayerPopup) {
-            this.reportLayerPopup.remove();
-            this.reportLayerPopup = null;
+        if (MapVisualHelper.reportLayerPopup) {
+            MapVisualHelper.reportLayerPopup.remove();
+            MapVisualHelper.reportLayerPopup = null;
         }
 
-        this.reportLayerPopup = new Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+        MapVisualHelper.reportLayerPopup = new Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
     }
 }

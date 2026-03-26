@@ -21,13 +21,13 @@ const HOURS_PER_YEAR = 8760;
 const HOURS_PER_SEASON = HOURS_PER_YEAR / 4;
 const SOLAR_SHADING_FACTOR = 1.0;
 const SOLAR_ORIENTATION_SOUTH = 'south';
-const SOLAR_DENSITY_MW_PER_KM2 = 40;
+const DEFAULT_SOLAR_DENSITY_MW_PER_KM2 = 40;
 const DEFAULT_SOLAR_KK = 1023;
 const DEFAULT_SOLAR_ASSET_CAPACITY_MW = 1;
 const DEFAULT_WIND_CAPACITY_FACTOR = 0.34;
-const WIND_SPACING_DOWNWIND_DIAMETERS = 7;
-const WIND_SPACING_CROSSWIND_DIAMETERS = 4;
-const WIND_SINGLE_TURBINE_MIN_RADIUS_M = 300;
+const WIND_SPACING_DOWNWIND_DIAMETERS = 6;
+const WIND_SPACING_CROSSWIND_DIAMETERS = 3;
+const WIND_SINGLE_TURBINE_MIN_RADIUS_M = 250;
 
 const DEFAULT_WIND_MODEL = {
     capacityMW: 4.3,
@@ -835,8 +835,9 @@ export class ReportService {
 
         const windModel = this.getBestWindModel();
         const solarAssetCapacityMW = this.getSolarAssetCapacityMW();
+        const solarDensityMWPerSqKm = this.getSolarDensityMWPerSqKm();
 
-        const solarMaxAssets = eligibility.solarEligible ? Math.max(0, Math.floor((areaSqKm * SOLAR_DENSITY_MW_PER_KM2) / solarAssetCapacityMW)) : null;
+        const solarMaxAssets = eligibility.solarEligible ? Math.max(0, Math.floor((areaSqKm * solarDensityMWPerSqKm) / solarAssetCapacityMW)) : null;
         const windMaxAssets = eligibility.windEligible ? this.getWindMaxAssetsFromSpacing(areaSqKm, windModel) : null;
 
         const solarPerAssetAnnualMWh = this.getSolarAnnualMWhPerAsset(solarAssetCapacityMW);
@@ -910,6 +911,74 @@ export class ReportService {
         return bestSolarCapacityMW ?? DEFAULT_SOLAR_ASSET_CAPACITY_MW;
     }
 
+    private getSolarDensityMWPerSqKm(): number {
+        if (!this.dataProviderUtils) return DEFAULT_SOLAR_DENSITY_MW_PER_KM2;
+
+        const assets = this.dataProviderUtils.readAssetsData();
+        const solarAsset = assets.find((asset) => String(asset.id).toLowerCase().includes('solar'));
+        if (!solarAsset || !Array.isArray(solarAsset.variations) || solarAsset.variations.length === 0) {
+            return DEFAULT_SOLAR_DENSITY_MW_PER_KM2;
+        }
+
+        const farmVariation = solarAsset.variations.find((variation) => String(variation.name).toLowerCase().includes('farm'));
+        if (farmVariation) {
+            const farmDensity = this.getSolarDensityFromVariation(farmVariation);
+            if (farmDensity !== null && farmDensity > 0) {
+                return farmDensity;
+            }
+        }
+
+        for (const variation of solarAsset.variations) {
+            const density = this.getSolarDensityFromVariation(variation);
+            if (density !== null && density > 0) {
+                return density;
+            }
+        }
+
+        return DEFAULT_SOLAR_DENSITY_MW_PER_KM2;
+    }
+
+    private getSolarDensityFromVariation(variation: unknown): number | null {
+        const specs = (variation as { specification?: unknown[] })?.specification;
+        if (!Array.isArray(specs)) return null;
+
+        let mwPerKm2Density: number | null = null;
+        let haPerMW: number | null = null;
+
+        for (const spec of specs) {
+            const specName = String((spec as { name?: unknown; key?: unknown }).name ?? (spec as { key?: unknown }).key ?? '').toLowerCase();
+            const specValue = String((spec as { value?: unknown }).value ?? '').toLowerCase();
+            const rawValue = (spec as { value?: unknown }).value;
+
+            if (
+                specName.includes('mw/km2') ||
+                specName.includes('mw per km2') ||
+                specValue.includes('mw/km2') ||
+                specValue.includes('mw per km2')
+            ) {
+                const parsed = parseFirstNumber(rawValue);
+                if (parsed !== null && parsed > 0) {
+                    mwPerKm2Density = parsed;
+                }
+            }
+
+            if (
+                specName.includes('ha/mw') ||
+                specName.includes('ha per mw') ||
+                (specName.includes('land use') && (specValue.includes('ha/mw') || specValue.includes('ha per mw')))
+            ) {
+                const parsed = parseFirstNumber(rawValue);
+                if (parsed !== null && parsed > 0) {
+                    haPerMW = parsed;
+                }
+            }
+        }
+
+        if (mwPerKm2Density !== null) return mwPerKm2Density;
+        if (haPerMW !== null) return 100 / haPerMW;
+        return null;
+    }
+
     private getWindAnnualMWhPerAssetAtRegion(region: Feature<Polygon>, model: WindModel): number {
         const seasonal = this.getSeasonalWindspeedAtRegionCentroid(region);
         if (!seasonal) {
@@ -933,7 +1002,7 @@ export class ReportService {
 
     /**
      * Estimate the theoretical maximum number of wind turbines from area using a typical
-     * spacing rule (7D x 4D) and a minimum one-turbine fit check.
+        * spacing rule (6D x 3D) and a minimum one-turbine fit check.
      */
     private getWindMaxAssetsFromSpacing(areaSqKm: number, model: WindModel): number {
         const rotorDiameterM = model.rotorDiameterM;
