@@ -146,6 +146,16 @@ Latest refinements (estimation and display):
 - Exposed energy potential metrics in frontend report outputs (region slide and report map popup) by extending report types and mapping.
 - Replaced wind max-asset counting from coarse MW/km² density with a more realistic spacing-based siting model (typical 7D x 4D) plus a minimum single-turbine fit check.
 
+Changes to main:
+- Updated solar Farm specification value to `1 MW` in asset data to align report asset-count interpretation with project-scale units.
+- Added solar land-use intensity support in report estimation (`ha/MW` -> `MW/km²`) so solar max-asset counts are derived from asset specifications with safe defaults.
+- Updated wind max-asset spacing assumptions in report estimation from `7D x 4D` to `6D x 3D` and reduced single-turbine minimum fit radius from `300 m` to `250 m`.
+- Fixed report-layer popup data resolution on the map by hardening property parsing for serialized feature fields and adding fallback lookup from cached report data.
+- Fixed report-layer popup click handling regression by replacing callback-context `this` usage with class-qualified static references.
+- Updated methods documentation to reflect current main-branch logic (solar farm unit examples, spec-driven solar density in report, and updated wind spacing assumptions).
+
+
+
 ### Notes
 
 - This change affects issue text shown in the frontend popup.
