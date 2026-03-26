@@ -380,6 +380,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
 
             return {
                 id: layer.id,
+                name: layer.name,
                 attributes,
                 analyze: checkedLayers[layer.name] ?? true,
             };

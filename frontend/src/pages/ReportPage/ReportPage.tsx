@@ -53,7 +53,7 @@ const ReportPage = () => {
                 <Deck>
                     <Slide>
                         <section data-state="title-page" data-background-color="#001e3f">
-                            <a href="https://ndtp.co.uk/demonstrators/nova-energy-system/">
+                            <a href="https://revealjs.com">
                                 <img
                                     src={novaLogo}
                                     alt="NOVA logo"

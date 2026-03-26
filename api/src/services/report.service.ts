@@ -40,7 +40,7 @@ export class ReportService {
         selectedPolygon: Feature<Polygon> | null = null
     ): ReportDTO {
         const activeDataLayers = dataLayers.filter((l) => l.analyze);
-        const assumptions = this.buildAssumptions(activeDataLayers);
+        const assumptions = this.buildAssumptions(dataLayers);
         const _t0 = performance.now();
 
         // 1. Separate green baseline from issue features
@@ -132,19 +132,30 @@ export class ReportService {
     }
 
     /**
-     * Build the list of user-configured assumptions from all submitted data layers.
-     * Each attribute with a label is recorded; attributes without a label are skipped.
+     * Build the list of assumptions from all submitted data layers.
+     * - Layers that are constrained (analyze=true) and have labelled attributes → one row per attribute.
+     * - All other layers (not analyzed, or analyzed but no attributes) → one row using the layer's
+     *   display name as the label and an empty string as the value, so they still appear in the report.
      */
     private buildAssumptions(dataLayers: DataLayerDto[]): ReportAssumptionDTO[] {
         const assumptions: ReportAssumptionDTO[] = [];
         for (const layer of dataLayers) {
-            for (const attr of layer.attributes) {
-                if (!attr.label) continue;
+            const labelledAttrs = layer.attributes.filter((a) => !!a.label);
+            if (layer.analyze && labelledAttrs.length > 0) {
+                for (const attr of labelledAttrs) {
+                    assumptions.push({
+                        layerId: layer.id,
+                        attributeId: attr.id,
+                        label: attr.label!,
+                        value: attr.value,
+                    });
+                }
+            } else {
                 assumptions.push({
                     layerId: layer.id,
-                    attributeId: attr.id,
-                    label: attr.label,
-                    value: attr.value,
+                    attributeId: '',
+                    label: layer.name ?? layer.id,
+                    value: '',
                 });
             }
         }
@@ -258,7 +269,7 @@ export class ReportService {
     private computeLayerValuesForRegion(region: Feature<Polygon>, activeDataLayers: DataLayerDto[]): ReportRegionLayerValueDTO[] {
         if (!this.dataProviderUtils) return [];
 
-        const centroid = turf.centroid(region) as Feature<Point>;
+        const centroid = turf.pointOnFeature(region) as Feature<Point>;
         const results: ReportRegionLayerValueDTO[] = [];
 
         // Always include nearest substation name and distance
@@ -316,6 +327,89 @@ export class ReportService {
                     results.push({ layerId: 'areasOfOutstandingNaturalBeauty', label: 'Distance to nearest AONB boundary', value, unit: 'km' });
                     break;
                 }
+                case 'ancientWoodlands': {
+                    const data = this.dataProviderUtils.getAncientWoodlandsLayerData() as unknown as FeatureCollection<MultiPolygon>;
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'ancientWoodlands', label: 'Distance to nearest ancient woodland boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'scheduledAncientMonuments750mBuffer': {
+                    const data = this.dataProviderUtils.getScheduledAncientMonuments750mBufferLayerData() as unknown as FeatureCollection<MultiPolygon>;
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({
+                        layerId: 'scheduledAncientMonuments750mBuffer',
+                        label: 'Distance to nearest Scheduled Ancient Monument buffer',
+                        value,
+                        unit: 'km',
+                    });
+                    break;
+                }
+                case 'specialProtectionAreas2kmBuffer': {
+                    const data = this.dataProviderUtils.getSpecialProtectionAreas2kmBufferLayerData() as unknown as FeatureCollection<MultiPolygon>;
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'specialProtectionAreas2kmBuffer', label: 'Distance to nearest SPA boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'ramsarWetlands': {
+                    const data = this.dataProviderUtils.getRamsarWetlandsLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'ramsarWetlands', label: 'Distance to nearest Ramsar Wetland boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'coastalErosionProjection': {
+                    const data = this.dataProviderUtils.getCoastalErosionProjectionLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'coastalErosionProjection', label: 'Distance to nearest coastal erosion zone', value, unit: 'km' });
+                    break;
+                }
+                case 'fuelPoverty': {
+                    const data = this.dataProviderUtils.getFuelPovertyLayerData() as unknown as FeatureCollection<MultiPolygon>;
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'fuelPoverty', label: 'Distance to nearest fuel poverty area boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'dissolvedRiverFloodRisk': {
+                    const data = this.dataProviderUtils.getDissolvedRiverFloodRiskLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'dissolvedRiverFloodRisk', label: 'Distance to nearest river flood risk zone', value, unit: 'km' });
+                    break;
+                }
+                case 'roadBuffer': {
+                    const data = this.dataProviderUtils.getRoadBufferLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'roadBuffer', label: 'Distance to nearest road buffer boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'roadBufferSolar': {
+                    const data = this.dataProviderUtils.getRoadBufferSolar7mLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'roadBufferSolar', label: 'Distance to nearest road solar buffer boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'railBuffer': {
+                    const data = this.dataProviderUtils.getRailBufferLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'railBuffer', label: 'Distance to nearest railway buffer boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'railBufferSolar': {
+                    const data = this.dataProviderUtils.getRailBufferSolarLayerData();
+                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
+                    results.push({ layerId: 'railBufferSolar', label: 'Distance to nearest railway solar buffer boundary', value, unit: 'km' });
+                    break;
+                }
+                case 'slope': {
+                    const data = this.dataProviderUtils.getSlopesLayerData() as unknown as FeatureCollection<MultiPolygon>;
+                    const value = this.computeGridValueAtCentroid(centroid, data, 'Slope');
+                    results.push({ layerId: 'slope', label: 'Slope', value, unit: '°' });
+                    break;
+                }
+                case 'aspect': {
+                    const data = this.dataProviderUtils.getAspectLayerData() as unknown as FeatureCollection<MultiPolygon>;
+                    const value = this.computeGridValueAtCentroid(centroid, data, 'aspect');
+                    results.push({ layerId: 'aspect', label: 'Aspect', value, unit: '' });
+                    break;
+                }
             }
         }
 
@@ -359,10 +453,14 @@ export class ReportService {
             // Point-in-bbox fast reject
             if (cLng < fb[0] || cLng > fb[2] || cLat < fb[1] || cLat > fb[3]) continue;
             for (const coords of feature.geometry.coordinates) {
-                const poly = turf.polygon(coords);
-                if (turf.booleanPointInPolygon(centroid, poly)) {
-                    const grade = feature.properties?.['ALC_GRADE'];
-                    return typeof grade === 'string' ? grade : null;
+                try {
+                    const poly = turf.polygon(coords);
+                    if (turf.booleanPointInPolygon(centroid, poly)) {
+                        const grade = feature.properties?.['ALC_GRADE'];
+                        return typeof grade === 'string' ? grade : null;
+                    }
+                } catch {
+                    // degenerate ring — skip
                 }
             }
         }
@@ -380,10 +478,14 @@ export class ReportService {
             // Point-in-bbox fast reject
             if (cLng < fb[0] || cLng > fb[2] || cLat < fb[1] || cLat > fb[3]) continue;
             for (const coords of feature.geometry.coordinates) {
-                const poly = turf.polygon(coords);
-                if (turf.booleanPointInPolygon(centroid, poly)) {
-                    const val = feature.properties?.[propertyKey];
-                    return typeof val === 'number' ? Math.round(val * 100) / 100 : null;
+                try {
+                    const poly = turf.polygon(coords);
+                    if (turf.booleanPointInPolygon(centroid, poly)) {
+                        const val = feature.properties?.[propertyKey];
+                        return typeof val === 'number' ? Math.round(val * 100) / 100 : null;
+                    }
+                } catch {
+                    // degenerate ring — skip
                 }
             }
         }
@@ -428,14 +530,22 @@ export class ReportService {
                 const sLowerBoundKm = Math.sqrt(sDxDeg * sDxDeg + sDyDeg * sDyDeg) * 111;
                 if (minDistKm !== null && sLowerBoundKm >= minDistKm) continue;
 
-                const poly = turf.polygon(coords);
-                if (turf.booleanPointInPolygon(centroid, poly)) {
-                    return 0;
+                try {
+                    const poly = turf.polygon(coords);
+                    if (turf.booleanPointInPolygon(centroid, poly)) {
+                        return 0;
+                    }
+                } catch {
+                    // degenerate ring — fall through to line distance
                 }
-                const outerLineString = turf.lineString(outerRing);
-                const dist = turf.pointToLineDistance(centroid, outerLineString, { units: 'kilometers' });
-                if (minDistKm === null || dist < minDistKm) {
-                    minDistKm = dist;
+                try {
+                    const outerLineString = turf.lineString(outerRing);
+                    const dist = turf.pointToLineDistance(centroid, outerLineString, { units: 'kilometers' });
+                    if (minDistKm === null || dist < minDistKm) {
+                        minDistKm = dist;
+                    }
+                } catch {
+                    // degenerate ring — skip
                 }
             }
         }
