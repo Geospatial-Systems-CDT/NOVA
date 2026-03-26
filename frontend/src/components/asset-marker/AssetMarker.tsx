@@ -11,6 +11,7 @@ import { SubstationsListContainer } from '../map-substations-list';
 import AssetControls from './AssetControls';
 import { MarkerStatus } from './AssetMarkerStatus';
 import AssetSpecificationPopup from './AssetSpecificationPopup';
+import { isSolarAssetSelected } from './assetIconResolver';
 
 interface AssetMarkerProps {
     longitude?: number;
@@ -30,6 +31,8 @@ const AssetMarker: React.FC<AssetMarkerProps> = ({ longitude, latitude, onBoltCl
     const setPlacing = useMapStore((s) => s.setPlacing);
     const setMarkerPosition = useMapStore((s) => s.setMarkerPosition);
     const markerStatus = useMapStore((s) => s.markerStatus);
+    const markerVariant = useMapStore((s) => s.markerVariant);
+    const cachedAssets = useMapStore((s) => s.cachedAssets);
 
     const handleMarkerClick = (e: React.MouseEvent<HTMLImageElement>) => {
         e.preventDefault();
@@ -43,12 +46,20 @@ const AssetMarker: React.FC<AssetMarkerProps> = ({ longitude, latitude, onBoltCl
         setShowControls(true);
     }
 
+    const isSolar = isSolarAssetSelected(markerVariant, cachedAssets);
+
     const getMarkerImg = () => {
+        if (isSolar) {
+            return markerVariant?.icon || '/images/solar-icon.png';
+        }
         if (markerStatus === MarkerStatus.Connecting) return white_turbine_icon;
         return showControls ? selected_turbine_icon : unselected_turbine_icon;
     };
 
     const getMarkerSize = () => {
+        if (isSolar) {
+            return 60;
+        }
         if (markerStatus === MarkerStatus.Connecting) {
             return 100;
         } else {
@@ -106,7 +117,7 @@ const AssetMarker: React.FC<AssetMarkerProps> = ({ longitude, latitude, onBoltCl
                 )}
                 <img
                     src={getMarkerImg()}
-                    alt="Wind Turbine"
+                    alt={isSolar ? 'Solar Panel' : 'Wind Turbine'}
                     style={{
                         width: getMarkerSize(),
                         height: getMarkerSize(),

@@ -3,5 +3,7 @@
 
 export interface DataLayerAttribute {
     id: string;
-    value: number;
+    /** Human-readable label for the attribute (e.g. "Distance from AONB"). Optional for legacy callers. */
+    label?: string;
+    value: number | string;
 }

@@ -11,6 +11,11 @@ import { GeoJSON } from 'geojson';
 import { AssetLocationRequestDto } from '../models/asset-location-request.model';
 import { AssetAnalysisService } from '../services/asset-analysis.service';
 import { ReportService } from '../services/report.service';
+import * as turf from '@turf/turf';
+import { EnergyEstimationService } from '../services/energy-estimation.service';
+import { AssetEstimationRequestDto } from '../models/asset-estimation-request.model';
+import { performance } from 'perf_hooks';
+import { reportJobStore } from '../services/report-job.store';
 
 /**
  * Controller for UI-related endpoints
@@ -21,7 +26,8 @@ export class UIController {
      */
     constructor(
         private readonly assetAnalysisService: AssetAnalysisService,
-        private readonly reportService: ReportService
+        private readonly reportService: ReportService,
+        private readonly energyEstimationService: EnergyEstimationService
     ) {}
 
     /**
@@ -268,6 +274,73 @@ export class UIController {
         res.status(200).json(geoJsonData);
     }
 
+    public getSolarPotentialAtLocation(req: Request, res: Response): void {
+        const longitude = Number(req.query.longitude);
+        const latitude = Number(req.query.latitude);
+
+        if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+            res.status(400).json({ error: 'longitude and latitude query params are required numbers' });
+            return;
+        }
+
+        try {
+            const solarPotentialLayer = dataProviderUtils.getSolarPotentialLayerData();
+            const targetPoint = turf.point([longitude, latitude]);
+
+            let pvAnnualKwhPerKwp: number | null = null;
+
+            for (const feature of solarPotentialLayer.features) {
+                for (const coordinates of feature.geometry.coordinates) {
+                    const polygon = turf.polygon(coordinates);
+                    if (turf.booleanPointInPolygon(targetPoint, polygon)) {
+                        const value = Number(feature.properties?.pv_annual_kwh_kwp);
+                        pvAnnualKwhPerKwp = Number.isFinite(value) ? value : null;
+                        break;
+                    }
+                }
+
+                if (pvAnnualKwhPerKwp !== null) break;
+            }
+
+            res.status(200).json({ pvAnnualKwhPerKwp });
+        } catch (error) {
+            console.error(`Error retrieving solar potential data: ${error}`);
+            res.status(500).json({ error: 'Failed to retrieve solar potential data' });
+        }
+    }
+
+    public getSolarOrientationOptions(req: Request, res: Response): void {
+        try {
+            const orientations = dataProviderUtils.getSolarOrientationOptions();
+            res.status(200).json({ orientations });
+        } catch (error) {
+            console.error(`Error retrieving solar orientation options: ${error}`);
+            res.status(500).json({ error: 'Failed to retrieve solar orientation options' });
+        }
+    }
+
+    public estimateAssetContribution(req: Request, res: Response): void {
+        try {
+            const estimationRequest = req.body as AssetEstimationRequestDto;
+
+            if (
+                !estimationRequest ||
+                !estimationRequest.selectedSubstation ||
+                !Number.isFinite(estimationRequest.latitude) ||
+                !Number.isFinite(estimationRequest.longitude)
+            ) {
+                res.status(400).json({ error: 'Invalid estimation request payload' });
+                return;
+            }
+
+            const estimation = this.energyEstimationService.estimateAssetContribution(estimationRequest);
+            res.status(200).json(estimation);
+        } catch (error) {
+            console.error(`Error estimating asset contribution: ${error}`);
+            res.status(500).json({ error: 'Failed to estimate asset contribution' });
+        }
+    }
+
     /**
      * @swagger
      * /api/ui/location/analyse:
@@ -301,23 +374,101 @@ export class UIController {
      *         description: Internal server error.
      */
     public analyseLocation(req: Request, res: Response): void {
+        const _tTotal = performance.now();
         try {
             const analysisRequest = req.body as AssetLocationRequestDto;
 
             // Validate that the geoJson is a valid GeoJSON object
+            const _tValidate = performance.now();
             if (!isValidGeoJSON(analysisRequest.location)) {
                 res.status(400).json({ error: 'Invalid GeoJSON data' });
                 return;
             }
+            console.debug(`[analyseLocation] isValidGeoJSON: ${(performance.now() - _tValidate).toFixed(1)}ms`);
 
+            const _tAnalyze = performance.now();
             const heatmap = this.assetAnalysisService.analyzeLocation(analysisRequest);
-            const report = analysisRequest.maxIssues !== undefined ? this.reportService.generateReport(heatmap, analysisRequest.maxIssues) : null;
+            console.debug(`[analyseLocation] analyzeLocation: ${(performance.now() - _tAnalyze).toFixed(1)}ms`);
 
-            res.status(200).json({ heatmap, report });
+            // Create an async report job so the heatmap can be returned immediately.
+            // The report is generated in the background; the client polls GET /ui/location/report/:jobId.
+            let jobId: string | null = null;
+            if (analysisRequest.maxIssues !== undefined) {
+                jobId = reportJobStore.create();
+                const capturedJobId = jobId;
+                const allDataLayers = analysisRequest.dataLayers;
+                const maxIssues = analysisRequest.maxIssues;
+
+                setImmediate(() => {
+                    try {
+                        const _tReport = performance.now();
+                        const selectedPolygon = analysisRequest.location.features[0] ?? null;
+                        const report = this.reportService.generateReport(heatmap, maxIssues, allDataLayers, selectedPolygon);
+                        console.debug(`[analyseLocation] generateReport (async): ${(performance.now() - _tReport).toFixed(1)}ms`);
+                        reportJobStore.complete(capturedJobId, report);
+                    } catch (err) {
+                        console.error(`[analyseLocation] generateReport failed: ${err}`);
+                        reportJobStore.fail(capturedJobId, String(err));
+                    }
+                });
+            }
+
+            console.debug(`[analyseLocation] total (excl. report): ${(performance.now() - _tTotal).toFixed(1)}ms`);
+            res.status(200).json({ heatmap, jobId });
         } catch (error) {
             console.error(`Error analysing location data: ${error}`);
             res.status(500).json({ error: 'Failed to analyse location data' });
         }
+    }
+
+    /**
+     * @swagger
+     * /api/ui/location/report/{jobId}:
+     *   get:
+     *     summary: Poll for a background report generation job
+     *     description: |
+     *       Returns 202 with `{ status: 'pending' }` while the report is still being generated,
+     *       200 with `{ status: 'complete', report }` when ready,
+     *       or 500 with `{ status: 'error', message }` if generation failed.
+     *     tags:
+     *       - UI
+     *     parameters:
+     *       - in: path
+     *         name: jobId
+     *         schema:
+     *           type: string
+     *         required: true
+     *         description: Job ID returned by POST /api/ui/location/analyse
+     *     responses:
+     *       200:
+     *         description: Report is ready.
+     *       202:
+     *         description: Report is still being generated.
+     *       404:
+     *         description: Job not found or expired.
+     *       500:
+     *         description: Report generation failed.
+     */
+    public getReportJob(req: Request, res: Response): void {
+        const { jobId } = req.params;
+        const job = reportJobStore.get(jobId);
+
+        if (!job) {
+            res.status(404).json({ error: 'Report job not found or expired' });
+            return;
+        }
+
+        if (job.status === 'pending') {
+            res.status(202).json({ status: 'pending' });
+            return;
+        }
+
+        if (job.status === 'error') {
+            res.status(500).json({ status: 'error', message: job.error });
+            return;
+        }
+
+        res.status(200).json({ status: 'complete', report: job.report });
     }
 
     /**
@@ -439,5 +590,6 @@ export class UIController {
 }
 
 const assetAnalysisService = new AssetAnalysisService(new DataProviderUtils());
-export const reportService = new ReportService();
-export const uiController = new UIController(assetAnalysisService, reportService);
+const energyEstimationService = new EnergyEstimationService(new DataProviderUtils());
+export const reportService = new ReportService(new DataProviderUtils());
+export const uiController = new UIController(assetAnalysisService, reportService, energyEstimationService);

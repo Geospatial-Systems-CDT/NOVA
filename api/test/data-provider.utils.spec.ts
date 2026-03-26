@@ -288,6 +288,77 @@ describe('DataProviderUtils', () => {
         ],
     };
 
+    const mockAspectLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    aspect: 5,
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [-1.33, 50.70],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.70],
+                            [-1.33, 50.70],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
+    const mockSlopesLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {
+                    fid: 1,
+                    Slope: 12,
+                },
+                geometry: {
+                    coordinates: [
+                        [
+                            [-1.33, 50.70],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.70],
+                            [-1.33, 50.70],
+                        ],
+                    ],
+                    type: 'Polygon',
+                },
+            },
+        ],
+    };
+
+    const mockDissolvedRiverFloodRiskLayerData = {
+        type: 'FeatureCollection',
+        features: [
+            {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    coordinates: [
+                        [
+                            [-1.33, 50.7],
+                            [-1.33, 50.69],
+                            [-1.32, 50.69],
+                            [-1.32, 50.7],
+                            [-1.33, 50.7],
+                        ],
+                    ],
+                    type: 'MultiPolygon',
+                },
+            },
+        ],
+    };
+
     beforeEach(() => {
         // Reset all mocks
         jest.resetAllMocks();
@@ -424,6 +495,17 @@ describe('DataProviderUtils', () => {
         });
     });
 
+    describe('getDissolvedRiverFloodRiskLayerData', () => {
+        it('should read and parse the dissolved river flood-risk layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockDissolvedRiverFloodRiskLayerData));
+
+            const result = dataProviderUtils.getDissolvedRiverFloodRiskLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('dissolved_river_200m_buffer.geojson'), 'utf8');
+            expect(result).toEqual(mockDissolvedRiverFloodRiskLayerData);
+        });
+    });
+
     describe('getAreasOfNaturalBeautyLayerData', () => {
         it('should read and parse the areas of natural beauty layer data from file', () => {
             // Mock fs.readFileSync to return our mock data
@@ -485,6 +567,28 @@ describe('DataProviderUtils', () => {
 
             // Verify the result
             expect(result).toEqual(mockBuiltupAreas1KmLayerData);
+        });
+    });
+    
+    describe('getAspectLayerData', () => {
+        it('should read and parse the aspect layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockAspectLayerData));
+
+            const result = dataProviderUtils.getAspectLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Aspect_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockAspectLayerData);
+        });
+    });
+
+    describe('getSlopesLayerData', () => {
+        it('should read and parse the slopes layer data from file', () => {
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockSlopesLayerData));
+
+            const result = dataProviderUtils.getSlopesLayerData();
+
+            expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('Slopes_WGS84.geojson'), 'utf8');
+            expect(result).toEqual(mockSlopesLayerData);
         });
     });
 });

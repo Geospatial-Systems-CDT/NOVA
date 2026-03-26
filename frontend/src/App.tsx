@@ -8,6 +8,8 @@ import MapComponent from './components/map/MapComponent';
 import PrivacyNotice from './components/privacy-notice/PrivacyNotice';
 import theme from './theme';
 import './App.scss';
+import { Routes, Route } from 'react-router-dom';
+import ReportPage from './pages/ReportPage/ReportPage';
 
 const App: React.FC = () => {
     const [showPrivacy, setShowPrivacy] = useState(false);
@@ -15,20 +17,28 @@ const App: React.FC = () => {
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-                <Header onOpenPrivacy={() => setShowPrivacy(true)} />
-                <Box sx={{ flex: 1, minHeight: 0 }}>
-                    {showPrivacy ? (
-                        <Box sx={{ height: '100%', overflowY: 'auto', bgcolor: '#fff' }}>
-                            <PrivacyNotice onClose={() => setShowPrivacy(false)} />
+            <Routes>
+                <Route path="/report" element={<ReportPage />} />
+                <Route
+                    path="/*"
+                    element={
+                        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+                            <Header onOpenPrivacy={() => setShowPrivacy(true)} />
+                            <Box sx={{ flex: 1, minHeight: 0 }}>
+                                {showPrivacy ? (
+                                    <Box sx={{ height: '100%', overflowY: 'auto', bgcolor: '#fff' }}>
+                                        <PrivacyNotice onClose={() => setShowPrivacy(false)} />
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ height: '100%', overflow: 'hidden' }}>
+                                        <MapComponent />
+                                    </Box>
+                                )}
+                            </Box>
                         </Box>
-                    ) : (
-                        <Box sx={{ height: '100%', overflow: 'hidden' }}>
-                            <MapComponent />
-                        </Box>
-                    )}
-                </Box>
-            </Box>
+                    }
+                />
+            </Routes>
         </ThemeProvider>
     );
 };

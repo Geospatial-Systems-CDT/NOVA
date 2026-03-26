@@ -9,8 +9,12 @@ import { create } from 'zustand';
 import { MarkerStatus } from '../components/asset-marker/AssetMarkerStatus';
 import type { Substation } from '../components/map-substations-list/SubstationsList';
 import type { Asset, Variation } from '../components/search/add-asset/AddAsset';
+import type { ReportDTO } from '../types/report';
+import type { Scenario } from '../types/scenario';
+import { CACHED_REPORT_STORAGE_KEY } from '../types/report';
 
 export type PolygonStatus = 'none' | 'drawing' | 'editing' | 'pendingConfirmation' | 'confirmed';
+export type PlanningMode = 'scenarios' | 'layers';
 
 export interface MapState {
     mapRef: MapRef | null;
@@ -36,11 +40,30 @@ export interface MapState {
 
     markerVariant: Variation | null;
     setMarkerVariant: (variant: Variation | null) => void;
+    solarOrientation: string;
+    setSolarOrientation: (orientation: string) => void;
+    assetCount: number;
+    setAssetCount: (count: number) => void;
     markerStatus: MarkerStatus;
     setMarkerStatus: (status: MarkerStatus) => void;
 
     cachedHeatmap: FeatureCollection | null;
     setCachedHeatmap: (featureCollection: FeatureCollection | null) => void;
+
+    cachedReport: ReportDTO | null;
+    setCachedReport: (report: ReportDTO | null) => void;
+
+    reportJobId: string | null;
+    setReportJobId: (id: string | null) => void;
+
+    reportLoading: boolean;
+    setReportLoading: (loading: boolean) => void;
+
+    reportLayerVisible: boolean;
+    setReportLayerVisible: (visible: boolean) => void;
+
+    reportLayerData: FeatureCollection | null;
+    setReportLayerData: (featureCollection: FeatureCollection | null) => void;
 
     gridConnectViewActive: boolean;
     setGridConnectViewActive: (active: boolean) => void;
@@ -60,6 +83,21 @@ export interface MapState {
 
     layersPanelOpen: boolean;
     setLayersPanelOpen: (open: boolean) => void;
+
+    selectedScenario: Scenario | null;
+    setSelectedScenario: (scenario: Scenario | null) => void;
+
+    scenarioIsCustom: boolean;
+    setScenarioIsCustom: (isCustom: boolean) => void;
+
+    planningMode: PlanningMode;
+    setPlanningMode: (mode: PlanningMode) => void;
+
+    creatingScenario: boolean;
+    setCreatingScenario: (creating: boolean) => void;
+
+    userScenariosVersion: number;
+    bumpUserScenariosVersion: () => void;
 
     clearMarkerValues: () => void;
 }
@@ -86,6 +124,10 @@ export const useMapStore = create<MapState>((set, get) => ({
     setMarkerBearing: (bearing) => set({ markerBearing: bearing }),
     markerVariant: null,
     setMarkerVariant: (variant) => set({ markerVariant: variant }),
+    solarOrientation: 'south',
+    setSolarOrientation: (orientation) => set({ solarOrientation: orientation }),
+    assetCount: 1,
+    setAssetCount: (count) => set({ assetCount: Math.max(1, Math.floor(count)) }),
     markerStatus: MarkerStatus.Draft,
     setMarkerStatus: (status) => set({ markerStatus: status }),
 
@@ -107,6 +149,28 @@ export const useMapStore = create<MapState>((set, get) => ({
     cachedHeatmap: null,
     setCachedHeatmap: (featureCollection) => set({ cachedHeatmap: featureCollection }),
 
+    cachedReport: null,
+    setCachedReport: (report) => {
+        if (report) {
+            localStorage.setItem(CACHED_REPORT_STORAGE_KEY, JSON.stringify(report));
+        } else {
+            localStorage.removeItem(CACHED_REPORT_STORAGE_KEY);
+        }
+        set({ cachedReport: report });
+    },
+
+    reportJobId: null,
+    setReportJobId: (id) => set({ reportJobId: id }),
+
+    reportLoading: false,
+    setReportLoading: (loading) => set({ reportLoading: loading }),
+
+    reportLayerVisible: false,
+    setReportLayerVisible: (visible) => set({ reportLayerVisible: visible }),
+
+    reportLayerData: null,
+    setReportLayerData: (featureCollection) => set({ reportLayerData: featureCollection }),
+
     cachedAssets: null,
     setCachedAssets: (assets) => set({ cachedAssets: assets }),
 
@@ -116,7 +180,22 @@ export const useMapStore = create<MapState>((set, get) => ({
     layersPanelOpen: true,
     setLayersPanelOpen: (open) => set({ layersPanelOpen: open }),
 
-    clearMarkerValues: () => set({ markerBearing: null, markerVariant: null, markerPosition: null }),
+    clearMarkerValues: () => set({ markerBearing: null, markerVariant: null, markerPosition: null, assetCount: 1 }),
+    selectedScenario: null,
+    setSelectedScenario: (scenario) => set({ selectedScenario: scenario, scenarioIsCustom: false }),
+
+    scenarioIsCustom: false,
+    setScenarioIsCustom: (isCustom) => set({ scenarioIsCustom: isCustom }),
+
+    planningMode: 'scenarios',
+    setPlanningMode: (mode) => set({ planningMode: mode }),
+
+    creatingScenario: false,
+    setCreatingScenario: (creating) => set({ creatingScenario: creating }),
+
+    userScenariosVersion: 0,
+    bumpUserScenariosVersion: () => set((state) => ({ userScenariosVersion: state.userScenariosVersion + 1 })),
+
 
     handleMapClick: (e: MapLayerMouseEvent) => {
         if (get().placing) {

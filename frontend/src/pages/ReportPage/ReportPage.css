@@ -1,0 +1,271 @@
+:root {
+    --heading1-size: 1.3em;
+    --heading2-size: 1.1em;
+    --heading3-size: 1em;
+    --heading4-size: 0.8em;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 2rem;
+}
+
+.reveal .slides h1 {
+    font-size: var(--heading1-size);
+}
+
+.reveal .slides h2 {
+    font-size: var(--heading2-size);
+}
+
+.reveal .slides h3 {
+    font-size: var(--heading3-size);
+}
+
+.reveal .slides h4 {
+    font-size: var(--heading4-size);
+}
+.area {
+    font-size: 1.2rem;
+    margin-top: 1rem;
+}
+
+.report-page {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.report-slide {
+    color: #000000;
+    text-align: left;
+    background: #ffffff;
+}
+
+.report-slide .report-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 28px;
+    align-items: stretch;
+}
+
+.report-slide .subtitle {
+    margin: 0 0 16px 0;
+    color: #000000;
+    font-size: 0.68em;
+}
+
+.report-slide .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-size: 0.56em;
+}
+
+.report-slide .controls.top-right {
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.report-slide .controls select {
+    border: 1px solid #000000;
+    background: rgba(255, 255, 255, 0.7);
+    color: #000000;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.95em;
+}
+
+.report-slide .image-wrap {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid #366fb1;
+    border-radius: 14px;
+    padding: 12px;
+    max-height: 44vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.report-slide .image-wrap img {
+    width: 100%;
+    max-width: 680px;
+    object-fit: contain;
+    display: block;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.report-slide .image-wrap .report-polygon-image {
+    max-height: 55%;
+}
+
+.report-slide .image-wrap .report-polygon-context-image {
+    max-height: 40%;
+}
+
+.report-slide .image-caption {
+    margin-top: 8px;
+    color: #000000;
+    font-size: 0.3em;
+}
+
+.report-slide .stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.report-slide .stat-card {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid #366fb1;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.report-slide .stat-label {
+    color: #000000;
+    font-size: 0.47em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+}
+
+.report-slide .stat-value {
+    font-size: 0.74em;
+    font-weight: 400;
+}
+
+/* Override just the Area number styling */
+#area-value {
+    font-weight: 400;
+}
+
+.report-slide .issues,
+.report-slide .layer-table {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid #366fb1;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.report-slide .issues {
+    margin-bottom: 14px;
+}
+
+.report-slide .issues .issue-main-text {
+    margin-top: 8px;
+    font-size: 0.56em;
+}
+
+.report-slide .issue-pill {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.48em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.report-slide .issue-pill.darkRed {
+    background: rgb(102, 0, 8);
+    color: #ff9ba4;
+    border: 1px solid rgba(168, 49, 57, 0.55);
+}
+
+.report-slide .issue-pill.red {
+    background: rgba(219, 52, 66);
+    color: #ffccd0;
+    border: 1px solid rgba(255, 117, 127, 0.55);
+}
+
+.report-slide .issue-pill.amber {
+    background: rgb(221, 150, 19);
+    color: #ffe8be;
+    border: 1px solid rgba(255, 208, 124, 0.55);
+}
+
+.report-slide .issue-pill.green {
+    background: rgba(58, 180, 119, 0.2);
+    color: #d9ffec;
+    border: 1px solid rgba(124, 255, 189, 0.5);
+}
+
+.report-slide table {
+    margin: 0;
+    width: 100%;
+    font-size: 0.44em;
+}
+
+.report-slide.table-only table {
+    font-size: 0.5em;
+}
+
+.report-slide table th,
+.report-slide table td {
+    border-bottom: 1px solid #366fb1;
+    padding: 6px 0;
+}
+
+.report-slide table th {
+    color: #366fb1;
+    font-weight: 600;
+    text-align: left;
+}
+
+.report-slide .loading {
+    font-size: 0.58em;
+    color: #366fb1;
+}
+
+@media (max-width: 1024px) {
+    .report-slide .report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-slide .image-wrap {
+        min-height: 280px;
+    }
+}
+
+@media print {
+    .report-slide .report-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+    }
+
+    .report-slide .image-wrap {
+        min-height: unset;
+    }
+}
+
+.reveal .slides section[data-state='title-page'] {
+    background-color: #001e3f;
+    color: #fff;
+}
+
+.reveal .backgrounds .slide-background[data-state='title-page'],
+.reveal .backgrounds .slide-background[data-state='title-page'] .slide-background-content {
+    background-color: #001e3f;
+}
+
+html.title-page .reveal-viewport,
+html.title-page .reveal-viewport.reveal-scroll {
+    background-color: #001e3f;
+}
+
+.reveal .slides section[data-state='title-page'] h1,
+.reveal .slides section[data-state='title-page'] h2,
+.reveal .slides section[data-state='title-page'] h3,
+.reveal .slides section[data-state='title-page'] h4,
+.reveal .slides section[data-state='title-page'] h5,
+.reveal .slides section[data-state='title-page'] h6,
+.reveal .slides section[data-state='title-page'] p,
+.reveal .slides section[data-state='title-page'] small,
+.reveal .slides section[data-state='title-page'] a {
+    color: #fff;
+}

@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { Box } from '@mui/material';
+import { Box, Paper, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { Map } from 'react-map-gl/maplibre';
 import GridConnectPanel from '../grid-connect/GridConnectPanel';
-import { MAP_STYLES, type MapStyle } from '../../types/map';
+import { INITIAL_MAP_LATITUDE, INITIAL_MAP_LONGITUDE, INITIAL_MAP_ZOOM, MAP_STYLES, type MapStyle } from '../../types/map';
 import GridConnectFooterPanel from '../grid-connect/GridConnectFooterPanel';
 import MapControls from '../map-controls/MapControls';
 import SearchPanel from '../search/SearchPanel';
 import LayerControlPanel from '../layer-selection/LayerControlPanel';
+import ScenarioPanel from '../layer-selection/ScenarioPanel';
 import useMapboxDraw from '../../hooks/useMapboxDraw';
 import { MapVisualHelper } from '../../utils/MapVisualHelper';
 import { useMapStore } from '../../stores/useMapStore';
@@ -25,9 +26,20 @@ const MAP_VIEW_BOUNDS: [[number, number], [number, number]] = [
 ];
 
 const MapComponent = () => {
+    const renderStartRef = useRef(performance.now());
+    const mapInitLoggedRef = useRef(false);
+    const planningControlsLoggedRef = useRef(false);
+    const scenarioPanelLoggedRef = useRef(false);
+    const layersPanelLoggedRef = useRef(false);
     const mapRef = useRef<MapRef>(null!);
     const setMapRef = useMapStore((s) => s.setMapRef);
-    const [viewState, setViewState] = useState({ longitude: -1.611, latitude: 54.5, pitch: 0, bearing: 0 });
+    const [viewState, setViewState] = useState({
+        longitude: INITIAL_MAP_LONGITUDE,
+        latitude: INITIAL_MAP_LATITUDE,
+        zoom: INITIAL_MAP_ZOOM,
+        pitch: 0,
+        bearing: 0,
+    });
     const [mapStyle, setMapStyle] = useState<MapStyle>('hybrid');
     const [isMapInitialized, setIsMapInitialized] = useState(false);
     const placing = useMapStore((s) => s.placing);
@@ -39,6 +51,12 @@ const MapComponent = () => {
     const setDrawRef = useMapStore((s) => s.setDrawRef);
     const [is3D, setIs3D] = useState(false);
     const cachedHeatMap = useMapStore((s) => s.cachedHeatmap);
+    const polygonStatus = useMapStore((s) => s.polygonStatus);
+    const showPlanningControls = polygonStatus === 'confirmed';
+    const planningMode = useMapStore((s) => s.planningMode);
+    const setPlanningMode = useMapStore((s) => s.setPlanningMode);
+    const reportLayerVisible = useMapStore((s) => s.reportLayerVisible);
+    const reportLayerData = useMapStore((s) => s.reportLayerData);
     const { handleMapClick, mousePos, isInsidePolygon, suitability } = useMarkerPlacement();
     const [resetLayers, setResetLayers] = useState(false);
 
@@ -47,7 +65,13 @@ const MapComponent = () => {
         const userDrawnPolygon = drawRef.current ? MapVisualHelper.getFirstPolygon(drawRef.current) : null;
         if (mapRef.current && userDrawnPolygon && cachedHeatMap) {
             mapRef.current.getMap().once('styledata', () => {
-                MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, cachedHeatMap);
+                if (reportLayerVisible && reportLayerData) {
+                    MapVisualHelper.removeHeatmapLayer(mapRef);
+                    MapVisualHelper.addOrUpdateReportLayer(mapRef, reportLayerData);
+                } else {
+                    MapVisualHelper.removeReportLayer(mapRef);
+                    MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, cachedHeatMap);
+                }
                 MapVisualHelper.applyDimmedMaskAndPanToPolygon(mapRef.current.getMap(), userDrawnPolygon);
             });
         }
@@ -59,6 +83,49 @@ const MapComponent = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [drawRef.current, setDrawRef]);
+
+    useEffect(() => {
+        if (isMapInitialized && !mapInitLoggedRef.current) {
+            mapInitLoggedRef.current = true;
+            console.info(`[perf] map initialized in ${(performance.now() - renderStartRef.current).toFixed(2)}ms`);
+        }
+    }, [isMapInitialized]);
+
+    useEffect(() => {
+        if (showPlanningControls && !planningControlsLoggedRef.current) {
+            planningControlsLoggedRef.current = true;
+            console.info(`[perf] planning controls shown in ${(performance.now() - renderStartRef.current).toFixed(2)}ms`);
+        }
+    }, [showPlanningControls]);
+
+    useEffect(() => {
+        if (showPlanningControls && planningMode === 'scenarios' && !scenarioPanelLoggedRef.current) {
+            scenarioPanelLoggedRef.current = true;
+            console.info(`[perf] scenarios panel first shown in ${(performance.now() - renderStartRef.current).toFixed(2)}ms`);
+        }
+    }, [planningMode, showPlanningControls]);
+
+    useEffect(() => {
+        if (showPlanningControls && planningMode === 'layers' && !layersPanelLoggedRef.current) {
+            layersPanelLoggedRef.current = true;
+            console.info(`[perf] layers panel first shown in ${(performance.now() - renderStartRef.current).toFixed(2)}ms`);
+        }
+    }, [planningMode, showPlanningControls]);
+
+    useEffect(() => {
+        if (!isMapInitialized) return;
+
+        if (reportLayerVisible && reportLayerData) {
+            MapVisualHelper.removeHeatmapLayer(mapRef);
+            MapVisualHelper.addOrUpdateReportLayer(mapRef, reportLayerData);
+            return;
+        }
+
+        MapVisualHelper.removeReportLayer(mapRef);
+        if (cachedHeatMap) {
+            MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, cachedHeatMap);
+        }
+    }, [cachedHeatMap, isMapInitialized, reportLayerData, reportLayerVisible]);
 
     const handleMapLoad = () => {
         setIsMapInitialized(true);
@@ -92,9 +159,38 @@ const MapComponent = () => {
                         />
                         {gridConnectViewActive && <GridConnectPanel />}
                         <MapControls mapRef={mapRef} onStyleChange={handleStyleChange} currentStyle={mapStyle} is3D={is3D} setIs3D={setIs3D} />
+                        {showPlanningControls && (
+                            <Paper
+                                elevation={4}
+                                sx={{
+                                    position: 'absolute',
+                                    top: '0.75rem',
+                                    left: '1rem',
+                                    zIndex: 1002,
+                                    p: 0.5,
+                                }}
+                            >
+                                <ToggleButtonGroup
+                                    exclusive
+                                    size="small"
+                                    value={planningMode}
+                                    onChange={(_, mode) => {
+                                        if (!mode) return;
+                                        setPlanningMode(mode);
+                                    }}
+                                >
+                                    <ToggleButton value="scenarios">Scenarios</ToggleButton>
+                                    <ToggleButton value="layers">Layers</ToggleButton>
+                                </ToggleButtonGroup>
+                            </Paper>
+                        )}
                         {placing && mousePos && <PlacingMarkerOverlay mousePos={mousePos} isInsidePolygon={isInsidePolygon} suitability={suitability} />}
                         <AssetMarkerContainer is3D={is3D} setIsPanelOpen={setIsPanelOpen} />
-                        <LayerControlPanel mapRef={mapRef} drawRef={drawRef} resetLayers={resetLayers} setResetLayers={setResetLayers} />
+                        {planningMode === 'scenarios' ? (
+                            <ScenarioPanel />
+                        ) : (
+                            <LayerControlPanel mapRef={mapRef} drawRef={drawRef} resetLayers={resetLayers} setResetLayers={setResetLayers} />
+                        )}
                     </>
                 )}
             </Map>

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-import { LngLat, MapMouseEvent, type Map, Popup, MercatorCoordinate } from 'maplibre-gl';
+import { LngLat, MapMouseEvent, type Map as MapLibreMap, Popup, MercatorCoordinate } from 'maplibre-gl';
 import type { Feature, FeatureCollection, Geometry, LineString, Polygon } from 'geojson';
 import type { GeoJSONSource, SourceSpecification } from 'maplibre-gl';
 import type { MapRef } from 'react-map-gl/maplibre';
@@ -51,11 +51,13 @@ export class MapVisualHelper {
     private static readonly maskLayerSourceId = 'mask';
     private static readonly maskLayerId = 'mask-layer';
     private static readonly heatmapLayerId = 'heatmap-layer';
+    private static readonly reportLayerId = 'report-layer';
     private static readonly threeDimensionalAssetsLayer = '3d-assets-layer';
     private static readonly substationLayerId = 'substation-layer';
     private static readonly powerLineLayerId = 'power-line-layer';
     private static readonly connectionLineLayerId = 'connection-line-layer';
     private static readonly powerLineColor = '#007AFF';
+    private static reportLayerPopup: Popup | null = null;
 
     /**
      * Applies a dimmed mask over the entire map except inside the given polygon and centers the map on that polygon.
@@ -64,7 +66,7 @@ export class MapVisualHelper {
      * @param map - The MapLibre map instance
      * @param polygon - A GeoJSON Polygon to act as the visible cutout
      */
-    static applyDimmedMaskAndPanToPolygon(map: Map, polygon: Polygon) {
+    static applyDimmedMaskAndPanToPolygon(map: MapLibreMap, polygon: Polygon) {
         const maskFeature: Feature<Polygon> = {
             type: 'Feature',
             geometry: {
@@ -113,7 +115,7 @@ export class MapVisualHelper {
      *
      * @param map - The MapLibre map instance
      */
-    static removeDimmedMask(map: Map) {
+    static removeDimmedMask(map: MapLibreMap) {
         if (map.getLayer(this.maskLayerId)) map.removeLayer(this.maskLayerId);
         if (map.getSource(this.maskLayerSourceId)) map.removeSource(this.maskLayerSourceId);
     }
@@ -126,7 +128,7 @@ export class MapVisualHelper {
      * @param map - The React MapLibre map reference
      * @returns A [lng, lat] tuple of the suggested popup position
      */
-    static getConfirmationPopupCoordinates(polygon: Polygon, map: Map): [number, number] {
+    static getConfirmationPopupCoordinates(polygon: Polygon, map: MapLibreMap): [number, number] {
         const coords = polygon.coordinates[0];
         const topLat = Math.max(...coords.map(([, lat]) => lat));
         const avgLng = coords.reduce((sum, [lng]) => sum + lng, 0) / coords.length;
@@ -252,7 +254,50 @@ export class MapVisualHelper {
         if (map.getSource(id)) map.removeSource(id);
     }
 
-    static panToPolygon(map: Map, draw?: MapboxDraw, polygon?: Polygon | null) {
+    static addOrUpdateReportLayer(mapRef: React.RefObject<MapRef>, geojson: FeatureCollection) {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const id = this.reportLayerId;
+
+        if (!map.getSource(id)) {
+            map.addSource(id, { type: 'geojson', data: geojson });
+            map.addLayer({
+                id,
+                type: 'fill',
+                source: id,
+                paint: {
+                    'fill-color': ['match', ['get', 'suitability'], 'darkRed', '#620d05', 'red', '#d64333', 'amber', '#d18910', 'green', '#198754', '#666666'],
+                    'fill-opacity': 0.5,
+                    'fill-outline-color': '#1f1f1f',
+                },
+            });
+        } else {
+            const source = map.getSource(id) as GeoJSONSource;
+            source.setData(geojson);
+        }
+
+        map.off('click', id, this._handleReportLayerClick);
+        map.on('click', id, this._handleReportLayerClick);
+    }
+
+    static removeReportLayer(mapRef: React.RefObject<MapRef>) {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const id = this.reportLayerId;
+        map.off('click', id, this._handleReportLayerClick);
+
+        if (this.reportLayerPopup) {
+            this.reportLayerPopup.remove();
+            this.reportLayerPopup = null;
+        }
+
+        if (map.getLayer(id)) map.removeLayer(id);
+        if (map.getSource(id)) map.removeSource(id);
+    }
+
+    static panToPolygon(map: MapLibreMap, draw?: MapboxDraw, polygon?: Polygon | null) {
         if (!map || (!polygon && !draw)) return;
 
         if (!polygon) polygon = MapVisualHelper.getFirstPolygon(draw!);
@@ -283,7 +328,7 @@ export class MapVisualHelper {
      * @param map - The MapLibre map instance
      * @returns An array of layer IDs that were hidden
      */
-    static hideNonBaseLayers(map: Map): string[] {
+    static hideNonBaseLayers(map: MapLibreMap): string[] {
         const allLayerIds = map.getStyle().layers?.map((layer) => layer.id) || [];
         const layersToHide = allLayerIds.filter((id) => id.startsWith('gl-') || id === MapVisualHelper.heatmapLayerId || id == MapVisualHelper.maskLayerId);
 
@@ -303,7 +348,7 @@ export class MapVisualHelper {
      * @param map - The MapLibre map instance
      * @param layerIds - Array of layer IDs to show
      */
-    static showLayers(map: Map, layerIds: string[]) {
+    static showLayers(map: MapLibreMap, layerIds: string[]) {
         layerIds.forEach((id) => {
             if (map.getLayer(id)) {
                 map.setLayoutProperty(id, 'visibility', 'visible');
@@ -316,7 +361,7 @@ export class MapVisualHelper {
      * @param map  - The MapLibre map instance.
      */
     static async visualiseAssetsIn3d(
-        map: Map,
+        map: MapLibreMap,
         markerPosition: { longitude?: number; latitude?: number } | null,
         markerBearing: number | null,
         markerVariant: Variation | null
@@ -354,7 +399,7 @@ export class MapVisualHelper {
             type: 'custom' as const,
             renderingMode: '3d' as const,
 
-            onAdd(_: Map, gl: WebGLRenderingContext) {
+            onAdd(_: MapLibreMap, gl: WebGLRenderingContext) {
                 const scene = new THREE.Scene();
                 const camera = new THREE.Camera();
 
@@ -408,7 +453,7 @@ export class MapVisualHelper {
     /**
      * Removes all 3d assets from the map.
      */
-    static remove3DAssets(map: Map) {
+    static remove3DAssets(map: MapLibreMap) {
         if (map.getLayer(MapVisualHelper.threeDimensionalAssetsLayer)) map.removeLayer(MapVisualHelper.threeDimensionalAssetsLayer);
     }
 
@@ -543,17 +588,6 @@ export class MapVisualHelper {
     }
 
     /**
-     * Extracts the "issue" field from a polygon feature.
-     *
-     * @param feature - A GeoJSON feature to extract issues from
-     * @returns A string array for an issue description (can be empty)
-     */
-    private static _parseIssueFromFeature(feature: Feature): string[] {
-        const issue = feature.properties?.issue;
-        return issue ? [issue] : [];
-    }
-
-    /**
      * Maps suitability values to hierarchy scores so only the highest-priority issue
      * per topic is shown in the popup.
      */
@@ -575,15 +609,20 @@ export class MapVisualHelper {
             return 'special-areas-of-conservation';
         }
 
-        if (
-            normalizedIssue.includes('site of special scientific interest') ||
-            normalizedIssue.includes('sites of special scientific interest')
-        ) {
+        if (normalizedIssue.includes('site of special scientific interest') || normalizedIssue.includes('sites of special scientific interest')) {
             return 'sites-of-special-scientific-interest';
         }
 
         if (normalizedIssue.includes('built up area') || normalizedIssue.includes('built up areas')) {
             return 'built-up-areas';
+        }
+
+        if (normalizedIssue.includes('road')) {
+            return 'road';
+        }
+
+        if (normalizedIssue.includes('railway')) {
+            return 'railway';
         }
 
         if (normalizedIssue.includes('area of outstanding natural beauty') || normalizedIssue.includes('areas of outstanding natural beauty')) {
@@ -592,6 +631,14 @@ export class MapVisualHelper {
 
         if (normalizedIssue.includes('windspeed')) {
             return 'windspeed';
+        }
+
+        if (normalizedIssue.includes('slope')) {
+            return 'terrain-slope';
+        }
+
+        if (normalizedIssue.includes('aspect')) {
+            return 'terrain-aspect';
         }
 
         return normalizedIssue;
@@ -619,13 +666,18 @@ export class MapVisualHelper {
         return Array.from(issuesByTopic.values()).map((entry) => entry.issue);
     }
 
+    private static _parseIssueFromFeature(feature: Feature): string[] {
+        const issue = feature.properties?.issue;
+        return typeof issue === 'string' && issue.length > 0 ? [issue] : [];
+    }
+
     /**
      * Shows a popup when a polygon on the heatmap is clicked, listing all issues.
      *
      * @param e - Click event with feature context
      */
     private static _handleHeatmapLayerClick(e: FeatureEvent) {
-        const map = e.target as Map;
+        const map = e.target as MapLibreMap;
         const features = e.features ?? [];
         if (features.length === 0) return;
 
@@ -659,5 +711,56 @@ export class MapVisualHelper {
         `;
 
         new Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+    }
+
+    private static _handleReportLayerClick(e: FeatureEvent) {
+        const map = e.target as MapLibreMap;
+        const feature = (e.features ?? []).find((item) => (item as MapGeoJSONFeature).layer?.id === MapVisualHelper.reportLayerId);
+        if (!feature?.properties) return;
+
+        const properties = feature.properties as {
+            areaSqKm?: number;
+            issueCount?: number;
+            issues?: Array<{ description?: string; suitability?: string }>;
+            layerValues?: Array<{ label?: string; value?: string | number | null; unit?: string }>;
+        };
+
+        const issues = Array.isArray(properties.issues) ? properties.issues : [];
+        const layerValues = Array.isArray(properties.layerValues) ? properties.layerValues : [];
+        const issueCount = properties.issueCount ?? issues.length;
+
+        const issueHtml =
+            issues.length > 0
+                ? issues.map((issue) => `<li>${issue.description ?? 'Issue'}${issue.suitability ? ` (${issue.suitability})` : ''}</li>`).join('')
+                : '<li>No issues</li>';
+
+        const valuesHtml =
+            layerValues.length > 0
+                ? layerValues
+                      .map(
+                          (value) =>
+                              `<tr><td style="padding:2px 8px 2px 0;">${value.label ?? 'Value'}</td><td>${value.value ?? '-'}</td><td>${value.unit ?? ''}</td></tr>`
+                      )
+                      .join('')
+                : '<tr><td colspan="3">No layer values</td></tr>';
+
+        const html = `
+            <div style="max-width: 320px;">
+                <div style="font-weight: 600; margin-bottom: 4px;">Report region</div>
+                <div style="margin-bottom: 4px;">Area: ${(properties.areaSqKm ?? 0).toFixed(3)} km²</div>
+                <div style="margin-bottom: 8px;">Issue count: ${issueCount}</div>
+                <div style="font-weight: 600; margin-bottom: 4px;">Issues</div>
+                <ul style="margin: 0 0 8px 16px; padding: 0;">${issueHtml}</ul>
+                <div style="font-weight: 600; margin-bottom: 4px;">Layer values</div>
+                <table style="width: 100%; border-collapse: collapse;">${valuesHtml}</table>
+            </div>
+        `;
+
+        if (this.reportLayerPopup) {
+            this.reportLayerPopup.remove();
+            this.reportLayerPopup = null;
+        }
+
+        this.reportLayerPopup = new Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
     }
 }
