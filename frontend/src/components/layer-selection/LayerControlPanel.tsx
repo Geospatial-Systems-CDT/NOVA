@@ -235,6 +235,23 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         if (selectedScenario) setScenarioIsCustom(true);
     };
 
+    const areAllLayersChecked = useCallback(
+        (layerNames: string[]) => layerNames.length > 0 && layerNames.every((name) => checkedLayers[name]),
+        [checkedLayers]
+    );
+
+    const handleCategoryToggleAll = (layerNames: string[]) => {
+        const allChecked = areAllLayersChecked(layerNames);
+        setCheckedLayers((prev) => {
+            const next = { ...prev };
+            layerNames.forEach((name) => {
+                next[name] = !allChecked;
+            });
+            return next;
+        });
+        if (selectedScenario) setScenarioIsCustom(true);
+    };
+
     const handleAccordionToggle = (category: string) => {
         setExpandedPanels((prev) => (prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]));
     };
@@ -435,6 +452,9 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
             const visible = items.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
             if (!visible.length) return null;
 
+            const visibleLayerNames = visible.map((item) => item.name);
+            const allVisibleChecked = areAllLayersChecked(visibleLayerNames);
+
             return (
                 <Accordion
                     key={category}
@@ -444,7 +464,21 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                     disableGutters
                 >
                     <AccordionSummary expandIcon={<ExpandMoreIcon />} className="layer-accordion-summary">
-                        <Typography>{category}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 1 }}>
+                            <Typography>{category}</Typography>
+                            <Button
+                                size="small"
+                                variant="text"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCategoryToggleAll(visibleLayerNames);
+                                }}
+                                onFocus={(e) => e.stopPropagation()}
+                                aria-label={`toggle ${category} layers`}
+                            >
+                                {allVisibleChecked ? 'Uncheck all' : 'Check all'}
+                            </Button>
+                        </Box>
                     </AccordionSummary>
                     <AccordionDetails sx={{ pt: 0.5, pb: 0 }}>
                         {visible.map((item) => {
