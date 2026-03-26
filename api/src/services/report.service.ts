@@ -162,6 +162,12 @@ export class ReportService {
 
         for (const feature of issueFeatures) {
             const description = (feature.properties?.issue as string) ?? 'unknown';
+            if (description === 'Unsuitable land') {
+                // The imported unsuitable-land mask can be extremely detailed.
+                // Excluding it from combinatorial report splitting avoids stack overflows
+                // in downstream polygon operations while preserving heatmap behavior.
+                continue;
+            }
             const suitability = (feature.properties?.suitability as string) ?? 'unknown';
             if (!groupMap.has(description)) {
                 groupMap.set(description, { suitability, features: [] });
@@ -316,6 +322,12 @@ export class ReportService {
                     results.push({ layerId: 'areasOfOutstandingNaturalBeauty', label: 'Distance to nearest AONB boundary', value, unit: 'km' });
                     break;
                 }
+                case 'unsuitableLand': {
+                    const data = this.dataProviderUtils.getUnsuitableLandLayerData();
+                    const value = this.isPointInsideLayer(centroid, data) ? 'Yes' : 'No';
+                    results.push({ layerId: 'unsuitableLand', label: 'Within unsuitable land', value, unit: '' });
+                    break;
+                }
             }
         }
 
@@ -441,5 +453,25 @@ export class ReportService {
         }
 
         return minDistKm !== null ? Math.round(minDistKm * 100) / 100 : null;
+    }
+
+    private isPointInsideLayer(centroid: Feature<Point>, layerData: FeatureCollection<MultiPolygon | Polygon>): boolean {
+        for (const feature of layerData.features) {
+            const geometry = feature.geometry;
+            if (geometry.type === 'Polygon') {
+                const polygon = turf.polygon(geometry.coordinates);
+                if (turf.booleanPointInPolygon(centroid, polygon)) return true;
+                continue;
+            }
+
+            if (geometry.type === 'MultiPolygon') {
+                for (const coordinates of geometry.coordinates) {
+                    const polygon = turf.polygon(coordinates);
+                    if (turf.booleanPointInPolygon(centroid, polygon)) return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
