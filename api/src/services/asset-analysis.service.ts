@@ -139,6 +139,35 @@ export class AssetAnalysisService {
         return matchedPolygons;
     }
 
+    private getMatchedPolygonsForLayerCompact(
+        layer: FeatureCollection<MultiPolygon | Polygon>,
+        location: Feature<Polygon>,
+        suitability: string,
+        issue?: string
+    ): Feature<Polygon | MultiPolygon, GeoJsonProperties>[] {
+        const matchedPolygons: Feature<Polygon | MultiPolygon, GeoJsonProperties>[] = [];
+        const locationBbox = turf.bbox(location);
+
+        layer.features.forEach((layerFeature) => {
+            if (!AssetAnalysisService.bboxesOverlap(locationBbox, turf.bbox(layerFeature))) return;
+
+            const combinedFeatureCollection = {
+                type: 'FeatureCollection',
+                features: [location, layerFeature],
+            } as FeatureCollection<Polygon | MultiPolygon>;
+
+            const intersection = turf.intersect(combinedFeatureCollection);
+
+            if (intersection) {
+                intersection.properties!.suitability = suitability;
+                if (issue) intersection.properties!.issue = issue;
+                matchedPolygons.push(intersection);
+            }
+        });
+
+        return matchedPolygons;
+    }
+
     /*
      * A helper method to get the matched polygons based on the data layers and location provided. These polygons are ordered with the good layer (suitability rating of green) -> caution layers (suitability rating of amber) -> bad layers (suitability of red) -> exact bad layers (suitability rating of darkRed)
      *
@@ -525,6 +554,12 @@ export class AssetAnalysisService {
                         this.getMatchedPolygonsForLayer(fuelPovertyBelowAverageLayerData, location, 'red', 'Low priority for minimising fuel poverty')
                     );
                 }
+            } else if (dataLayer.id === 'unsuitableLand') {
+                const unsuitableLandLayerData = this.dataProviderUtils.getUnsuitableLandLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayerCompact(unsuitableLandLayerData, location, 'darkRed', 'Unsuitable land')
+                );
             }
             console.debug(`[getMatchedPolygonsForLayers] layer "${dataLayer.id}": ${(performance.now() - _tLayer).toFixed(1)}ms`);
         });
