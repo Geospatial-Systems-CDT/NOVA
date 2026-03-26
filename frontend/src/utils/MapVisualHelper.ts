@@ -599,6 +599,31 @@ export class MapVisualHelper {
     }
 
     /**
+     * Converts categorical suitability to a numeric value used in tooltips.
+     * Lower is more suitable (0 = green, 1 = darkRed).
+     */
+    private static _getSuitabilityValue(suitability: unknown): number {
+        if (suitability === 'darkRed') return 1;
+        if (suitability === 'red') return 0.66;
+        if (suitability === 'amber') return 0.33;
+        return 0;
+    }
+
+    private static _formatSuitabilityLabel(suitability: unknown): string {
+        if (suitability === 'darkRed' || suitability === 'red' || suitability === 'amber' || suitability === 'green') {
+            return suitability;
+        }
+        return 'green';
+    }
+
+    private static _parseIssueFromFeature(feature: Feature | { properties?: { issue?: unknown } }): string[] {
+        const issue = feature?.properties?.issue;
+        if (typeof issue === 'string' && issue.trim().length > 0) return [issue];
+        if (Array.isArray(issue)) return issue.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+        return [];
+    }
+
+    /**
      * Normalizes issue strings into a stable topic key so related "close / too close / present"
      * variants can be compared by severity.
      */
@@ -647,8 +672,8 @@ export class MapVisualHelper {
     /**
      * Returns at most one issue per topic, preferring darkRed over red over amber.
      */
-    private static _getHighestPriorityIssues(features: Feature[]): string[] {
-        const issuesByTopic = new Map<string, { issue: string; score: number }>();
+    private static _getHighestPriorityIssueDetails(features: Feature[]): Array<{ issue: string; suitability: string; value: number; score: number }> {
+        const issuesByTopic = new Map<string, { issue: string; suitability: string; value: number; score: number }>();
 
         features.forEach((feature) => {
             const issue = feature.properties?.issue;
@@ -659,11 +684,23 @@ export class MapVisualHelper {
             const existing = issuesByTopic.get(topicKey);
 
             if (!existing || score > existing.score) {
-                issuesByTopic.set(topicKey, { issue, score });
+                issuesByTopic.set(topicKey, {
+                    issue,
+                    suitability: this._formatSuitabilityLabel(feature.properties?.suitability),
+                    value: this._getSuitabilityValue(feature.properties?.suitability),
+                    score,
+                });
             }
         });
 
-        return Array.from(issuesByTopic.values()).map((entry) => entry.issue);
+        return Array.from(issuesByTopic.values());
+    }
+
+    /**
+     * Returns at most one issue per topic, preferring darkRed over red over amber.
+     */
+    private static _getHighestPriorityIssues(features: Feature[]): string[] {
+        return this._getHighestPriorityIssueDetails(features).map((entry) => entry.issue);
     }
 
     /**
@@ -693,15 +730,26 @@ export class MapVisualHelper {
         }
 
         const heatmapFeatures = features.filter((feature) => (feature as MapGeoJSONFeature).layer?.id === MapVisualHelper.heatmapLayerId);
-        const uniqueIssues = MapVisualHelper._getHighestPriorityIssues(heatmapFeatures);
-        const count = uniqueIssues.length;
+        const uniqueIssueDetails = MapVisualHelper._getHighestPriorityIssueDetails(heatmapFeatures);
+        const count = uniqueIssueDetails.length;
+        const overallSuitabilityValue =
+            heatmapFeatures.length > 0
+                ? Math.max(...heatmapFeatures.map((feature) => MapVisualHelper._getSuitabilityValue(feature.properties?.suitability)))
+                : 0;
 
         const html = `
             <div style="max-width: 250px;">
                 <div style="font-weight: bold;">
                     ${count === 0 ? 'No issues found' : `${count} issue${count > 1 ? 's' : ''} found`}
                 </div>
-                ${count > 0 ? uniqueIssues.map((issue) => `<div style="margin-bottom: 4px;">${issue}</div>`).join('') : ''}
+                <div style="margin: 4px 0 8px;">Overall suitability value: ${overallSuitabilityValue.toFixed(2)} (0 best, 1 worst)</div>
+                ${
+                    count > 0
+                        ? uniqueIssueDetails
+                              .map((entry) => `<div style="margin-bottom: 4px;">${entry.issue} (${entry.suitability}, value ${entry.value.toFixed(2)})</div>`)
+                              .join('')
+                        : ''
+                }
             </div>
         `;
 

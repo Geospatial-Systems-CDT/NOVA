@@ -6,6 +6,15 @@
             "description": "Onshore wind suitability scenario based on Friends of the Earth 2025 criteria, incorporating environmental, infrastructure, and planning buffers. Layer weights are normalised values derived from a literature synthesis across Döker et al. (2025), Şahin et al. (2025), Triantafyllidou and Vagiona (2026), Spyridonidou and Vagiona (2020), Ifkirne et al. (2022), and Watson and Hudson (2015), with supplementary literature-derived estimates for criteria not covered in the primary synthesis.",
             "layers": [
                 {
+                    "layerId": "unsuitableLand",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 1
+                        }
+                    ]
+                },
+                {
                     "layerId": "windSpeed",
                     "attributes": [
                         {
@@ -127,19 +136,6 @@
                             "value": 0.0079
                         }
                     ]
-                },
-                {
-                    "layerId": "solarPotential",
-                    "attributes": [
-                        {
-                            "id": "minPotential",
-                            "value": 900
-                        },
-                        {
-                            "id": "layerWeight",
-                            "value": 0.0
-                        }
-                    ]
                 }
             ]
         },
@@ -158,6 +154,15 @@
                         {
                             "id": "layerWeight",
                             "value": 0.5066
+                        }
+                    ]
+                },
+                {
+                    "layerId": "unsuitableLand",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 1
                         }
                     ]
                 },
@@ -213,6 +218,15 @@
                     ]
                 },
                 {
+                    "layerId": "unsuitableLand",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 1
+                        }
+                    ]
+                },
+                {
                     "layerId": "ancientWoodlands",
                     "attributes": [
                         {
@@ -264,6 +278,15 @@
                     ]
                 },
                 {
+                    "layerId": "unsuitableLand",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 1
+                        }
+                    ]
+                },
+                {
                     "layerId": "builtUpAreas",
                     "attributes": [
                         {
@@ -282,19 +305,6 @@
                         {
                             "id": "layerWeight",
                             "value": 0.1108
-                        }
-                    ]
-                },
-                {
-                    "layerId": "solarPotential",
-                    "attributes": [
-                        {
-                            "id": "minPotential",
-                            "value": 900
-                        },
-                        {
-                            "id": "layerWeight",
-                            "value": 0.0
                         }
                     ]
                 }

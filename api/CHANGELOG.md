@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file, following **Semantic Versioning**.
 
+## Unreleased
+
+### New features
+
+- Added method-aware report generation with support for `legacy` and `weighted` analysis methods in `ReportService` and `UIController` flow.
+- Added weighted report controls and normalisation in analyse request handling:
+    - `analysisMethod`
+    - `reportMaxScoreForPolygon`
+    - `reportMaxRegions`
+- Added weighted report metadata output fields used by the frontend/report layer:
+    - `analysisMethod`
+    - `reportMaxScoreForPolygonUsed`
+    - `reportMaxRegionsUsed`
+    - weighted score components (`weightedIssueSum`, `totalLayerWeight`, `suitabilityScore`)
+
+### Fixes
+
+- Fixed weighted-report empty-result regressions by aligning weighted gating to score/cutoff behaviour.
+- Fixed report generation stack overflow risks for large weighted scenarios with safer geometry merge/fallback handling.
+- Fixed weighted report stalls by adding combination-budget protection with automatic fast-path fallback.
+- Fixed merge regressions in report and analysis services:
+    - corrected slope suitability layer call argument mismatch
+    - removed duplicate object property in report-region construction
+    - restored required `energyPotential` field population in weighted fast-path regions
+
+### Changes
+
+- Updated issue union/grouping logic to preserve source layer identity for weighted scoring.
+- Updated report generation ranking/capping behaviour to remain consistent between weighted and legacy modes.
+- Updated tests in `asset-analysis.service.spec.ts` to validate stable functional outcomes for complex geometries where exact coordinate serialisation may vary.
+
+### Tests
+
+- Added/updated report service tests for weighted scoring, weighted cutoff filtering, weighted region caps, and legacy compatibility.
+- Added/updated controller tests for method-aware report generation request handling.
+
 ## v2.0.0 (Feature release)
 
 ### New features
@@ -50,9 +86,9 @@ No deprecated features in this release.
 - Improved issue hierarchy handling in map layer issue popups so only the highest-priority issue is shown per topic.
 - Resolved duplicate/multi-level issue display where overlapping suitability levels (for example: dark red + red + amber) were shown at the same time for the same constraint.
 - Enforced severity precedence in issue output:
-  1. darkRed
-  2. red
-  3. amber
+    1. darkRed
+    2. red
+    3. amber
 
 ### Changes
 
@@ -60,10 +96,11 @@ Updated asset-analysis.service.ts to:
 
 - Updated popup issue aggregation logic to group related issue variants by topic (for example: “close to”, “too close to”, and “inside” for the same layer family) and retain only the most severe one.
 - Added/updated frontend unit tests covering:
-  1. Highest-priority selection per issue topic.
-  2. Suppression of lower-priority duplicate issue messages in popup content.
+    1. Highest-priority selection per issue topic.
+    2. Suppression of lower-priority duplicate issue messages in popup content.
 
 #### Changes from features/solar_data
+
 Added solar potential and windspeed resource integration to analysis and MVP output estimation, with a backend-first deterministic screening estimator across API and frontend.
 
 Backend:
@@ -84,8 +121,8 @@ Frontend:
 - Integrated backend estimation in `GridConnectFooterPanel` using `POST /api/ui/asset/estimate`.
 - Kept client-side estimation as fallback when backend estimation is unavailable.
 - Added helper clients: `assetEstimationApi` and `solarPotentialApi`.
-- Added unit tests for frontend energy estimation utility behavior.
-Docs:
+- Added unit tests for frontend energy estimation utility behaviour.
+  Docs:
 - Added and expanded the user guide methods note with equations, constants, assumptions, and limitations.
 - Documented data-source precedence (solar/wind lookup first, heuristic fallback second).
 
@@ -107,15 +144,16 @@ Additional updates (terrain suitability):
     - Aspect rule for solar suitability:
         - amber for East/West classes (3, 7)
         - red for North/North-East/North-West classes (1, 2, 8)
-- Updated issue topic normalization in frontend popup handling to include terrain topics (`slope`, `aspect`) so duplicate issue variants are still collapsed by severity.
+- Updated issue topic normalisation in frontend popup handling to include terrain topics (`slope`, `aspect`) so duplicate issue variants are still collapsed by severity.
 - Refined terrain issue wording for clarity:
     - aspect messages now focus on aspect-only reasoning (no implied slope status)
     - slope message explicitly states unfavourable solar terrain due to steep slope
 - Added/updated API tests for:
     - terrain data loading in `data-provider.utils.spec.ts`
-    - slope/aspect suitability behavior in `asset-analysis.service.spec.ts`
+    - slope/aspect suitability behaviour in `asset-analysis.service.spec.ts`
 
 Latest refinements (estimation and display):
+
 - Updated capacity parsing so any positive parsed asset specification value is used directly (including small solar W/kW-scale values), with fallback values used only when parsing is missing or non-positive.
 - Synced API asset specification values with UI-displayed asset values to avoid mismatch during contribution estimation checks.
 - Aligned wind asset specification schema and values between API and frontend datasets; added optional wind estimator parameters (`Power Coefficient (Cp)`, `Air Density (kg/m3)`, `Rated wind speed`) while retaining core capacity/rotor inputs.
@@ -127,12 +165,12 @@ Latest refinements (estimation and display):
 - Added multi-asset estimation support with `assetCount` (default 1) in the footer panel for both wind and solar scenarios.
 - Extended estimation request contracts (frontend API client + backend DTO) to include optional `assetCount`.
 - Updated backend and frontend fallback estimators to scale contribution outputs for multiple identical assets using a single-substation screening assumption.
-- Fixed wind multi-asset scaling so turbine count multiplies computed annual energy consistently (not only rated-cap clipping behavior).
+- Fixed wind multi-asset scaling so turbine count multiplies computed annual energy consistently (not only rated-cap clipping behaviour).
 - Improved low-output visibility by increasing precision/scaling handling for small estimated values.
 - Updated frontend footer display to use adaptive units for small values:
-  - energy below 1 MWh is shown in kWh/year
-  - power below 1 MW is shown in kW
-- Updated methods documentation to reflect the current wind/solar estimator methodology, assumptions, fallback behavior, and multi-asset scaling.
+    - energy below 1 MWh is shown in kWh/year
+    - power below 1 MW is shown in kW
+- Updated methods documentation to reflect the current wind/solar estimator methodology, assumptions, fallback behaviour, and multi-asset scaling.
 - Added report-region energy potential outputs in the API (`energyPotential`) with:
     - annual solar potential (MWh/year)
     - annual wind potential (MWh/year)
@@ -152,5 +190,5 @@ Latest refinements (estimation and display):
 - Geometry layer generation/order from the API was not changed in this update.
 - Solar and wind support icon changes
 - Added roads and rail geojson and buffer in system
-© Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.  
-Licensed under the Open Government Licence v3.0.
+  © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+  Licensed under the Open Government Licence v3.0.

@@ -24,7 +24,7 @@ This project follows **Semantic Versioning (SemVer)** ([semver.org](https://semv
 - Power grid connectivity feature enabling substation selection and connectivity distance display (API + UI) (DPAV-1158).
 - Base 3D mapping support and 3D asset view; asset panel; popups and properties panel.
 - Heatmap functionality sourced from API data layers; limits and user parameter support for data layers (DPAV-1000, DPAV-994).
-- Search bar (top-left) with initial behavior and refactored data-provider logic (DPAV-1129, DPAV-998).
+- Search bar (top-left) with initial behaviour and refactored data-provider logic (DPAV-1129, DPAV-998).
 - API services/endpoints for layers and search; associated unit tests and coverage improvements.
 - UI enhancements: asset details hover popover and asset suitability hover icon (DPAV-1002).
 - Data science module with initial ML algorithm for optimal location and docs/templates.
@@ -117,7 +117,7 @@ For full licensing terms, see [OGL_LICENSE.md](OGL_LICENSE.md).
 - `MapVisualHelper` updated with visual support for road/rail and terrain constraint layers.
 - `MapVisualHelper` extended with dedicated report overlay add/update/remove methods and report popup handling.
 - `LayerControlPanel` updated to surface per-layer assumptions, support scenario-driven pre-selection, and trigger background report generation.
-- `MapComponent` extended with planning mode toggle and report/model overlay switching behavior.
+- `MapComponent` extended with planning mode toggle and report/model overlay switching behaviour.
 - Map store (`useMapStore.ts`) extended with report caching state and scenario/planning workflow state.
 - Map store (`useMapStore.ts`) extended with report layer visibility/data state.
 - `App.tsx` and `main.tsx` updated to register the `/report` route.
@@ -127,4 +127,42 @@ For full licensing terms, see [OGL_LICENSE.md](OGL_LICENSE.md).
 ## Tests
 
 - Added/updated tests for `energyEstimation`, `ScenarioPanel`, `LayerControlPanel`, `MapComponent`, report UI components, and `MapVisualHelper`.
-- Added tests for report-layer mapping and report overlay add/remove behavior in map utilities.
+- Added tests for report-layer mapping and report overlay add/remove behaviour in map utilities.
+
+## Weighted Analysis And Report Reliability
+
+## Features
+
+- Added method-aware analysis/report flow with support for both `legacy` and `weighted` report generation modes from the layer panel.
+- Added weighted report controls in request/response flow:
+  - `analysisMethod`
+  - `reportMaxScoreForPolygon`
+  - `reportMaxRegions`
+- Added weighted suitability metadata in report output and map/report display flow, including:
+  - weighted issue sum
+  - total layer weight
+  - weighted suitability score
+  - applied weighted threshold/cutoff metadata
+- Added per-layer source tracking (`sourceLayerId`) so weighted scoring can resolve layer-level weights consistently.
+
+## Fixes
+
+- Fixed weighted report scenarios that could return no polygons when issue-count gating was too strict by applying score-based filtering and weighted bounds.
+- Fixed weighted report generation stability issues under large scenario inputs by adding early fallback paths and safer geometry handling.
+- Fixed weighted analysis/report stalls by introducing a combination-budget guard and automatic weighted fast-path fallback before combinatorial explosion.
+- Fixed slope suitability call-argument regression introduced during merge.
+- Fixed report-region object construction regressions (duplicate property and missing required `energyPotential`).
+- Fixed frontend routing test regressions by rendering app tests with router context.
+
+## Changes
+
+- Updated report generation to be method-aware end-to-end, including sorting and truncation rules for weighted output.
+- Updated report map popup content to show weighted threshold and weighted polygon cutoff details when applicable.
+- Updated geometry merge/union handling in report generation for safer behaviour with high-detail datasets.
+- Updated selected asset-analysis tests to assert stable behavioural outcomes instead of brittle exact-geometry serialisation where topology representation can vary.
+
+## Tests
+
+- Added/updated backend tests for weighted suitability scoring, weighted cutoffs, weighted region caps, legacy scoring compatibility, and report metadata propagation.
+- Added/updated controller and service tests to cover method-aware report request handling and weighted parameter normalisation.
+- Added/updated frontend tests for report mapping and app routing behaviour after report flow changes.
