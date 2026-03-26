@@ -1,96 +1,6 @@
 {
     "scenarios": [
         {
-            "id": "balanced-wind",
-            "name": "Balanced Wind",
-            "description": "Balanced environmental buffers and wind limits.",
-            "layers": [
-                {
-                    "layerId": "windSpeed",
-                    "attributes": [
-                        {
-                            "id": "minSpeed",
-                            "value": 5
-                        },
-                        {
-                            "id": "maxSpeed",
-                            "value": 9
-                        }
-                    ]
-                },
-                {
-                    "layerId": "specialAreasOfConservation",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 2
-                        }
-                    ]
-                },
-                {
-                    "layerId": "sitesOfSpecialScientificInterest",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 2
-                        }
-                    ]
-                },
-                {
-                    "layerId": "builtUpAreas",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 1.5
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "id": "conservation-first",
-            "name": "Conservation First",
-            "description": "Larger protection buffers around sensitive areas.",
-            "layers": [
-                {
-                    "layerId": "areasOfOutstandingNaturalBeauty",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 5
-                        }
-                    ]
-                },
-                {
-                    "layerId": "sitesOfSpecialScientificInterest",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 5
-                        }
-                    ]
-                },
-                {
-                    "layerId": "specialAreasOfConservation",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 5
-                        }
-                    ]
-                },
-                {
-                    "layerId": "builtUpAreas",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 2
-                        }
-                    ]
-                }
-            ]
-        },
-        {
             "id": "friends-of-the-earth-onshore-wind-2025",
             "name": "Friends of the Earth - Onshore Wind 2025",
             "description": "Onshore wind suitability scenario based on Friends of the Earth 2025 criteria, incorporating environmental, infrastructure, and planning buffers. Layer weights are normalised values derived from a literature synthesis across Döker et al. (2025), Şahin et al. (2025), Triantafyllidou and Vagiona (2026), Spyridonidou and Vagiona (2020), Ifkirne et al. (2022), and Watson and Hudson (2015), with supplementary literature-derived estimates for criteria not covered in the primary synthesis.",
@@ -215,6 +125,163 @@
                         {
                             "id": "layerWeight",
                             "value": 0.0079
+                        }
+                    ]
+                },
+                {
+                    "layerId": "solarPotential",
+                    "attributes": [
+                        {
+                            "id": "minPotential",
+                            "value": 900
+                        },
+                        {
+                            "id": "layerWeight",
+                            "value": 0.0
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "friends-of-the-earth-onshore-wind-2025-Environmental-Ecological",
+            "name": "Friends of the Earth - Onshore Wind 2025: Environmental & Ecological",
+            "description": "Onshore wind suitability scenario based on Friends of the Earth 2025 criteria, incorporating environmental and ecological. Layer weights are normalised values derived from a literature synthesis across Döker et al. (2025), Şahin et al. (2025), Triantafyllidou and Vagiona (2026), Spyridonidou and Vagiona (2020), Ifkirne et al. (2022), and Watson and Hudson (2015), with supplementary literature-derived estimates for criteria not covered in the primary synthesis.",
+            "layers": [
+                {
+                    "layerId": "windSpeed",
+                    "attributes": [
+                        {
+                            "id": "minSpeed",
+                            "value": 5
+                        },
+                        {
+                            "id": "layerWeight",
+                            "value": 0.5066
+                        }
+                    ]
+                },
+                {
+                    "layerId": "slope",
+                    "attributes": [
+                        {
+                            "id": "maxSlope",
+                            "value": 15
+                        },
+                        {
+                            "id": "layerWeight",
+                            "value": 0.1563
+                        }
+                    ]
+                },
+                {
+                    "layerId": "aspect",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 0.0031
+                        }
+                    ]
+                },
+                {
+                    "layerId": "sitesOfSpecialScientificInterest",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 2
+                        },
+                        {
+                            "id": "layerWeight",
+                            "value": 0.3341
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "friends-of-the-earth-onshore-wind-2025-Infrastructure-Planning",
+            "name": "Friends of the Earth - Onshore Wind 2025: Infrastructure & Planning",
+            "description": "Onshore wind suitability scenario based on Friends of the Earth 2025 criteria, incorporating Infrastructure and planning buffers. Layer weights are normalised values derived from a literature synthesis across Döker et al. (2025), Şahin et al. (2025), Triantafyllidou and Vagiona (2026), Spyridonidou and Vagiona (2020), Ifkirne et al. (2022), and Watson and Hudson (2015), with supplementary literature-derived estimates.",
+            "layers": [
+                {
+                    "layerId": "roadBuffer",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 0.1634
+                        }
+                    ]
+                },
+                {
+                    "layerId": "ancientWoodlands",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 0.4049
+                        }
+                    ]
+                },
+                {
+                    "layerId": "ramsarWetlands",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 0.4049
+                        }
+                    ]
+                },
+                {
+                    "layerId": "specialAreasOfConservation",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 1
+                        },
+                        {
+                            "id": "layerWeight",
+                            "value": 0.0268
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "friends-of-the-earth-onshore-wind-2025-Social-Heritage",
+            "name": "Friends of the Earth - Onshore Wind 2025: Social & Heritage",
+            "description": "Onshore wind suitability scenario based on Friends of the Earth 2025 criteria, incorporating social and heritage buffers. Layer weights are normalised values derived from a literature synthesis across Döker et al. (2025), Şahin et al. (2025), Triantafyllidou and Vagiona (2026), Spyridonidou and Vagiona (2020), Ifkirne et al. (2022), and Watson and Hudson (2015), with supplementary literature-derived estimates.",
+            "layers": [
+                {
+                    "layerId": "agriculturalLandClassification",
+                    "attributes": [
+                        {
+                            "id": "classificationThreshold",
+                            "value": "Grade 3"
+                        },
+                        {
+                            "id": "layerWeight",
+                            "value": 0.1108
+                        }
+                    ]
+                },
+                {
+                    "layerId": "builtUpAreas",
+                    "attributes": [
+                        {
+                            "id": "minDistance",
+                            "value": 0.2
+                        },
+                        {
+                            "id": "layerWeight",
+                            "value": 0.7783
+                        }
+                    ]
+                },
+                {
+                    "layerId": "scheduledAncientMonuments750mBuffer",
+                    "attributes": [
+                        {
+                            "id": "layerWeight",
+                            "value": 0.1108
                         }
                     ]
                 },
