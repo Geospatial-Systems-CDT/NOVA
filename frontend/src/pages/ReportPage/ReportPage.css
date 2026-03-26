@@ -44,7 +44,7 @@ body {
 
 .report-slide .report-grid {
     display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
+    grid-template-columns: 0.55fr 1.45fr;
     gap: 28px;
     align-items: stretch;
 }
@@ -158,8 +158,14 @@ body {
     margin-bottom: 14px;
 }
 
+.report-slide .issues .issue-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .report-slide .issues .issue-main-text {
-    margin-top: 8px;
     font-size: 0.56em;
 }
 
@@ -203,13 +209,40 @@ body {
 }
 
 .report-slide.table-only table {
-    font-size: 0.5em;
+    font-size: 0.4em;
 }
 
 .report-slide table th,
 .report-slide table td {
     border-bottom: 1px solid #366fb1;
     padding: 6px 0;
+}
+
+.report-slide.table-only table th,
+.report-slide.table-only table td {
+    padding: 3px 0;
+}
+
+.report-slide.table-only .layer-table {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.report-slide .layer-table.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+.report-slide .layer-table.two-col table {
+    width: 100%;
+}
+
+.report-slide table td.col-divider,
+.report-slide table th.col-divider {
+    padding-left: 20px;
+    border-left: 1px solid rgba(54, 111, 177, 0.3);
 }
 
 .report-slide table th {
@@ -221,6 +254,138 @@ body {
 .report-slide .loading {
     font-size: 0.58em;
     color: #366fb1;
+}
+
+/* ---- Region-slide right column ---- */
+.report-slide .region-slide-right {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* ---- Snapshot metrics mini-table ---- */
+.report-slide .snapshot-metrics {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid #366fb1;
+    border-radius: 10px;
+    padding: 6px 10px;
+    flex-shrink: 0;
+}
+
+.report-slide .snapshot-metrics table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.report-slide .snapshot-metrics td {
+    padding: 3px 6px;
+    font-size: 1em;
+    border-bottom: 1px solid rgba(54, 111, 177, 0.18);
+}
+
+.report-slide .snapshot-metrics tr:last-child td {
+    border-bottom: none;
+}
+
+.report-slide .snapshot-metric-label {
+    color: #444;
+    width: 60%;
+}
+
+.report-slide .snapshot-metric-value {
+    font-weight: 600;
+    color: #1a3a5c;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.report-slide .stats-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: stretch;
+    flex-shrink: 0;
+    margin-bottom: 14px;
+}
+
+.report-slide .stats-row .stat-card,
+.report-slide .stats-row .issues {
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.report-slide .stats-row .stat-card {
+    margin-bottom: 0;
+}
+
+.report-slide .stats-row .issues {
+    margin-bottom: 0;
+}
+
+.report-slide .region-slide-right .stats {
+    flex-shrink: 0;
+}
+
+.report-slide .region-slide-right .issues {
+    flex-shrink: 0;
+}
+
+/* ---- Layer values ---- */
+.report-slide .layer-values {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid #366fb1;
+    border-radius: 10px;
+    padding: 8px 10px;
+    flex-shrink: 0;
+    max-height: 52vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.report-slide .layer-values .stat-label {
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
+
+.report-slide .layer-values-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    column-gap: 16px;
+}
+
+.report-slide .layer-value-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(54, 111, 177, 0.18);
+    font-size: 0.44em;
+    min-width: 0;
+}
+
+.report-slide .layer-value-item:last-child {
+    border-bottom: none;
+}
+
+.report-slide .layer-value-label {
+    color: #444;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.report-slide .layer-value-val {
+    color: #000;
+    font-weight: 600;
+    flex-shrink: 0;
+    text-align: right;
+    white-space: nowrap;
 }
 
 @media (max-width: 1024px) {
@@ -235,7 +400,7 @@ body {
 
 @media print {
     .report-slide .report-grid {
-        grid-template-columns: 1.1fr 0.9fr;
+        grid-template-columns: 0.55fr 1.45fr;
     }
 
     .report-slide .image-wrap {
