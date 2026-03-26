@@ -50,6 +50,7 @@ export class DataProviderUtils {
     private readonly coastalErosionProjectionLayerDataFilePath: string;
     private readonly dissolvedRiverFloodRiskLayerDataFilePath: string;
     private readonly agriculturalLandClassificationDataFilePath: string;
+    private readonly unsuitableLandLayerDataFilePath: string;
     private readonly coastlineDataFilePath: string;
     private readonly solarKkDataFilePath: string;
     private fuse: Fuse<SearchOptionDTO> | undefined;
@@ -92,6 +93,7 @@ export class DataProviderUtils {
         this.coastalErosionProjectionLayerDataFilePath = path.join(__dirname, '../data/coastal_erosion_projection.geojson');
         this.dissolvedRiverFloodRiskLayerDataFilePath = path.join(__dirname, '../data/dissolved_river_200m_buffer.geojson');
         this.agriculturalLandClassificationDataFilePath = path.join(__dirname, '../data/IoW_PAL.geojson');
+        this.unsuitableLandLayerDataFilePath = path.join(__dirname, '../data/mask.geojson');
         this.solarKkDataFilePath = path.join(__dirname, '../data/solar-kk.json');
         this.coastlineDataFilePath = path.join(__dirname, '../data/IoW_coastline.geojson');
     }
@@ -380,6 +382,48 @@ export class DataProviderUtils {
 
     public getAgriculturalLandClassificationData(): FeatureCollection<MultiPolygon> {
         return this.readCachedJsonFile<FeatureCollection<MultiPolygon>>(this.agriculturalLandClassificationDataFilePath);
+    }
+
+    private readPolygonFeatureCollection(filePath: string): FeatureCollection<MultiPolygon | Polygon> {
+        const parsed = this.readCachedJsonFile<unknown>(filePath) as {
+            type?: string;
+            geometry?: { type?: string; coordinates?: unknown };
+            features?: Array<{ geometry?: { type?: string; coordinates?: unknown } }>;
+            coordinates?: unknown;
+            properties?: Record<string, unknown>;
+        };
+
+        if (parsed?.type === 'FeatureCollection' && Array.isArray(parsed.features)) {
+            return this.normalizeToWgs84(parsed as FeatureCollection<MultiPolygon | Polygon>);
+        }
+
+        if (parsed?.type === 'Feature' && (parsed.geometry?.type === 'Polygon' || parsed.geometry?.type === 'MultiPolygon')) {
+            const featureCollection: FeatureCollection<MultiPolygon | Polygon> = {
+                type: 'FeatureCollection',
+                features: [parsed as unknown as FeatureCollection<MultiPolygon | Polygon>['features'][number]],
+            };
+            return this.normalizeToWgs84(featureCollection);
+        }
+
+        if (parsed?.type === 'Polygon' || parsed?.type === 'MultiPolygon') {
+            const featureCollection: FeatureCollection<MultiPolygon | Polygon> = {
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: parsed as Polygon | MultiPolygon,
+                    },
+                ],
+            };
+            return this.normalizeToWgs84(featureCollection);
+        }
+
+        return { type: 'FeatureCollection', features: [] };
+    }
+
+    public getUnsuitableLandLayerData(): FeatureCollection<MultiPolygon | Polygon> {
+        return this.readPolygonFeatureCollection(this.unsuitableLandLayerDataFilePath);
     }
 
     /**
