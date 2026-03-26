@@ -93,6 +93,13 @@ For full licensing terms, see [OGL_LICENSE.md](OGL_LICENSE.md).
 - Introduced exclusive planning modes (`scenarios` / `layers`) toggled from the map, preventing the Scenario and Layers panels from being open simultaneously.
 - Added `scenarioStorage.ts` for persisting user-created scenarios to browser local storage.
 
+**Report layer toggle**
+
+- Added a `View/Hide Report Layer` toggle next to the report button in the search controls to display report regions directly on the dashboard map.
+- Added report-to-GeoJSON mapping to convert cached report regions into a popup-ready overlay layer.
+- Added interactive report-region callouts on map click showing area, issue count, full issue list, and layer values.
+- Added cached-report fallback logic so the report layer can be toggled from store or local storage data, with user guidance when report data is missing.
+
 **Asset management**
 
 - Extended `AssetMarker` and `PlacingMarkerOverlay` with solar asset type support.
@@ -103,16 +110,21 @@ For full licensing terms, see [OGL_LICENSE.md](OGL_LICENSE.md).
 
 - Fixed `MapVisualHelper` type error when classifying amber areas with a single issue.
 - Corrected layer hierarchy resolution in `MapVisualHelper` for multi-level suitability classifications.
+- Fixed layer conflict by hiding the model heatmap whenever report layer view is enabled, and restoring model heatmap when report layer view is disabled.
 
 ## Changes
 
 - `MapVisualHelper` updated with visual support for road/rail and terrain constraint layers.
+- `MapVisualHelper` extended with dedicated report overlay add/update/remove methods and report popup handling.
 - `LayerControlPanel` updated to surface per-layer assumptions, support scenario-driven pre-selection, and trigger background report generation.
-- `MapComponent` extended with planning mode toggle.
+- `MapComponent` extended with planning mode toggle and report/model overlay switching behavior.
 - Map store (`useMapStore.ts`) extended with report caching state and scenario/planning workflow state.
+- Map store (`useMapStore.ts`) extended with report layer visibility/data state.
 - `App.tsx` and `main.tsx` updated to register the `/report` route.
 - updated road and rail buffers added caution buffer area for road and solar.
-added the rest of layers.
+  added the rest of layers.
+
 ## Tests
 
 - Added/updated tests for `energyEstimation`, `ScenarioPanel`, `LayerControlPanel`, `MapComponent`, report UI components, and `MapVisualHelper`.
+- Added tests for report-layer mapping and report overlay add/remove behavior in map utilities.

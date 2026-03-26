@@ -44,12 +44,29 @@ export class ReportService {
         const _t0 = performance.now();
 
         // 1. Separate green baseline from issue features
-        const greenFeature = analysisResult.features.find((f) => f.properties?.suitability === 'green') as
+        let greenFeature = analysisResult.features.find((f) => f.properties?.suitability === 'green') as
             | Feature<Polygon | MultiPolygon, GeoJsonProperties>
             | undefined;
 
         if (!greenFeature) {
             return { regions: [], totalRegions: 0, selectedPolygon, assumptions };
+        }
+
+        // 1a. Clip the green baseline to the IoW coastline so that all downstream
+        //     candidate geometries are automatically land-only. Doing this once here
+        //     is far cheaper than intersecting every candidate region individually.
+        if (this.dataProviderUtils) {
+            const _tCoastline = performance.now();
+            const coastlineFeatures = this.dataProviderUtils.getCoastlineData().features as Feature<Polygon | MultiPolygon, GeoJsonProperties>[];
+            const coastlineUnion = this.unionAll(coastlineFeatures);
+            if (coastlineUnion) {
+                const clipped = turf.intersect(turf.featureCollection([greenFeature, coastlineUnion]));
+                if (!clipped) {
+                    return { regions: [], totalRegions: 0, selectedPolygon, assumptions };
+                }
+                greenFeature = clipped as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
+            }
+            console.debug(`[generateReport] coastline clip: ${(performance.now() - _tCoastline).toFixed(1)}ms`);
         }
 
         const issueFeatures = analysisResult.features.filter((f) => f.properties?.suitability !== 'green') as Feature<
