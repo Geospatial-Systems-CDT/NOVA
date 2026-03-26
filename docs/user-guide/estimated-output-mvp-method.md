@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This note describes how NOVA currently computes the Estimated output contribution values after an asset is connected to a selected substation.
+This section describes how NOVA currently computes the Estimated output contribution values after an asset is connected to a selected substation.
 
-The current implementation is deterministic and assumption-based, with calculations performed on the backend and returned to the UI. It is suitable for screening and demonstration, not for investment-grade engineering decisions.
+The current implementation utalizes calculations performed on the backend and returned to the UI. It is suitable for screening and demonstration, not for investment-grade engineering decisions.
 
 ## Implementation Location
 
@@ -155,12 +155,3 @@ Interpretation:
 5. Solar uses annual specific yield (pvout), not sub-hourly irradiance and temperature dynamics
 6. Wind uses seasonal-average speed and a simplified CF curve, not turbine-specific power curves or hub-height correction
 
-## Recommended Next Step to Reach Production-Grade Estimation
-
-Replace the fixed assumptions with data-driven inputs:
-
-1. Real asset engineering parameters (per variant)
-2. Location-specific resource datasets (wind/solar time series)
-3. Substation/network headroom and constraint data
-4. Explicit curtailment and losses model
-5. Validation against measured generation where available

@@ -8,8 +8,9 @@ theme:
 
 nav:
   - Home: index.md
-  - User Guide:
-      - Estimated Output MVP Method: user-guide/estimated-output-mvp-method.md
+  - System Architecture and Components: system-architecture.md
+  - System Overview:
+      - User Guide: user-guide/estimated-output-mvp-method.md
 
 markdown_extensions:
   - admonition

@@ -2,18 +2,26 @@
 
 This documentation site contains technical and user-facing reference material for NOVA.
 
-## Contents
+## Purpose and Scope of the System
 
-- User Guide
-  - Estimated Output MVP Method
+NOVA is a geospatial decision-support platform used to assess location suitability for renewable energy infrastructure on the Isle of Wight, with compatibility to be expanded to the rest of the United Kingdom. It combines map-based polygon input, policy and environmental constraint layers, and backend analysis services to produce suitability outputs and reports for areas selected by the user within Ordnance Survey area quadrant SZ.
 
-## Local Preview
+This technical documentation covers:
 
-To preview this documentation locally:
+- System architecture and components (frontend, API, etc)
+- Geospatial data integration and layer-based analysis behavior
+- Configuration and deployment workflows
+- Operational guidance for monitoring, troubleshooting, and maintenance
+
+Out of scope for this section:
+
+- Legal interpretation of planning policy
+- Authoritative policy text (refer to source policy documents)
+- End-user training material beyond technical usage context
 
 ```bash
 pip install mkdocs
-mkdocs serve
+py -m mkdocs serve -f "Technical Documentation.yml"
 ```
 
 Then open `http://127.0.0.1:8000`.
