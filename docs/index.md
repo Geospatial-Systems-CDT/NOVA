@@ -19,9 +19,7 @@ Out of scope for this section:
 - Authoritative policy text (refer to source policy documents)
 - End-user training material beyond technical usage context
 
-```bash
-pip install mkdocs
-py -m mkdocs serve -f "Technical Documentation.yml"
-```
+## Key Technical Pages
 
-Then open `http://127.0.0.1:8000`.
+- [System Architecture and Components](system-architecture.md)
+- [Estimated Output Contribution - MVP Method Note](user-guide/estimated-output-mvp-method.md)
