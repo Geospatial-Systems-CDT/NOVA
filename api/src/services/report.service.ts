@@ -270,7 +270,6 @@ export class ReportService {
                         issues,
                         layerValues,
                         energyPotential,
-                        layerValues: [],
                     });
                 }
             }
@@ -513,6 +512,7 @@ export class ReportService {
             const area = turf.area(polygon);
             if (area < MIN_AREA_M2) return;
             if (suitabilityScore > reportMaxScoreForPolygon) return;
+            const energyPotential = this.computeRegionEnergyPotential(polygon, area / 1e6, issues);
 
             regions.push({
                 id: '',
@@ -525,6 +525,7 @@ export class ReportService {
                 suitabilityScore,
                 issues,
                 layerValues: [],
+                energyPotential,
             });
         };
 

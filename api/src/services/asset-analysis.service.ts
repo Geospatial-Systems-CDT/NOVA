@@ -257,7 +257,6 @@ export class AssetAnalysisService {
                         slopesBadLayerData,
                         location,
                         'red',
-                        `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`,
                         slopeIssue,
                         dataLayer.id
                     )

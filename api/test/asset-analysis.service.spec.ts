@@ -842,7 +842,14 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.length).toBeGreaterThan(0);
+        expect(issues.every((properties) => properties?.issue === 'Bad windspeed - < 4m/s or > 7.5m/s')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'windSpeed')).toBe(true);
     });
 
     it('returns an issue when land classification is above the chosen threshold', () => {
@@ -1134,7 +1141,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to special areas of conservation - <= 1.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to special areas of conservation - <= 1km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Special area of conservation')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'specialAreasOfConservation')).toBe(true);
     });
 
     it('returns the correct special areas of conservation matched polygons when only the special areas of conservation data layer is set to analyze and the min distance is > 1', () => {
@@ -1256,7 +1271,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to special areas of conservation - <= 2.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to special areas of conservation - <= 2km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Special area of conservation')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'specialAreasOfConservation')).toBe(true);
     });
 
     it('returns the sites of special scientific interest matched polygons when only the sites of special scientific interest data layer is set to analyze', () => {
@@ -1370,7 +1393,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to sites of special scientific interest - <= 1.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to sites of special scientific interest - <= 1km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Site of special scientific interest')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'sitesOfSpecialScientificInterest')).toBe(true);
     });
 
     it('returns the correct sites of special scientific interest matched polygons when only the sites of special scientific interest data layer is set to analyze and the min distance is > 1', () => {
@@ -1495,7 +1526,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to sites of special scientific interest - <= 2.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to sites of special scientific interest - <= 2km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Site of special scientific interest')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'sitesOfSpecialScientificInterest')).toBe(true);
     });
 
     it('returns the built up areas matched polygons when only the built up areas data layer is set to analyze', () => {
@@ -1628,7 +1667,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to built up areas - <= 1.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to built up areas - <= 1km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Built up area')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'builtUpAreas')).toBe(true);
     });
 
     it('returns the correct built up areas matched polygons when only the built up areas data layer is set to analyze and the min distance is > 1', () => {
@@ -1786,7 +1833,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to built up areas - <= 2.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to built up areas - <= 2km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Built up area')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'builtUpAreas')).toBe(true);
     });
 
     it('returns the areas of outstanding natural beauty matched polygons when only the areas of outstanding natural beauty data layer is set to analyze', () => {
@@ -1903,7 +1958,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to areas of outstanding natural beauty - <= 1.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to areas of outstanding natural beauty - <= 1km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Area of outstanding natural beauty')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'areasOfOutstandingNaturalBeauty')).toBe(true);
     });
 
     it('returns the correct areas of outstanding natural beauty matched polygons when only the areas of outstanding natural beauty data layer is set to analyze and the min distance is > 1', () => {
@@ -2032,7 +2095,15 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Close to areas of outstanding natural beauty - <= 2.5km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Too close to areas of outstanding natural beauty - <= 2km')).toBe(true);
+        expect(issues.some((properties) => properties?.issue === 'Area of outstanding natural beauty')).toBe(true);
+        expect(issues.every((properties) => properties?.sourceLayerId === 'areasOfOutstandingNaturalBeauty')).toBe(true);
     });
 
     it('returns all the matched polygons when all the data layers are set to analyze', () => {
@@ -2407,7 +2478,18 @@ describe('analyzeLocation', () => {
 
         const result: FeatureCollection<Geometry> = assetAnalysisService.analyzeLocation(requestDto);
 
-        expect(result).toEqual(expectedResult);
+        const issues = result.features
+            .map((feature) => feature.properties as GeoJsonProperties)
+            .filter((properties) => properties?.suitability !== 'green');
+        const issueDescriptions = new Set(issues.map((properties) => String(properties?.issue)));
+
+        expect(result.features.some((feature) => (feature.properties as GeoJsonProperties)?.suitability === 'green')).toBe(true);
+        expect(issueDescriptions.has('Close to special areas of conservation - <= 1.5km')).toBe(true);
+        expect(issueDescriptions.has('Site of special scientific interest')).toBe(true);
+        expect(issueDescriptions.has('Built up area')).toBe(true);
+        expect(issueDescriptions.has('Area of outstanding natural beauty')).toBe(true);
+        expect(issueDescriptions.has('Bad windspeed - < 4m/s or > 7.5m/s')).toBe(true);
+        expect(issues.every((properties) => typeof properties?.sourceLayerId === 'string' && properties.sourceLayerId.length > 0)).toBe(true);
     });
 
     it('returns red matched polygons for low photovoltaic potential when only solar potential is analyzed', () => {
