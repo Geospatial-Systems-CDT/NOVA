@@ -17,6 +17,7 @@
         <link href="../../css/base.css" rel="stylesheet">
         <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
         <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
         <script>hljs.highlightAll();</script> 
     </head>
@@ -130,6 +131,7 @@
 <ul>
 <li>Core calculation logic: api/src/services/energy-estimation.service.ts</li>
 <li>Estimation API endpoint: POST /api/ui/asset/estimate</li>
+<li>Solar orientation options endpoint: GET /api/ui/solar-orientations</li>
 <li>API controller wiring: api/src/controllers/ui.controller.ts and api/src/routes/ui.routes.ts</li>
 <li>UI consumer of backend result: frontend/src/components/grid-connect/GridConnectFooterPanel.tsx</li>
 <li>Frontend fallback utility (used only if API call fails): frontend/src/utils/energyEstimation.ts</li>
@@ -139,98 +141,166 @@
 <li>Selected asset variant (wind or solar metadata and specification text)</li>
 <li>Marker location (latitude, longitude)</li>
 <li>Selected substation (name, id, connection distance)</li>
-<li>Solar potential at location (pv_annual_kwh_kwp from pvout.geojson), when available</li>
+<li>Asset count (integer, default: 1)</li>
+<li>Solar panel orientation (cardinal value; default: south)</li>
 <li>Wind speed at location (seasonal fields from windspeed.geojson), when available</li>
 </ol>
 <h2 id="constants-and-assumptions">Constants and Assumptions<a class="headerlink" href="#constants-and-assumptions" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Hours per year: 8760</li>
-<li>Availability factor: 0.97</li>
-<li>Losses factor: 0.12</li>
+<li>Hours per year: 8760 h/year</li>
+<li>Availability factor: 0.97 (dimensionless fraction)</li>
+<li>Losses factor: 0.12 (dimensionless fraction)</li>
 <li>Default capacity factor:</li>
-<li>Wind: 0.34</li>
-<li>Solar: 0.14</li>
-<li>Unknown: 0.22</li>
+<li>Wind: 0.34 (34%)</li>
+<li>Solar: 0.14 (14%)</li>
+<li>Unknown: 0.22 (22%)</li>
 <li>Default installed capacity (fallback):</li>
 <li>Wind: 5 MW</li>
 <li>Solar: 1 MW</li>
 <li>Unknown: 2 MW</li>
 <li>Assumed substation headroom: 60 MW</li>
 <li>Assumed local demand: 8 MW</li>
+<li>Asset count default: 1 asset</li>
+<li>Solar shading factor (SF): 1.0 (dimensionless multiplier)</li>
+<li>Default solar orientation: south</li>
+<li>Default wind physical parameters:</li>
+<li>Air density ($\rho$): 1.225 kg/m^3</li>
+<li>Power coefficient ($C_p$): 0.45 (dimensionless fraction)</li>
+<li>Cut-in wind speed: 3 m/s</li>
+<li>Cut-out wind speed: 25 m/s</li>
 </ul>
 <h2 id="calculation-logic">Calculation Logic<a class="headerlink" href="#calculation-logic" title="Permanent link">&para;</a></h2>
 <h3 id="data-source-precedence">Data source precedence<a class="headerlink" href="#data-source-precedence" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Solar capacity factor source order:</li>
-<li>Location lookup from pvout.geojson (pv_annual_kwh_kwp)</li>
+<li>Solar annual energy source order:</li>
+<li>Orientation lookup from Kk dictionary (cardinal values from api/src/data/solar-kk.json)</li>
 <li>Fallback to latitude-adjusted default solar capacity factor</li>
-<li>Wind capacity factor source order:</li>
-<li>Location lookup from windspeed.geojson (seasonal windspeed fields)</li>
+<li>Wind annual energy source order:</li>
+<li>Location lookup from windspeed.geojson using ws_spring1, ws_summer1, ws_autumn1, ws_winter1 and turbine physical model</li>
 <li>Fallback to latitude-adjusted default wind capacity factor</li>
 </ul>
 <h3 id="1-determine-technology-and-capacity">1) Determine technology and capacity<a class="headerlink" href="#1-determine-technology-and-capacity" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Technology is inferred from selected variant metadata (keywords in name/spec text/icon paths).</li>
 <li>Installed capacity is parsed from specification fields such as Capacity, Rated Power, or Wattage.</li>
-<li>If solar values look module-level only (for example 500 Wp), fallback capacity is used:</li>
-<li>Farm = 5 MW</li>
-<li>Roof = 0.35 MW</li>
+<li>The parsed specification value is used directly when it is a valid positive power value (including small installations, for example 250 W or 5 kW).</li>
+<li>Fallback capacity is only used when capacity cannot be parsed (or is non-positive):</li>
+<li>Wind fallback: 5 MW</li>
+<li>Solar fallback by variant label: Farm = 5 MW, Roof = 0.35 MW</li>
+<li>Unknown fallback: 2 MW</li>
 </ul>
-<h3 id="2-compute-resource-adjusted-capacity-factor">2) Compute resource-adjusted capacity factor<a class="headerlink" href="#2-compute-resource-adjusted-capacity-factor" title="Permanent link">&para;</a></h3>
+<h3 id="2-compute-gross-annual-energy-by-technology">2) Compute gross annual energy by technology<a class="headerlink" href="#2-compute-gross-annual-energy-by-technology" title="Permanent link">&para;</a></h3>
+<p>Solar (primary method)</p>
 <ul>
-<li>Solar uses location-specific pvout first, when available:</li>
+<li>Installed capacity is converted from MW to kWp.</li>
+<li>Kk is looked up from orientation (for example: south=1023, south_west=962).</li>
+<li>Annual AC energy is computed as:</li>
 </ul>
-<p>CF_solar = clamp(pv_annual_kwh_kwp / 8760, 0.08, 0.25)</p>
+<p>$$
+P_{installed,kWp} = P_{installed,MW} \times 1000
+$$</p>
+<p>$$
+E_{solar,kWh/year} = P_{installed,kWp} \times Kk \times SF
+$$</p>
 <ul>
-<li>
-<p>If pvout is not available, solar falls back to latitude-adjusted default capacity factor.</p>
-</li>
-<li>
-<p>Wind uses location-specific windspeed first, when available:</p>
-</li>
-<li>Annualized windspeed is derived from seasonal values:</li>
+<li>The estimator currently uses SF = 1.0.</li>
+<li>The value is converted to MWh for downstream processing.</li>
 </ul>
-<p>v_wind = mean(ws_spring1, ws_summer1, ws_autumn1, ws_winter1)</p>
+<p>$$
+E_{solar,MWh/year} = \frac{E_{solar,kWh/year}}{1000}
+$$</p>
+<p>Wind (primary method)</p>
 <ul>
-<li>If all seasonal values are not available, ws_spring1 is used as fallback.</li>
-<li>Capacity factor is then estimated with a bounded planning curve:</li>
+<li>Seasonal wind speed is read from ws_spring1, ws_summer1, ws_autumn1, ws_winter1.</li>
+<li>Rotor swept area is computed from rotor diameter specification.</li>
+<li>Seasonal turbine power uses:</li>
 </ul>
-<p>CF_wind = clamp(0.02 + 0.0065 x v_wind^2, 0.15, 0.60)</p>
+<p>$$
+A = \pi \left(\frac{D}{2}\right)^2
+$$</p>
+<p>$$
+P = 0.5 \times \rho \times A \times v^3 \times C_p
+$$</p>
 <ul>
-<li>If windspeed is not available, wind falls back to latitude-adjusted default capacity factor.</li>
-<li>Unknown technology uses bounded default behavior.</li>
+<li>Per-season power is set to 0 outside cut-in/cut-out speeds.</li>
+<li>Per-season power is capped at installed/rated capacity.</li>
+<li>Annual gross energy is the sum of seasonal power x hours per season.</li>
+</ul>
+<p>Fallback behavior</p>
+<ul>
+<li>If required solar or wind inputs are missing, the estimator falls back to a latitude-adjusted capacity-factor method.</li>
+<li>Unknown technology always uses bounded default capacity-factor behavior.</li>
+</ul>
+<p>Multi-asset scaling</p>
+<ul>
+<li>The estimator first computes gross annual energy for one asset using the selected technology path.</li>
+<li>Total gross annual energy is then scaled by asset count:</li>
+</ul>
+<p>$$
+E_{gross,total} = E_{gross,single} \times assetCount
+$$</p>
+<ul>
+<li>The same selected substation and connection-distance context are used for all assets in this MVP (single-substation screening assumption).</li>
 </ul>
 <h3 id="3-compute-annual-delivered-energy">3) Compute annual delivered energy<a class="headerlink" href="#3-compute-annual-delivered-energy" title="Permanent link">&para;</a></h3>
 <p>Gross annual energy:</p>
-<p>E_gross = P_installed x 8760 x CF</p>
+<p>$$
+E_{gross} = P_{installed} \times 8760 \times CF
+$$</p>
+<p>For multi-asset runs:</p>
+<p>$$
+E_{gross,total} = E_{gross,single} \times assetCount
+$$</p>
 <p>Availability adjustment:</p>
-<p>E_available = E_gross x 0.97</p>
+<p>$$
+E_{available} = E_{gross,total} \times 0.97
+$$</p>
 <p>Losses adjustment:</p>
-<p>E_net = E_available x (1 - 0.12)</p>
+<p>$$
+E_{net} = E_{available} \times (1 - 0.12)
+$$</p>
 <p>Distance delivery factor:</p>
-<p>deliveryFactor = clamp(1 - 0.004 x distance_km, 0.75, 1.0)</p>
+<p>$$
+deliveryFactor = clamp(1 - 0.004 \times distance_{km}, 0.75, 1.0)
+$$</p>
 <p>Delivered annual energy:</p>
-<p>E_delivered = E_net x deliveryFactor</p>
+<p>$$
+E_{delivered} = E_{net} \times deliveryFactor
+$$</p>
 <h3 id="4-convert-to-displayed-metrics">4) Convert to displayed metrics<a class="headerlink" href="#4-convert-to-displayed-metrics" title="Permanent link">&para;</a></h3>
 <ul>
 <li>To local distribution network (MW):</li>
 </ul>
-<p>outputMW = E_delivered / 8760</p>
+<p>$$
+outputMW = \frac{E_{delivered}}{8760}
+$$</p>
 <ul>
 <li>Grid support (MW):</li>
 </ul>
-<p>gridSupportFactor = clamp(1 - 0.012 x distance_km, 0.35, 1.0)</p>
-<p>gridSupportMW = outputMW x gridSupportFactor</p>
+<p>$$
+gridSupportFactor = clamp(1 - 0.012 \times distance_{km}, 0.35, 1.0)
+$$</p>
+<p>$$
+gridSupportMW = outputMW \times gridSupportFactor
+$$</p>
 <ul>
 <li>Boost to substation capacity (%):</li>
 </ul>
-<p>boostPercent = clamp((gridSupportMW / 60) x 100, 0, 100)</p>
+<p>$$
+boostPercent = clamp\left(\frac{gridSupportMW}{60} \times 100, 0, 100\right)
+$$</p>
 <ul>
 <li>Local self-sufficiency (%):</li>
 </ul>
-<p>localBoostPercent = clamp((outputMW / 8) x 100, 0, 100)</p>
+<p>$$
+localBoostPercent = clamp\left(\frac{outputMW}{8} \times 100, 0, 100\right)
+$$</p>
 <ul>
-<li>Values are rounded for display.</li>
+<li>Values are rounded for display with low-value precision preserved in the estimator payload.</li>
+<li>UI unit adaptation for small values:</li>
+<li>If annual energy &lt; 1 MWh, display as kWh/year.</li>
+<li>If power &lt; 1 MW, display as kW.</li>
+<li>Otherwise display in MWh/year and MW.</li>
 </ul>
 <h2 id="worked-example-from-observed-ui-output">Worked Example (from observed UI output)<a class="headerlink" href="#worked-example-from-observed-ui-output" title="Permanent link">&para;</a></h2>
 <p>Inputs:</p>
@@ -251,8 +321,10 @@
 <p>Interpretation:</p>
 <ul>
 <li>The asset is treated as solar.</li>
-<li>A scenario-scale installed capacity and solar capacity factor are used.</li>
+<li>Installed capacity comes from the selected specification value (or fallback only if not parseable), then is converted to kWp for the solar Kk equation.</li>
+<li>Solar orientation selects the Kk value used in annual energy estimation.</li>
 <li>Availability, losses, and short-distance penalties are applied.</li>
+<li>Output represents the selected number of identical assets, all assumed connected to the same selected substation.</li>
 <li>MWh/year is converted to MW and then normalized against assumed headroom and local demand to get percentages.</li>
 </ul>
 <h2 id="known-limitations">Known Limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h2>
@@ -261,8 +333,29 @@
 <li>No explicit network power-flow or operational constraints</li>
 <li>No measured substation headroom/load profile in this MVP</li>
 <li>Some asset specs are text-only and parsed heuristically</li>
-<li>Solar uses annual specific yield (pvout), not sub-hourly irradiance and temperature dynamics</li>
-<li>Wind uses seasonal-average speed and a simplified CF curve, not turbine-specific power curves or hub-height correction</li>
+<li>Solar currently uses a fixed shading factor SF = 1.0</li>
+<li>Solar uses orientation-based annual Kk values; it does not yet model hourly irradiance, temperature, or tilt as dynamic time-series inputs</li>
+<li>Wind uses seasonal-average wind speeds and simplified physical assumptions; it does not include hub-height correction or full manufacturer power-curve interpolation</li>
+<li>Multi-asset mode assumes all assets connect to one selected substation with shared connection context</li>
+</ol>
+<p>Implications and possible next steps:</p>
+<ol>
+<li>Weather simplification can overstate or understate yield for site-specific scenarios.
+  Future improvement: use hourly weather and irradiance data for scenario-based estimation.</li>
+<li>Network simplification means the reported support values are screening indicators rather than power-flow results.
+  Future improvement: integrate explicit network constraints and flow modelling.</li>
+<li>Fixed headroom and demand assumptions may diverge from real operational conditions.
+  Future improvement: connect to curated or live substation-capacity datasets.</li>
+<li>Heuristic specification parsing can misread installed capacity when source metadata is inconsistent.
+  Future improvement: normalize asset specifications into typed fields at source.</li>
+<li>Fixed shading can overestimate solar output on constrained or partially obstructed sites.
+  Future improvement: include terrain, obstruction, and orientation-aware shading effects.</li>
+<li>Annual Kk values are useful for screening but cannot explain seasonal or intra-day generation behavior.
+  Future improvement: add time-resolved solar modelling.</li>
+<li>Simplified wind physics can miss hub-height, turbulence, wake, and turbine power-curve effects.
+  Future improvement: add hub-height correction and manufacturer power curves.</li>
+<li>Single-substation assumptions can underrepresent alternative connection strategies for larger schemes.
+  Future improvement: support multi-substation comparison and routing options.</li>
 </ol></div>
             </div>
         </div>
@@ -277,6 +370,9 @@
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
         <script src="../../js/base.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+        <script src="../../javascripts/katex.js"></script>
         <script src="../../search/main.js"></script>
 
         <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">

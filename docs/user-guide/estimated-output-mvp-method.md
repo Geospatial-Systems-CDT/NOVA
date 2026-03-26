@@ -26,25 +26,25 @@ The current implementation utalizes calculations performed on the backend and re
 
 ## Constants and Assumptions
 
-- Hours per year: 8760
-- Availability factor: 0.97
-- Losses factor: 0.12
+- Hours per year: 8760 h/year
+- Availability factor: 0.97 (dimensionless fraction)
+- Losses factor: 0.12 (dimensionless fraction)
 - Default capacity factor:
-  - Wind: 0.34
-  - Solar: 0.14
-  - Unknown: 0.22
+  - Wind: 0.34 (34%)
+  - Solar: 0.14 (14%)
+  - Unknown: 0.22 (22%)
 - Default installed capacity (fallback):
   - Wind: 5 MW
   - Solar: 1 MW
   - Unknown: 2 MW
 - Assumed substation headroom: 60 MW
 - Assumed local demand: 8 MW
-- Asset count default: 1
-- Solar shading factor (SF): 1.0
+- Asset count default: 1 asset
+- Solar shading factor (SF): 1.0 (dimensionless multiplier)
 - Default solar orientation: south
 - Default wind physical parameters:
-  - Air density (rho): 1.225 kg/m3
-  - Power coefficient (Cp): 0.45
+  - Air density ($\rho$): 1.225 kg/m^3
+  - Power coefficient ($C_p$): 0.45 (dimensionless fraction)
   - Cut-in wind speed: 3 m/s
   - Cut-out wind speed: 25 m/s
 
@@ -77,10 +77,20 @@ Solar (primary method)
 - Kk is looked up from orientation (for example: south=1023, south_west=962).
 - Annual AC energy is computed as:
 
-E_solar_kWh = kWp x Kk x SF
+$$
+P_{installed,kWp} = P_{installed,MW} \times 1000
+$$
+
+$$
+E_{solar,kWh/year} = P_{installed,kWp} \times Kk \times SF
+$$
 
 - The estimator currently uses SF = 1.0.
 - The value is converted to MWh for downstream processing.
+
+$$
+E_{solar,MWh/year} = \frac{E_{solar,kWh/year}}{1000}
+$$
 
 Wind (primary method)
 
@@ -88,7 +98,13 @@ Wind (primary method)
 - Rotor swept area is computed from rotor diameter specification.
 - Seasonal turbine power uses:
 
-P = 0.5 x rho x A x v^3 x Cp
+$$
+A = \pi \left(\frac{D}{2}\right)^2
+$$
+
+$$
+P = 0.5 \times \rho \times A \times v^3 \times C_p
+$$
 
 - Per-season power is set to 0 outside cut-in/cut-out speeds.
 - Per-season power is capped at installed/rated capacity.
@@ -104,7 +120,9 @@ Multi-asset scaling
 - The estimator first computes gross annual energy for one asset using the selected technology path.
 - Total gross annual energy is then scaled by asset count:
 
-E_gross_total = E_gross_single x assetCount
+$$
+E_{gross,total} = E_{gross,single} \times assetCount
+$$
 
 - The same selected substation and connection-distance context are used for all assets in this MVP (single-substation screening assumption).
 
@@ -112,47 +130,69 @@ E_gross_total = E_gross_single x assetCount
 
 Gross annual energy:
 
-E_gross = P_installed x 8760 x CF
+$$
+E_{gross} = P_{installed} \times 8760 \times CF
+$$
 
 For multi-asset runs:
 
-E_gross_total = E_gross_single x assetCount
+$$
+E_{gross,total} = E_{gross,single} \times assetCount
+$$
 
 Availability adjustment:
 
-E_available = E_gross_total x 0.97
+$$
+E_{available} = E_{gross,total} \times 0.97
+$$
 
 Losses adjustment:
 
-E_net = E_available x (1 - 0.12)
+$$
+E_{net} = E_{available} \times (1 - 0.12)
+$$
 
 Distance delivery factor:
 
-deliveryFactor = clamp(1 - 0.004 x distance_km, 0.75, 1.0)
+$$
+deliveryFactor = clamp(1 - 0.004 \times distance_{km}, 0.75, 1.0)
+$$
 
 Delivered annual energy:
 
-E_delivered = E_net x deliveryFactor
+$$
+E_{delivered} = E_{net} \times deliveryFactor
+$$
 
 ### 4) Convert to displayed metrics
 
 - To local distribution network (MW):
 
-outputMW = E_delivered / 8760
+$$
+outputMW = \frac{E_{delivered}}{8760}
+$$
 
 - Grid support (MW):
 
-gridSupportFactor = clamp(1 - 0.012 x distance_km, 0.35, 1.0)
+$$
+gridSupportFactor = clamp(1 - 0.012 \times distance_{km}, 0.35, 1.0)
+$$
 
-gridSupportMW = outputMW x gridSupportFactor
+$$
+gridSupportMW = outputMW \times gridSupportFactor
+$$
 
 - Boost to substation capacity (%):
 
-boostPercent = clamp((gridSupportMW / 60) x 100, 0, 100)
+$$
+boostPercent = clamp\left(\frac{gridSupportMW}{60} \times 100, 0, 100\right)
+$$
 
 - Local self-sufficiency (%):
 
-localBoostPercent = clamp((outputMW / 8) x 100, 0, 100)
+$$
+localBoostPercent = clamp\left(\frac{outputMW}{8} \times 100, 0, 100\right)
+$$
 
 - Values are rounded for display with low-value precision preserved in the estimator payload.
 - UI unit adaptation for small values:
@@ -196,4 +236,23 @@ Interpretation:
 6. Solar uses orientation-based annual Kk values; it does not yet model hourly irradiance, temperature, or tilt as dynamic time-series inputs
 7. Wind uses seasonal-average wind speeds and simplified physical assumptions; it does not include hub-height correction or full manufacturer power-curve interpolation
 8. Multi-asset mode assumes all assets connect to one selected substation with shared connection context
+
+Implications and possible next steps:
+
+1. Weather simplification can overstate or understate yield for site-specific scenarios.
+  Future improvement: use hourly weather and irradiance data for scenario-based estimation.
+2. Network simplification means the reported support values are screening indicators rather than power-flow results.
+  Future improvement: integrate explicit network constraints and flow modelling.
+3. Fixed headroom and demand assumptions may diverge from real operational conditions.
+  Future improvement: connect to curated or live substation-capacity datasets.
+4. Heuristic specification parsing can misread installed capacity when source metadata is inconsistent.
+  Future improvement: normalize asset specifications into typed fields at source.
+5. Fixed shading can overestimate solar output on constrained or partially obstructed sites.
+  Future improvement: include terrain, obstruction, and orientation-aware shading effects.
+6. Annual Kk values are useful for screening but cannot explain seasonal or intra-day generation behavior.
+  Future improvement: add time-resolved solar modelling.
+7. Simplified wind physics can miss hub-height, turbulence, wake, and turbine power-curve effects.
+  Future improvement: add hub-height correction and manufacturer power curves.
+8. Single-substation assumptions can underrepresent alternative connection strategies for larger schemes.
+  Future improvement: support multi-substation comparison and routing options.
 
