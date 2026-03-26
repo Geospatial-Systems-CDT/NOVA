@@ -140,6 +140,21 @@ export class ReportService {
             GeoJsonProperties
         >[];
 
+        // 1b. Apply unsuitable-land mask once to the green baseline.
+        // We avoid including this highly detailed layer in combinatorial issue splitting,
+        // but still enforce it as a hard exclusion from candidate report regions.
+        const unsuitableLandFeatures = issueFeatures.filter((f) => String(f.properties?.issue ?? '') === 'Unsuitable land');
+        if (unsuitableLandFeatures.length > 0) {
+            const unsuitableLandGeometry = this.mergeGeometryFeatures(unsuitableLandFeatures);
+            if (unsuitableLandGeometry && this.bboxesOverlap(turf.bbox(greenFeature), turf.bbox(unsuitableLandGeometry))) {
+                const maskedGreen = turf.difference(turf.featureCollection([greenFeature, unsuitableLandGeometry]));
+                if (!maskedGreen) {
+                    return { regions: [], totalRegions: 0, selectedPolygon, assumptions };
+                }
+                greenFeature = maskedGreen as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
+            }
+        }
+
         // 2. Build one unioned polygon per distinct issue description
         const _tUnions = performance.now();
         const issueUnions = this.buildIssueUnions(issueFeatures);

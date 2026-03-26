@@ -443,7 +443,6 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         } finally {
             setLoading(false);
         }
-        setLoading(false);
     };
 
     const filteredLayerEntries = useMemo(() => {
