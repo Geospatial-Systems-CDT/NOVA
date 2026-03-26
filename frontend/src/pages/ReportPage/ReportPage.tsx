@@ -52,7 +52,7 @@ const ReportPage = () => {
             <div className={isPrintView ? undefined : 'report-page'}>
                 <Deck>
                     <Slide>
-                        <section data-state="title-page">
+                        <section data-state="title-page" data-background-color="#001e3f">
                             <a href="https://ndtp.co.uk/demonstrators/nova-energy-system/">
                                 <img
                                     src={novaLogo}
