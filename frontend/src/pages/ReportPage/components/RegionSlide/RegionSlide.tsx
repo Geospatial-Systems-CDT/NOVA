@@ -49,6 +49,12 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
     }, [region]);
 
     const primaryIssue = region.issues?.[0];
+    const solarAnnualMWhText =
+        region.energyPotential.solarAnnualMWh !== null ? `${formatNumber(region.energyPotential.solarAnnualMWh, 3)} MWh/year` : 'Not applicable';
+    const windAnnualMWhText =
+        region.energyPotential.windAnnualMWh !== null ? `${formatNumber(region.energyPotential.windAnnualMWh, 3)} MWh/year` : 'Not applicable';
+    const solarAssetCountText = region.energyPotential.solarMaxAssets !== null ? String(region.energyPotential.solarMaxAssets) : 'Not applicable';
+    const windAssetCountText = region.energyPotential.windMaxAssets !== null ? String(region.energyPotential.windMaxAssets) : 'Not applicable';
 
     return (
         <Slide key={region.id}>
@@ -78,6 +84,22 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
                             <div className="stat-card">
                                 <div className="stat-label">Area</div>
                                 <div className="stat-value">{formatNumber(region.areaSqKm, 3)} km²</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Solar Potential</div>
+                                <div className="stat-value">{solarAnnualMWhText}</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Wind Potential</div>
+                                <div className="stat-value">{windAnnualMWhText}</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Max Solar Assets</div>
+                                <div className="stat-value">{solarAssetCountText}</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Max Wind Assets</div>
+                                <div className="stat-value">{windAssetCountText}</div>
                             </div>
                         </div>
 

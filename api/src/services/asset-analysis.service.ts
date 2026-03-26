@@ -142,6 +142,35 @@ export class AssetAnalysisService {
         return matchedPolygons;
     }
 
+    private getMatchedPolygonsForLayerCompact(
+        layer: FeatureCollection<MultiPolygon | Polygon>,
+        location: Feature<Polygon>,
+        suitability: string,
+        issue?: string
+    ): Feature<Polygon | MultiPolygon, GeoJsonProperties>[] {
+        const matchedPolygons: Feature<Polygon | MultiPolygon, GeoJsonProperties>[] = [];
+        const locationBbox = turf.bbox(location);
+
+        layer.features.forEach((layerFeature) => {
+            if (!AssetAnalysisService.bboxesOverlap(locationBbox, turf.bbox(layerFeature))) return;
+
+            const combinedFeatureCollection = {
+                type: 'FeatureCollection',
+                features: [location, layerFeature],
+            } as FeatureCollection<Polygon | MultiPolygon>;
+
+            const intersection = turf.intersect(combinedFeatureCollection);
+
+            if (intersection) {
+                intersection.properties!.suitability = suitability;
+                if (issue) intersection.properties!.issue = issue;
+                matchedPolygons.push(intersection);
+            }
+        });
+
+        return matchedPolygons;
+    }
+
     /*
      * A helper method to get the matched polygons based on the data layers and location provided. These polygons are ordered with the good layer (suitability rating of green) -> caution layers (suitability rating of amber) -> bad layers (suitability of red) -> exact bad layers (suitability rating of darkRed)
      *
@@ -176,7 +205,13 @@ export class AssetAnalysisService {
                 };
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(windspeedBadLayerData, location, 'red', `Bad windspeed - < ${minSpeed}m/s or > ${maxSpeed}m/s`, dataLayer.id)
+                    this.getMatchedPolygonsForLayer(
+                        windspeedBadLayerData,
+                        location,
+                        'red',
+                        `Bad windspeed - < ${minSpeed}m/s or > ${maxSpeed}m/s`,
+                        dataLayer.id
+                    )
                 );
             } else if (dataLayer.id === 'solarPotential') {
                 const minPotential = this.getNumericAttributeValue(dataLayer, 'minPotential', 900);
@@ -198,9 +233,11 @@ export class AssetAnalysisService {
                         dataLayer.id
                     )
                 );
-            } else if (dataLayer.id === 'slope') {
+            } else if (dataLayer.id === 'slope' || dataLayer.id === 'slopeWind') {
+                const defaultMaxSlope = dataLayer.id === 'slopeWind' ? 5.71 : 14.275;
                 const maxSlope =
-                    dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value || 30;
+                    dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value ||
+                    defaultMaxSlope;
                 const slopesLayer = this.dataProviderUtils.getSlopesLayerData();
                 const slopesBadLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
@@ -210,12 +247,18 @@ export class AssetAnalysisService {
                     }),
                 };
 
+                const slopeIssue =
+                    dataLayer.id === 'slopeWind'
+                        ? `Unfavourable wind terrain suitability - steep slope (> ${maxSlope}°)`
+                        : `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`;
+
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(
                         slopesBadLayerData,
                         location,
                         'red',
                         `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`,
+                        slopeIssue,
                         dataLayer.id
                     )
                 );
@@ -239,18 +282,20 @@ export class AssetAnalysisService {
                 const railBufferLayerData = this.dataProviderUtils.getRailBufferLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 100m', dataLayer.id))
+                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 100m', dataLayer.id)
+                );
             } else if (dataLayer.id === 'railBufferSolar') {
                 const railBufferSolarLayerData = this.dataProviderUtils.getRailBufferSolarLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(railBufferSolarLayerData, location, 'red', 'Too close to railway (Solar)', dataLayer.id))
+                    this.getMatchedPolygonsForLayer(railBufferSolarLayerData, location, 'red', 'Too close to railway (Solar)', dataLayer.id)
+                );
             } else if (dataLayer.id === 'aspect') {
                 const aspectLayer = this.dataProviderUtils.getAspectLayerData();
                 const amberAspect = new Set([3, 7]);
                 const redAspect = new Set([1, 2, 8]);
-                const amberAspectIssue = 'Moderate solar terrain suitability - aspect category East/West (3 or 7)';
-                const redAspectIssue = 'Unfavourable solar terrain suitability - north-facing aspect category (North/North-East/North-West; 1, 2, 8)';
+                const amberAspectIssue = 'Moderate solar terrain suitability - east/west-facing aspect';
+                const redAspectIssue = 'Unfavourable solar terrain suitability - north-facing aspect';
 
                 const aspectAmberLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
@@ -300,13 +345,7 @@ export class AssetAnalysisService {
                 };
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        specialAreasOfConservationLayerData,
-                        location,
-                        'darkRed',
-                        'Special area of conservation',
-                        dataLayer.id
-                    )
+                    this.getMatchedPolygonsForLayer(specialAreasOfConservationLayerData, location, 'darkRed', 'Special area of conservation', dataLayer.id)
                 );
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(
@@ -513,13 +552,7 @@ export class AssetAnalysisService {
                 const specialProtectionAreasLayerData = this.dataProviderUtils.getSpecialProtectionAreas2kmBufferLayerData();
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        specialProtectionAreasLayerData,
-                        location,
-                        'darkRed',
-                        'Special Protection Areas (2km buffer)',
-                        dataLayer.id
-                    )
+                    this.getMatchedPolygonsForLayer(specialProtectionAreasLayerData, location, 'darkRed', 'Special Protection Areas (2km buffer)', dataLayer.id)
                 );
             } else if (dataLayer.id === 'ramsarWetlands') {
                 const ramsarWetlandsLayerData = this.dataProviderUtils.getRamsarWetlandsLayerData();
@@ -531,25 +564,13 @@ export class AssetAnalysisService {
                 const coastalErosionProjectionLayerData = this.dataProviderUtils.getCoastalErosionProjectionLayerData();
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        coastalErosionProjectionLayerData,
-                        location,
-                        'darkRed',
-                        'Coastal Erosion',
-                        dataLayer.id
-                    )
+                    this.getMatchedPolygonsForLayer(coastalErosionProjectionLayerData, location, 'darkRed', 'Coastal Erosion', dataLayer.id)
                 );
             } else if (dataLayer.id === 'dissolvedRiverFloodRisk') {
                 const dissolvedRiverFloodRiskLayerData = this.dataProviderUtils.getDissolvedRiverFloodRiskLayerData();
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        dissolvedRiverFloodRiskLayerData,
-                        location,
-                        'darkRed',
-                        'Flood risk within 200m of river',
-                        dataLayer.id
-                    )
+                    this.getMatchedPolygonsForLayer(dissolvedRiverFloodRiskLayerData, location, 'darkRed', 'Flood risk within 200m of river', dataLayer.id)
                 );
             } else if (dataLayer.id === 'fuelPoverty') {
                 const fuelPovertyLayerData = this.dataProviderUtils.getFuelPovertyLayerData();
@@ -578,6 +599,12 @@ export class AssetAnalysisService {
                         )
                     );
                 }
+            } else if (dataLayer.id === 'unsuitableLand') {
+                const unsuitableLandLayerData = this.dataProviderUtils.getUnsuitableLandLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayerCompact(unsuitableLandLayerData, location, 'darkRed', 'Unsuitable land')
+                );
             }
             console.debug(`[getMatchedPolygonsForLayers] layer "${dataLayer.id}": ${(performance.now() - _tLayer).toFixed(1)}ms`);
         });

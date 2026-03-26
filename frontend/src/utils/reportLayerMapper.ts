@@ -20,6 +20,12 @@ export interface ReportLayerFeatureProperties {
     reportMaxScoreForPolygonUsed: number | null;
     issues: ReportIssueDTO[];
     layerValues: ReportRegionLayerValueDTO[];
+    energyPotential: {
+        solarAnnualMWh: number | null;
+        windAnnualMWh: number | null;
+        solarMaxAssets: number | null;
+        windMaxAssets: number | null;
+    };
 }
 
 function getSuitabilityFromIssueCount(issueCount: number): ReportLayerSuitability {
@@ -67,6 +73,7 @@ export function mapReportToLayerFeatureCollection(
             reportMaxScoreForPolygonUsed: report.reportMaxScoreForPolygonUsed,
             issues: region.issues,
             layerValues: region.layerValues,
+            energyPotential: region.energyPotential,
         },
     }));
 

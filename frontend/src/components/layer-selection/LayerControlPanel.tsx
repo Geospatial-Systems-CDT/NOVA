@@ -446,11 +446,16 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
             if (jobId) {
                 setReportJobId(jobId);
                 setReportLoading(true);
+            } else {
+                setReportJobId(null);
+                setReportLoading(false);
             }
             MapVisualHelper.addOrUpdateHeatmapLayer(mapRef, heatmap);
             setLayersPanelOpen(false);
         } catch (err) {
             console.error('Analysis request failed', err);
+            setReportJobId(null);
+            setReportLoading(false);
         } finally {
             setLoading(false);
         }

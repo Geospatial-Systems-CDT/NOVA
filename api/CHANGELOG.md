@@ -96,12 +96,14 @@ Additional updates (terrain suitability):
     - `Slopes_WGS84.geojson`
 - Added `Terrain` category to layer metadata (`layers.json`) with:
     - `Slope` layer and configurable `maxSlope` threshold (default: 30 degrees)
+    - `Slope (Wind)` layer (`slopeWind`) and configurable `maxSlope` threshold (default: 10 degrees)
     - `Aspect` layer (categorical classes)
 - Extended `DataProviderUtils` with terrain loaders:
     - `getAspectLayerData()`
     - `getSlopesLayerData()`
 - Implemented terrain suitability logic in `AssetAnalysisService`:
     - Slope rule: red when slope exceeds configured `maxSlope`
+    - Wind slope rule: red when slope exceeds configured wind threshold (default: 10 degrees)
     - Aspect rule for solar suitability:
         - amber for East/West classes (3, 7)
         - red for North/North-East/North-West classes (1, 2, 8)
@@ -131,6 +133,18 @@ Latest refinements (estimation and display):
   - energy below 1 MWh is shown in kWh/year
   - power below 1 MW is shown in kW
 - Updated methods documentation to reflect the current wind/solar estimator methodology, assumptions, fallback behavior, and multi-asset scaling.
+- Added report-region energy potential outputs in the API (`energyPotential`) with:
+    - annual solar potential (MWh/year)
+    - annual wind potential (MWh/year)
+    - theoretical max solar assets
+    - theoretical max wind assets
+- Applied report eligibility rules for potential metrics:
+    - compute only for regions with 1 issue or less
+    - when the only issue is slope suitability for one technology, compute potential only for the other technology
+- Updated solar potential sizing in report calculations to derive per-asset capacity from the solar Farm specification (with safe fallback handling).
+- Improved report generation robustness for large geometry sets by replacing high-risk merge paths with stack-safe geometry merging and guarded fallbacks.
+- Exposed energy potential metrics in frontend report outputs (region slide and report map popup) by extending report types and mapping.
+- Replaced wind max-asset counting from coarse MW/km² density with a more realistic spacing-based siting model (typical 7D x 4D) plus a minimum single-turbine fit check.
 
 ### Notes
 
