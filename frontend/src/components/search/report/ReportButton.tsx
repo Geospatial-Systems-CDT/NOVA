@@ -7,6 +7,7 @@ import ControlIcon from '../../../shared/control-icon/ControlIcon';
 import { useMapStore } from '../../../stores/useMapStore';
 import { useEffect, useRef, useState } from 'react';
 import { CACHED_REPORT_STORAGE_KEY, type ReportDTO } from '../../../types/report';
+import { DEFAULT_SUITABILITY_THRESHOLDS, loadSuitabilityThresholds } from '../../../types/reportRanking';
 import { mapReportToLayerFeatureCollection } from '../../../utils/reportLayerMapper';
 
 export interface Specification {
@@ -45,7 +46,10 @@ const ReportButton = () => {
     const reportLayerVisible = useMapStore((s) => s.reportLayerVisible);
     const setReportLayerVisible = useMapStore((s) => s.setReportLayerVisible);
     const setReportLayerData = useMapStore((s) => s.setReportLayerData);
+    const reportRankingMode = useMapStore((s) => s.reportRankingMode);
+    const setReportRankingMode = useMapStore((s) => s.setReportRankingMode);
     const [reportLayerMessage, setReportLayerMessage] = useState<string | null>(null);
+    const [thresholds, setThresholds] = useState(DEFAULT_SUITABILITY_THRESHOLDS);
 
     // Keep a ref to the interval so we can clear it from within the async callback.
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -97,6 +101,18 @@ const ReportButton = () => {
         };
     }, [reportJobId, setCachedReport, setReportJobId, setReportLoading]);
 
+    useEffect(() => {
+        let mounted = true;
+
+        loadSuitabilityThresholds().then((loaded) => {
+            if (mounted) setThresholds(loaded);
+        });
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
     const openReportPage = () => {
         window.open('/report', '_blank', 'noopener,noreferrer');
     };
@@ -125,14 +141,27 @@ const ReportButton = () => {
         }
 
         setCachedReport(reportToUse);
-        setReportLayerData(mapReportToLayerFeatureCollection(reportToUse));
+        setReportLayerData(mapReportToLayerFeatureCollection(reportToUse, reportRankingMode, thresholds));
         setReportLayerVisible(true);
         setReportLayerMessage(null);
+    };
+
+    const handleRankingModeToggle = () => {
+        const nextMode = reportRankingMode === 'weighted' ? 'legacyIssueCount' : 'weighted';
+        setReportRankingMode(nextMode);
+
+        if (!reportLayerVisible) return;
+
+        const reportToUse = cachedReport ?? loadReportFromStorage();
+        if (!reportToUse) return;
+
+        setReportLayerData(mapReportToLayerFeatureCollection(reportToUse, nextMode, thresholds));
     };
 
     const isActive = reportLayerVisible;
     const toggleLayerLabel = reportLayerVisible ? 'Show model layer' : 'Show report layer';
     const toggleLayerIcon = reportLayerVisible ? '/icons/report_layer.svg' : '/icons/model_layer.svg';
+    const rankingModeLabel = reportRankingMode === 'weighted' ? 'Ranking: weighted' : 'Ranking: legacy';
 
     if (!cachedHeatmap) return null;
 
@@ -151,6 +180,9 @@ const ReportButton = () => {
                 <ControlIcon onClick={handleReportLayerToggle} isActive={isActive} aria-label={toggleLayerLabel} showTooltip={true} disabled={reportLoading}>
                     <img src={toggleLayerIcon} alt={toggleLayerLabel} width={24} height={24} />
                 </ControlIcon>
+                <ControlButton onClick={handleRankingModeToggle} aria-label={rankingModeLabel} disabled={reportLoading}>
+                    <span>{rankingModeLabel}</span>
+                </ControlButton>
             </Box>
 
             {reportLayerMessage && (

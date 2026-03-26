@@ -166,6 +166,91 @@ describe('ReportService', () => {
         });
     });
 
+    describe('generateReport — weighted suitability scoring', () => {
+        it('uses layerWeight defaults of 1 when not provided and computes score as weightedIssueSum / totalLayerWeight', () => {
+            const weightedIssueA = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Issue A',
+                sourceLayerId: 'builtUpAreas',
+            });
+
+            const weightedIssueB = makePolygonFeature(-1.5, 51, -1, 51.5, {
+                suitability: 'darkRed',
+                issue: 'Issue B',
+                sourceLayerId: 'sitesOfSpecialScientificInterest',
+            });
+
+            const layers = [
+                { id: 'builtUpAreas', analyze: true, attributes: [] },
+                { id: 'sitesOfSpecialScientificInterest', analyze: true, attributes: [] },
+            ];
+
+            const { regions } = service.generateReport(makeResult(greenPolygon, weightedIssueA, weightedIssueB), 1, layers);
+            const singleIssueRegions = regions.filter((region) => region.issueCount === 1);
+
+            expect(singleIssueRegions).toHaveLength(2);
+            singleIssueRegions.forEach((region) => {
+                expect(region.weightedIssueSum).toBe(1);
+                expect(region.totalLayerWeight).toBe(2);
+                expect(region.suitabilityScore).toBeCloseTo(0.5);
+            });
+        });
+
+        it('prioritises region ranking by suitabilityScore then area', () => {
+            const issueA = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Issue A',
+                sourceLayerId: 'builtUpAreas',
+            });
+
+            const issueB = makePolygonFeature(-1.75, 51, -1, 52, {
+                suitability: 'red',
+                issue: 'Issue B',
+                sourceLayerId: 'specialAreasOfConservation',
+            });
+
+            const layers = [
+                { id: 'builtUpAreas', analyze: true, attributes: [{ id: 'layerWeight', value: 0.2 }] },
+                { id: 'specialAreasOfConservation', analyze: true, attributes: [{ id: 'layerWeight', value: 0.8 }] },
+            ];
+
+            const { regions } = service.generateReport(makeResult(greenPolygon, issueA, issueB), 2, layers);
+
+            expect(regions[0].suitabilityScore).toBeLessThanOrEqual(regions[1].suitabilityScore);
+
+            const tiedByScore = regions.filter((region) => region.suitabilityScore === regions[0].suitabilityScore);
+            if (tiedByScore.length > 1) {
+                for (let i = 1; i < tiedByScore.length; i++) {
+                    expect(tiedByScore[i - 1].areaSqKm).toBeGreaterThanOrEqual(tiedByScore[i].areaSqKm);
+                }
+            }
+        });
+
+        it('counts layer weight once when multiple issues come from the same layer', () => {
+            const issueA = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'amber',
+                issue: 'Layer A caution',
+                sourceLayerId: 'specialAreasOfConservation',
+            });
+
+            const issueB = makePolygonFeature(-2, 51, -1.5, 52, {
+                suitability: 'red',
+                issue: 'Layer A severe',
+                sourceLayerId: 'specialAreasOfConservation',
+            });
+
+            const layers = [{ id: 'specialAreasOfConservation', analyze: true, attributes: [{ id: 'layerWeight', value: 0.6 }] }];
+
+            const { regions } = service.generateReport(makeResult(greenPolygon, issueA, issueB), 2, layers);
+            const highestIssueRegion = regions.find((region) => region.issueCount >= 1);
+
+            expect(highestIssueRegion).toBeDefined();
+            expect(highestIssueRegion!.weightedIssueSum).toBeCloseTo(0.6);
+            expect(highestIssueRegion!.totalLayerWeight).toBeCloseTo(0.6);
+            expect(highestIssueRegion!.suitabilityScore).toBeCloseTo(1);
+        });
+    });
+
     describe('generateReport — layerValues computed when a DataProviderUtils is supplied', () => {
         /** Build a minimal MultiPolygon FeatureCollection covering the green test polygon area */
         function makeMultiPolygonFC(properties: Record<string, unknown>) {
@@ -203,14 +288,17 @@ describe('ReportService', () => {
                 getSpecialAreasOfConservationLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getBuiltupAreasLayerData: () => ({ type: 'FeatureCollection', features: [] }),
                 getAreasOfNaturalBeautyLayerData: () => ({ type: 'FeatureCollection', features: [] }),
+                getCoastlineData: () => makeMultiPolygonFC({}),
                 getAgriculturalLandClassificationData: () => makeMultiPolygonFC({ ALC_GRADE: 'Grade 3' }),
                 readGridSupplyPointData: () => ({
                     type: 'FeatureCollection' as const,
-                    features: [{
-                        type: 'Feature' as const,
-                        properties: { Locality: 'Newport', 'Operating Area': '', 'Owner Name': 'SSEN' },
-                        geometry: { type: 'Point' as const, coordinates: [-1.5, 51.5] },
-                    }],
+                    features: [
+                        {
+                            type: 'Feature' as const,
+                            properties: { Locality: 'Newport', 'Operating Area': '', 'Owner Name': 'SSEN' },
+                            geometry: { type: 'Point' as const, coordinates: [-1.5, 51.5] },
+                        },
+                    ],
                 }),
             } as unknown as DataProviderUtils;
         }

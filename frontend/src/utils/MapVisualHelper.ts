@@ -666,11 +666,6 @@ export class MapVisualHelper {
         return Array.from(issuesByTopic.values()).map((entry) => entry.issue);
     }
 
-    private static _parseIssueFromFeature(feature: Feature): string[] {
-        const issue = feature.properties?.issue;
-        return typeof issue === 'string' && issue.length > 0 ? [issue] : [];
-    }
-
     /**
      * Shows a popup when a polygon on the heatmap is clicked, listing all issues.
      *
@@ -721,6 +716,9 @@ export class MapVisualHelper {
         const properties = feature.properties as {
             areaSqKm?: number;
             issueCount?: number;
+            weightedIssueSum?: number;
+            totalLayerWeight?: number;
+            suitabilityScore?: number;
             issues?: Array<{ description?: string; suitability?: string }>;
             layerValues?: Array<{ label?: string; value?: string | number | null; unit?: string }>;
         };
@@ -728,6 +726,9 @@ export class MapVisualHelper {
         const issues = Array.isArray(properties.issues) ? properties.issues : [];
         const layerValues = Array.isArray(properties.layerValues) ? properties.layerValues : [];
         const issueCount = properties.issueCount ?? issues.length;
+        const weightedIssueSum = properties.weightedIssueSum ?? 0;
+        const totalLayerWeight = properties.totalLayerWeight ?? 0;
+        const suitabilityScore = properties.suitabilityScore ?? 0;
 
         const issueHtml =
             issues.length > 0
@@ -749,6 +750,9 @@ export class MapVisualHelper {
                 <div style="font-weight: 600; margin-bottom: 4px;">Report region</div>
                 <div style="margin-bottom: 4px;">Area: ${(properties.areaSqKm ?? 0).toFixed(3)} km²</div>
                 <div style="margin-bottom: 8px;">Issue count: ${issueCount}</div>
+                <div style="margin-bottom: 4px;">Weighted issue sum: ${weightedIssueSum.toFixed(3)}</div>
+                <div style="margin-bottom: 4px;">Total layer weight: ${totalLayerWeight.toFixed(3)}</div>
+                <div style="margin-bottom: 8px;">Suitability score: ${suitabilityScore.toFixed(3)}</div>
                 <div style="font-weight: 600; margin-bottom: 4px;">Issues</div>
                 <ul style="margin: 0 0 8px 16px; padding: 0;">${issueHtml}</ul>
                 <div style="font-weight: 600; margin-bottom: 4px;">Layer values</div>

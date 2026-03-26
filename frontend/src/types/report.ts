@@ -6,6 +6,7 @@ import type { BBox, Feature, Polygon } from 'geojson';
 export interface ReportIssueDTO {
     description: string;
     suitability: string;
+    sourceLayerId?: string;
 }
 
 export interface ReportRegionLayerValueDTO {
@@ -21,6 +22,9 @@ export interface ReportRegionDTO {
     bbox: BBox;
     areaSqKm: number;
     issueCount: number;
+    weightedIssueSum: number;
+    totalLayerWeight: number;
+    suitabilityScore: number;
     issues: ReportIssueDTO[];
     layerValues: ReportRegionLayerValueDTO[];
 }

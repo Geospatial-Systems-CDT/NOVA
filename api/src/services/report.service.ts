@@ -14,6 +14,7 @@ const MIN_AREA_M2 = 10000;
 interface IssueUnion {
     description: string;
     suitability: string;
+    sourceLayerId?: string;
     union: Feature<Polygon | MultiPolygon, GeoJsonProperties>;
 }
 
@@ -23,6 +24,21 @@ interface IssueUnion {
  */
 export class ReportService {
     constructor(private readonly dataProviderUtils?: DataProviderUtils) {}
+
+    private getLayerWeight(dataLayer: DataLayerDto): number {
+        const rawValue = dataLayer.attributes.find((attribute) => attribute.id === 'layerWeight')?.value;
+
+        if (typeof rawValue === 'number' && Number.isFinite(rawValue) && rawValue >= 0) {
+            return rawValue;
+        }
+
+        if (typeof rawValue === 'string') {
+            const parsed = Number(rawValue);
+            if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+        }
+
+        return 1;
+    }
 
     /**
      * Generate a report from an already-computed analysis FeatureCollection.
@@ -41,6 +57,8 @@ export class ReportService {
     ): ReportDTO {
         const activeDataLayers = dataLayers.filter((l) => l.analyze);
         const assumptions = this.buildAssumptions(activeDataLayers);
+        const layerWeights = new Map(activeDataLayers.map((layer) => [layer.id, this.getLayerWeight(layer)]));
+        const totalLayerWeight = Array.from(layerWeights.values()).reduce((sum, weight) => sum + weight, 0);
         const _t0 = performance.now();
 
         // 1. Separate green baseline from issue features
@@ -102,10 +120,18 @@ export class ReportService {
                     const area = turf.area(flat);
                     if (area < MIN_AREA_M2) continue;
 
-                    const issues: ReportIssueDTO[] = combo.map(({ description, suitability }) => ({
+                    const issues: ReportIssueDTO[] = combo.map(({ description, suitability, sourceLayerId }) => ({
                         description,
                         suitability,
+                        sourceLayerId,
                     }));
+
+                    const triggeredLayerIds = new Set(combo.map((issue) => issue.sourceLayerId).filter((layerId): layerId is string => !!layerId));
+                    const weightedIssueSum = Array.from(triggeredLayerIds).reduce(
+                        (sum, layerId) => sum + (layerWeights.get(layerId) ?? 1),
+                        0
+                    );
+                    const suitabilityScore = totalLayerWeight > 0 ? weightedIssueSum / totalLayerWeight : 0;
 
                     const regionPolygon = flat as Feature<Polygon>;
                     const _tLV = performance.now();
@@ -118,12 +144,23 @@ export class ReportService {
                         bbox: turf.bbox(flat),
                         areaSqKm: area / 1e6,
                         issueCount: combo.length,
+                        weightedIssueSum,
+                        totalLayerWeight,
+                        suitabilityScore,
                         issues,
                         layerValues,
                     });
                 }
             }
         }
+
+        regions.sort((left, right) => {
+            if (left.suitabilityScore !== right.suitabilityScore) {
+                return left.suitabilityScore - right.suitabilityScore;
+            }
+            return right.areaSqKm - left.areaSqKm;
+        });
+
         console.debug(`[generateReport] combinations loop (${regions.length} regions): ${(performance.now() - _tCombos).toFixed(1)}ms`);
         console.debug(`[generateReport] computeLayerValuesForRegion total: ${_tLayerValuesTotal.toFixed(1)}ms`);
         console.debug(`[generateReport] total: ${(performance.now() - _t0).toFixed(1)}ms`);
@@ -163,16 +200,28 @@ export class ReportService {
         for (const feature of issueFeatures) {
             const description = (feature.properties?.issue as string) ?? 'unknown';
             const suitability = (feature.properties?.suitability as string) ?? 'unknown';
-            if (!groupMap.has(description)) {
-                groupMap.set(description, { suitability, features: [] });
+            const sourceLayerId = feature.properties?.sourceLayerId as string | undefined;
+            const groupKey = `${sourceLayerId ?? 'unknown-layer'}::${description}`;
+            if (!groupMap.has(groupKey)) {
+                groupMap.set(groupKey, { suitability, features: [] });
             }
-            groupMap.get(description)!.features.push(feature);
+            groupMap.get(groupKey)!.features.push(feature);
         }
 
         const issueUnions: IssueUnion[] = [];
-        groupMap.forEach(({ suitability, features }, description) => {
+        groupMap.forEach(({ suitability, features }, groupKey) => {
             const union = this.unionAll(features);
-            if (union) issueUnions.push({ description, suitability, union });
+            const delimiterIndex = groupKey.indexOf('::');
+            const sourceLayerId = delimiterIndex === -1 ? 'unknown-layer' : groupKey.slice(0, delimiterIndex);
+            const description = delimiterIndex === -1 ? groupKey : groupKey.slice(delimiterIndex + 2);
+            if (union) {
+                issueUnions.push({
+                    description,
+                    suitability,
+                    sourceLayerId: sourceLayerId === 'unknown-layer' ? undefined : sourceLayerId,
+                    union,
+                });
+            }
         });
         return issueUnions;
     }

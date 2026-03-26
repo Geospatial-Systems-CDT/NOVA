@@ -24,6 +24,8 @@ export interface ReportIssueDTO {
     description: string;
     /** Suitability rating: "amber" | "red" | "darkRed" */
     suitability: string;
+    /** Source data layer identifier, e.g. "windSpeed" */
+    sourceLayerId?: string;
 }
 
 /**
@@ -94,6 +96,15 @@ export interface ReportRegionLayerValueDTO {
  *         issueCount:
  *           type: integer
  *           description: Number of distinct issue types present in this region.
+ *         weightedIssueSum:
+ *           type: number
+ *           description: Sum of configured layer weights for distinct triggering layers in this region.
+ *         totalLayerWeight:
+ *           type: number
+ *           description: Sum of all active layer weights used in the analysis.
+ *         suitabilityScore:
+ *           type: number
+ *           description: Weighted suitability score calculated as weightedIssueSum / totalLayerWeight.
  *         issues:
  *           type: array
  *           items:
@@ -110,6 +121,9 @@ export interface ReportRegionLayerValueDTO {
  *         - bbox
  *         - areaSqKm
  *         - issueCount
+ *         - weightedIssueSum
+ *         - totalLayerWeight
+ *         - suitabilityScore
  *         - issues
  *         - layerValues
  */
@@ -124,6 +138,12 @@ export interface ReportRegionDTO {
     areaSqKm: number;
     /** Number of distinct issue types present */
     issueCount: number;
+    /** Sum of weights for unique triggered layers in this region */
+    weightedIssueSum: number;
+    /** Sum of all active layer weights */
+    totalLayerWeight: number;
+    /** Weighted suitability score: weightedIssueSum / totalLayerWeight */
+    suitabilityScore: number;
     /** Issues present within this region (empty array for zero-issue regions) */
     issues: ReportIssueDTO[];
     /** Computed values for each active data layer used during analysis */

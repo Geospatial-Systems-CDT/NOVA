@@ -89,7 +89,8 @@ export class AssetAnalysisService {
         layer: FeatureCollection<MultiPolygon | Polygon>,
         location: Feature<Polygon>,
         suitability: string,
-        issue?: string
+        issue?: string,
+        sourceLayerId?: string
     ): Feature<Polygon | MultiPolygon, GeoJsonProperties>[] {
         const matchedPolygons: Feature<Polygon | MultiPolygon, GeoJsonProperties>[] = [];
         const locationBbox = turf.bbox(location);
@@ -120,6 +121,7 @@ export class AssetAnalysisService {
                     if (intersection) {
                         intersection.properties!.suitability = suitability;
                         if (issue) intersection.properties!.issue = issue;
+                        if (sourceLayerId) intersection.properties!.sourceLayerId = sourceLayerId;
                         matchedPolygons.push(intersection);
                     }
                 });
@@ -131,6 +133,7 @@ export class AssetAnalysisService {
                 if (intersection) {
                     intersection.properties!.suitability = suitability;
                     if (issue) intersection.properties!.issue = issue;
+                    if (sourceLayerId) intersection.properties!.sourceLayerId = sourceLayerId;
                     matchedPolygons.push(intersection);
                 }
             }
@@ -173,7 +176,7 @@ export class AssetAnalysisService {
                 };
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(windspeedBadLayerData, location, 'red', `Bad windspeed - < ${minSpeed}m/s or > ${maxSpeed}m/s`)
+                    this.getMatchedPolygonsForLayer(windspeedBadLayerData, location, 'red', `Bad windspeed - < ${minSpeed}m/s or > ${maxSpeed}m/s`, dataLayer.id)
                 );
             } else if (dataLayer.id === 'solarPotential') {
                 const minPotential = this.getNumericAttributeValue(dataLayer, 'minPotential', 900);
@@ -187,7 +190,13 @@ export class AssetAnalysisService {
                 };
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
+                    this.getMatchedPolygonsForLayer(
+                        solarPotentialBadLayerData,
+                        location,
+                        'red',
+                        `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`,
+                        dataLayer.id
+                    )
                 );
             } else if (dataLayer.id === 'slope') {
                 const maxSlope =
@@ -206,35 +215,36 @@ export class AssetAnalysisService {
                         slopesBadLayerData,
                         location,
                         'red',
-                        `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`
+                        `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`,
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'roadBuffer') {
                 const roadBufferLayerData = this.dataProviderUtils.getRoadBufferLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(roadBufferLayerData, location, 'red', 'Too close to road (Wind Turbines)')
+                    this.getMatchedPolygonsForLayer(roadBufferLayerData, location, 'red', 'Too close to road (Wind Turbines)', dataLayer.id)
                 );
             } else if (dataLayer.id === 'roadBufferSolar') {
                 const roadBufferSolar7mLayerData = this.dataProviderUtils.getRoadBufferSolar7mLayerData();
                 const roadBufferSolar5mLayerData = this.dataProviderUtils.getRoadBufferSolar5mLayerData();
 
                 cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(roadBufferSolar7mLayerData, location, 'amber', '>7m to road')
+                    this.getMatchedPolygonsForLayer(roadBufferSolar7mLayerData, location, 'amber', '>7m to road', dataLayer.id)
                 );
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(roadBufferSolar5mLayerData, location, 'red', 'Too close to road (Solar)')
+                    this.getMatchedPolygonsForLayer(roadBufferSolar5mLayerData, location, 'red', 'Too close to road (Solar)', dataLayer.id)
                 );
             } else if (dataLayer.id === 'railBuffer') {
                 const railBufferLayerData = this.dataProviderUtils.getRailBufferLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 100m'))
+                    this.getMatchedPolygonsForLayer(railBufferLayerData, location, 'red', 'Too close to railway - <= 100m', dataLayer.id))
             } else if (dataLayer.id === 'railBufferSolar') {
                 const railBufferSolarLayerData = this.dataProviderUtils.getRailBufferSolarLayerData();
 
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(railBufferSolarLayerData, location, 'red', 'Too close to railway (Solar)'))
+                    this.getMatchedPolygonsForLayer(railBufferSolarLayerData, location, 'red', 'Too close to railway (Solar)', dataLayer.id))
             } else if (dataLayer.id === 'aspect') {
                 const aspectLayer = this.dataProviderUtils.getAspectLayerData();
                 const amberAspect = new Set([3, 7]);
@@ -259,9 +269,11 @@ export class AssetAnalysisService {
                 };
 
                 cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(aspectAmberLayerData, location, 'amber', amberAspectIssue)
+                    this.getMatchedPolygonsForLayer(aspectAmberLayerData, location, 'amber', amberAspectIssue, dataLayer.id)
                 );
-                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(this.getMatchedPolygonsForLayer(aspectRedLayerData, location, 'red', redAspectIssue));
+                badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayer(aspectRedLayerData, location, 'red', redAspectIssue, dataLayer.id)
+                );
             } else if (dataLayer.id === 'specialAreasOfConservation') {
                 const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
                 const specialAreasOfConservationLayerData = this.dataProviderUtils.getSpecialAreasOfConservationLayerData();
@@ -288,14 +300,21 @@ export class AssetAnalysisService {
                 };
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(specialAreasOfConservationLayerData, location, 'darkRed', 'Special area of conservation')
+                    this.getMatchedPolygonsForLayer(
+                        specialAreasOfConservationLayerData,
+                        location,
+                        'darkRed',
+                        'Special area of conservation',
+                        dataLayer.id
+                    )
                 );
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(
                         specialAreasOfConservationBufferedLayerData,
                         location,
                         'red',
-                        `Too close to special areas of conservation - <= ${minDistance}km`
+                        `Too close to special areas of conservation - <= ${minDistance}km`,
+                        dataLayer.id
                     )
                 );
                 cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
@@ -303,7 +322,8 @@ export class AssetAnalysisService {
                         specialAreasOfConservationBuffered500MLayerData,
                         location,
                         'amber',
-                        `Close to special areas of conservation - <= ${minDistance + 0.5}km`
+                        `Close to special areas of conservation - <= ${minDistance + 0.5}km`,
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id == 'sitesOfSpecialScientificInterest') {
@@ -331,14 +351,21 @@ export class AssetAnalysisService {
                 };
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(sitesOfSpecialScientificInterestLayerData, location, 'darkRed', 'Site of special scientific interest')
+                    this.getMatchedPolygonsForLayer(
+                        sitesOfSpecialScientificInterestLayerData,
+                        location,
+                        'darkRed',
+                        'Site of special scientific interest',
+                        dataLayer.id
+                    )
                 );
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(
                         sitesOfSpecialScientificInterestBufferLayerData,
                         location,
                         'red',
-                        `Too close to sites of special scientific interest - <= ${minDistance}km`
+                        `Too close to sites of special scientific interest - <= ${minDistance}km`,
+                        dataLayer.id
                     )
                 );
                 cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
@@ -346,7 +373,8 @@ export class AssetAnalysisService {
                         sitesOfSpecialScientifiInterestBuffer500MLayerData,
                         location,
                         'amber',
-                        `Close to sites of special scientific interest - <= ${minDistance + 0.5}km`
+                        `Close to sites of special scientific interest - <= ${minDistance + 0.5}km`,
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'builtUpAreas') {
@@ -374,13 +402,25 @@ export class AssetAnalysisService {
                 };
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(builtupAreasLayerData, location, 'darkRed', 'Built up area')
+                    this.getMatchedPolygonsForLayer(builtupAreasLayerData, location, 'darkRed', 'Built up area', dataLayer.id)
                 );
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(builtupAreasBufferLayerData, location, 'red', `Too close to built up areas - <= ${minDistance}km`)
+                    this.getMatchedPolygonsForLayer(
+                        builtupAreasBufferLayerData,
+                        location,
+                        'red',
+                        `Too close to built up areas - <= ${minDistance}km`,
+                        dataLayer.id
+                    )
                 );
                 cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(builtupAreasBuffer500MLayerData, location, 'amber', `Close to built up areas - <= ${minDistance + 0.5}km`)
+                    this.getMatchedPolygonsForLayer(
+                        builtupAreasBuffer500MLayerData,
+                        location,
+                        'amber',
+                        `Close to built up areas - <= ${minDistance + 0.5}km`,
+                        dataLayer.id
+                    )
                 );
             } else if (dataLayer.id == 'areasOfOutstandingNaturalBeauty') {
                 const minDistance = this.getNumericAttributeValue(dataLayer, 'minDistance', 1);
@@ -407,14 +447,15 @@ export class AssetAnalysisService {
                 };
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(areasOfNaturalBeautyLayerData, location, 'darkRed', `Area of outstanding natural beauty`)
+                    this.getMatchedPolygonsForLayer(areasOfNaturalBeautyLayerData, location, 'darkRed', `Area of outstanding natural beauty`, dataLayer.id)
                 );
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(
                         areasOfNaturalBeautyBufferLayerData,
                         location,
                         'red',
-                        `Too close to areas of outstanding natural beauty - <= ${minDistance}km`
+                        `Too close to areas of outstanding natural beauty - <= ${minDistance}km`,
+                        dataLayer.id
                     )
                 );
                 cautionLayerMatchedPolygons = cautionLayerMatchedPolygons.concat(
@@ -422,7 +463,8 @@ export class AssetAnalysisService {
                         areasOfNaturalBeautyBufferLayer500MData,
                         location,
                         'amber',
-                        `Close to areas of outstanding natural beauty - <= ${minDistance + 0.5}km`
+                        `Close to areas of outstanding natural beauty - <= ${minDistance + 0.5}km`,
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'agriculturalLandClassification') {
@@ -445,14 +487,15 @@ export class AssetAnalysisService {
                         agriculturalLandClassificationAboveThresholdLayerData,
                         location,
                         'red',
-                        `Agricultural land classification at the selected grade (${selectedClassification}) and better`
+                        `Agricultural land classification at the selected grade (${selectedClassification}) and better`,
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'ancientWoodlands') {
                 const ancientWoodlandsLayerData = this.dataProviderUtils.getAncientWoodlandsLayerData();
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(ancientWoodlandsLayerData, location, 'darkRed', 'Ancient woodland')
+                    this.getMatchedPolygonsForLayer(ancientWoodlandsLayerData, location, 'darkRed', 'Ancient woodland', dataLayer.id)
                 );
             } else if (dataLayer.id === 'scheduledAncientMonuments750mBuffer') {
                 const scheduledAncientMonumentsLayerData = this.dataProviderUtils.getScheduledAncientMonuments750mBufferLayerData();
@@ -462,7 +505,8 @@ export class AssetAnalysisService {
                         scheduledAncientMonumentsLayerData,
                         location,
                         'darkRed',
-                        'Scheduled Ancient Monuments-750m Buffer'
+                        'Scheduled Ancient Monuments-750m Buffer',
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'specialProtectionAreas2kmBuffer') {
@@ -473,14 +517,15 @@ export class AssetAnalysisService {
                         specialProtectionAreasLayerData,
                         location,
                         'darkRed',
-                        'Special Protection Areas (2km buffer)'
+                        'Special Protection Areas (2km buffer)',
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'ramsarWetlands') {
                 const ramsarWetlandsLayerData = this.dataProviderUtils.getRamsarWetlandsLayerData();
 
                 exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(ramsarWetlandsLayerData, location, 'darkRed', 'Ramsar Wetland')
+                    this.getMatchedPolygonsForLayer(ramsarWetlandsLayerData, location, 'darkRed', 'Ramsar Wetland', dataLayer.id)
                 );
             } else if (dataLayer.id === 'coastalErosionProjection') {
                 const coastalErosionProjectionLayerData = this.dataProviderUtils.getCoastalErosionProjectionLayerData();
@@ -490,7 +535,8 @@ export class AssetAnalysisService {
                         coastalErosionProjectionLayerData,
                         location,
                         'darkRed',
-                        'Coastal Erosion'
+                        'Coastal Erosion',
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'dissolvedRiverFloodRisk') {
@@ -501,7 +547,8 @@ export class AssetAnalysisService {
                         dissolvedRiverFloodRiskLayerData,
                         location,
                         'darkRed',
-                        'Flood risk within 200m of river'
+                        'Flood risk within 200m of river',
+                        dataLayer.id
                     )
                 );
             } else if (dataLayer.id === 'fuelPoverty') {
@@ -522,7 +569,13 @@ export class AssetAnalysisService {
                     };
 
                     badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                        this.getMatchedPolygonsForLayer(fuelPovertyBelowAverageLayerData, location, 'red', 'Low priority for minimising fuel poverty')
+                        this.getMatchedPolygonsForLayer(
+                            fuelPovertyBelowAverageLayerData,
+                            location,
+                            'red',
+                            'Low priority for minimising fuel poverty',
+                            dataLayer.id
+                        )
                     );
                 }
             }

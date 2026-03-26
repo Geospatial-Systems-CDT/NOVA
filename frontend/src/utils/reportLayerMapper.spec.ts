@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { ReportDTO } from '../types/report';
+import { DEFAULT_SUITABILITY_THRESHOLDS } from '../types/reportRanking';
 import { mapReportToLayerFeatureCollection } from './reportLayerMapper';
 
 const basePolygon = {
@@ -32,6 +33,9 @@ describe('mapReportToLayerFeatureCollection', () => {
                     bbox: [0, 0, 1, 1],
                     areaSqKm: 2.1234,
                     issueCount: 2,
+                    weightedIssueSum: 1.5,
+                    totalLayerWeight: 3,
+                    suitabilityScore: 0.5,
                     issues: [{ description: 'Issue one', suitability: 'red' }],
                     layerValues: [{ layerId: 'wind', label: 'Wind', value: 7.5, unit: 'm/s' }],
                 },
@@ -41,17 +45,18 @@ describe('mapReportToLayerFeatureCollection', () => {
             assumptions: [],
         };
 
-        const result = mapReportToLayerFeatureCollection(report);
+        const result = mapReportToLayerFeatureCollection(report, 'legacyIssueCount', DEFAULT_SUITABILITY_THRESHOLDS);
 
         expect(result.type).toBe('FeatureCollection');
         expect(result.features).toHaveLength(1);
         expect(result.features[0].properties.reportRegionId).toBe('region-1');
         expect(result.features[0].properties.issueCount).toBe(2);
+        expect(result.features[0].properties.suitabilityScore).toBe(0.5);
         expect(result.features[0].properties.layerValues[0].label).toBe('Wind');
         expect(result.features[0].properties.suitability).toBe('red');
     });
 
-    it('maps zero-issue regions to green suitability', () => {
+    it('maps zero-issue regions to green suitability using weighted mode', () => {
         const report: ReportDTO = {
             regions: [
                 {
@@ -60,6 +65,9 @@ describe('mapReportToLayerFeatureCollection', () => {
                     bbox: [0, 0, 1, 1],
                     areaSqKm: 1,
                     issueCount: 0,
+                    weightedIssueSum: 0,
+                    totalLayerWeight: 2,
+                    suitabilityScore: 0,
                     issues: [],
                     layerValues: [],
                 },
@@ -69,7 +77,84 @@ describe('mapReportToLayerFeatureCollection', () => {
             assumptions: [],
         };
 
-        const result = mapReportToLayerFeatureCollection(report);
+        const result = mapReportToLayerFeatureCollection(report, 'weighted', DEFAULT_SUITABILITY_THRESHOLDS);
         expect(result.features[0].properties.suitability).toBe('green');
+    });
+
+    it('maps weighted score to amber/red/darkRed using configured thresholds', () => {
+        const report: ReportDTO = {
+            regions: [
+                {
+                    id: 'region-amber',
+                    polygon: basePolygon,
+                    bbox: [0, 0, 1, 1],
+                    areaSqKm: 1,
+                    issueCount: 1,
+                    weightedIssueSum: 0.2,
+                    totalLayerWeight: 1,
+                    suitabilityScore: 0.2,
+                    issues: [],
+                    layerValues: [],
+                },
+                {
+                    id: 'region-red',
+                    polygon: basePolygon,
+                    bbox: [0, 0, 1, 1],
+                    areaSqKm: 1,
+                    issueCount: 2,
+                    weightedIssueSum: 0.5,
+                    totalLayerWeight: 1,
+                    suitabilityScore: 0.5,
+                    issues: [],
+                    layerValues: [],
+                },
+                {
+                    id: 'region-dark-red',
+                    polygon: basePolygon,
+                    bbox: [0, 0, 1, 1],
+                    areaSqKm: 1,
+                    issueCount: 3,
+                    weightedIssueSum: 0.9,
+                    totalLayerWeight: 1,
+                    suitabilityScore: 0.9,
+                    issues: [],
+                    layerValues: [],
+                },
+            ],
+            totalRegions: 3,
+            layerValues: [],
+            assumptions: [],
+        };
+
+        const result = mapReportToLayerFeatureCollection(report, 'weighted', { amberMax: 0.33, redMax: 0.66 });
+
+        expect(result.features[0].properties.suitability).toBe('amber');
+        expect(result.features[1].properties.suitability).toBe('red');
+        expect(result.features[2].properties.suitability).toBe('darkRed');
+    });
+
+    it('still supports legacy issue-count suitability mapping', () => {
+        const report: ReportDTO = {
+            regions: [
+                {
+                    id: 'region-legacy',
+                    polygon: basePolygon,
+                    bbox: [0, 0, 1, 1],
+                    areaSqKm: 1,
+                    issueCount: 1,
+                    weightedIssueSum: 0.9,
+                    totalLayerWeight: 1,
+                    suitabilityScore: 0.9,
+                    issues: [],
+                    layerValues: [],
+                },
+            ],
+            totalRegions: 1,
+            layerValues: [],
+            assumptions: [],
+        };
+
+        const result = mapReportToLayerFeatureCollection(report, 'legacyIssueCount', DEFAULT_SUITABILITY_THRESHOLDS);
+        expect(result.features[0].properties.suitability).toBe('amber');
     });
 });

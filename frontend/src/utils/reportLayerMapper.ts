@@ -3,6 +3,7 @@
 
 import type { Feature, FeatureCollection, Polygon } from 'geojson';
 import type { ReportDTO, ReportIssueDTO, ReportRegionLayerValueDTO } from '../types/report';
+import { DEFAULT_SUITABILITY_THRESHOLDS, type ReportRankingMode, type SuitabilityThresholds } from '../types/reportRanking';
 
 type ReportLayerSuitability = 'green' | 'amber' | 'red' | 'darkRed';
 
@@ -10,6 +11,9 @@ export interface ReportLayerFeatureProperties {
     reportRegionId: string;
     areaSqKm: number;
     issueCount: number;
+    weightedIssueSum: number;
+    totalLayerWeight: number;
+    suitabilityScore: number;
     suitability: ReportLayerSuitability;
     issues: ReportIssueDTO[];
     layerValues: ReportRegionLayerValueDTO[];
@@ -22,7 +26,18 @@ function getSuitabilityFromIssueCount(issueCount: number): ReportLayerSuitabilit
     return 'darkRed';
 }
 
-export function mapReportToLayerFeatureCollection(report: ReportDTO): FeatureCollection<Polygon, ReportLayerFeatureProperties> {
+function getSuitabilityFromWeightedScore(score: number, thresholds: SuitabilityThresholds): ReportLayerSuitability {
+    if (score <= 0) return 'green';
+    if (score <= thresholds.amberMax) return 'amber';
+    if (score <= thresholds.redMax) return 'red';
+    return 'darkRed';
+}
+
+export function mapReportToLayerFeatureCollection(
+    report: ReportDTO,
+    rankingMode: ReportRankingMode,
+    thresholds: SuitabilityThresholds = DEFAULT_SUITABILITY_THRESHOLDS
+): FeatureCollection<Polygon, ReportLayerFeatureProperties> {
     const features: Feature<Polygon, ReportLayerFeatureProperties>[] = report.regions.map((region) => ({
         type: 'Feature',
         geometry: region.polygon.geometry,
@@ -30,7 +45,13 @@ export function mapReportToLayerFeatureCollection(report: ReportDTO): FeatureCol
             reportRegionId: region.id,
             areaSqKm: region.areaSqKm,
             issueCount: region.issueCount,
-            suitability: getSuitabilityFromIssueCount(region.issueCount),
+            weightedIssueSum: region.weightedIssueSum,
+            totalLayerWeight: region.totalLayerWeight,
+            suitabilityScore: region.suitabilityScore,
+            suitability:
+                rankingMode === 'legacyIssueCount'
+                    ? getSuitabilityFromIssueCount(region.issueCount)
+                    : getSuitabilityFromWeightedScore(region.suitabilityScore, thresholds),
             issues: region.issues,
             layerValues: region.layerValues,
         },

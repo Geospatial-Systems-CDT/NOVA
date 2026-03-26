@@ -19,7 +19,6 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-import area from '@turf/area';
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type MapboxDraw from '@mapbox/mapbox-gl-draw';
@@ -49,6 +48,18 @@ interface Attribute {
     valueType: 'number' | 'string';
     options?: string[];
     maxValue?: number;
+}
+
+const LAYER_WEIGHT_ATTRIBUTE: Attribute = {
+    id: 'layerWeight',
+    description: 'Layer weight',
+    defaultValue: 1,
+    valueType: 'number',
+};
+
+function withLayerWeightAttribute(attributes: Attribute[]): Attribute[] {
+    if (attributes.some((attribute) => attribute.id === 'layerWeight')) return attributes;
+    return [...attributes, LAYER_WEIGHT_ATTRIBUTE];
 }
 
 type AttributeValue = string | number;
@@ -159,7 +170,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                 if (!category.items?.length) return;
 
                 transformed[category.name] = category.items.map((item) => {
-                    const attributes = item.attributes;
+                    const attributes = withLayerWeightAttribute(item.attributes);
 
                     checks[item.name] = true;
                     defaults[item.name] = {};
@@ -388,7 +399,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
         const payload = {
             location: featureCollection,
             dataLayers,
-            maxIssues: 1,
+            maxIssues: Math.max(dataLayers.filter((layer) => layer.analyze).length, 0),
         };
 
         setLoading(true);
@@ -466,53 +477,6 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
     const isVisible = polygonStatus === 'confirmed';
     if (!isVisible) return null;
     const layerPanelTop = '3.75rem';
-    const handleGenerateReport = () => {
-        if (!drawRef.current) {
-            alert('No polygon selected.');
-            return;
-        }
-        const polygon = MapVisualHelper.getFirstPolygon(drawRef.current);
-        if (!polygon) {
-            alert('No polygon selected.');
-            return;
-        }
-        let areaSqMeters = 0;
-        try {
-            // @ts-ignore: turf/area expects a GeoJSON geometry
-            areaSqMeters = area({ type: 'Feature', geometry: polygon, properties: {} });
-        } catch (e) {
-            alert('Could not calculate area.');
-            return;
-        }
-        const areaSqKm = areaSqMeters / 1e6;
-        const htmlContent = `
-            <html>
-            <head>
-                <title>Layer Report</title>
-                <meta charset="UTF-8" />
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 2rem; }
-                    h1 { color: #1976d2; }
-                    .area { font-size: 1.2rem; margin-top: 1rem; }
-                </style>
-            </head>
-            <body>
-                <h1>Layer Report</h1>
-                <div class="area">
-                    <strong>Total Area:</strong> ${areaSqKm.toLocaleString(undefined, { maximumFractionDigits: 3 })} km²
-                </div>
-            </body>
-            </html>
-        `;
-        const reportWindow = window.open('', '_blank');
-        if (reportWindow) {
-            reportWindow.document.open();
-            reportWindow.document.write(htmlContent);
-            reportWindow.document.close();
-        } else {
-            alert('Unable to open report window. Please allow pop-ups.');
-        }
-    };
     return (
         <>
             <Box className="layer-panel-toggle" sx={{ left: layersPanelOpen ? '430px' : '1rem', top: layerPanelTop }}>
