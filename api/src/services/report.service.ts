@@ -12,14 +12,6 @@ import {
     ReportRegionEnergyPotentialDTO,
     ReportRegionLayerValueDTO,
 } from '../models/report.model';
-import {
-    ReportAssumptionDTO,
-    ReportDTO,
-    ReportIssueDTO,
-    ReportRegionDTO,
-    ReportRegionEnergyPotentialDTO,
-    ReportRegionLayerValueDTO,
-} from '../models/report.model';
 import { DataLayerDto } from '../models/data-layer.model';
 import { DataProviderUtils } from '../utils/data-provider.utils';
 
@@ -94,6 +86,7 @@ const parsePowerToMW = (rawValue: unknown): number | null => {
 type AnalysisMethod = 'legacy' | 'weighted';
 const REPORT_MAX_REGIONS_DEFAULT = 20;
 const WEIGHTED_FAST_PATH_FEATURE_THRESHOLD = 5000;
+const WEIGHTED_MAX_COMBINATION_BUDGET = 3000;
 
 interface IssueUnion {
     description: string;
@@ -216,6 +209,26 @@ export class ReportService {
         const _tUnions = performance.now();
         const issueUnions = this.buildIssueUnions(issueFeatures);
         console.debug(`[generateReport] buildIssueUnions (${issueUnions.length} distinct issues): ${(performance.now() - _tUnions).toFixed(1)}ms`);
+
+        if (analysisMethod === 'weighted') {
+            const estimatedCombinationCount = this.estimateCombinationCount(issueUnions.length, maxIssues, WEIGHTED_MAX_COMBINATION_BUDGET + 1);
+            if (estimatedCombinationCount > WEIGHTED_MAX_COMBINATION_BUDGET) {
+                console.debug(
+                    `[generateReport] weighted fast-path fallback: estimated combinations ${estimatedCombinationCount} exceed budget ${WEIGHTED_MAX_COMBINATION_BUDGET}`
+                );
+                return this.generateWeightedFastPathReport(
+                    greenFeature,
+                    issueFeatures,
+                    activeDataLayers,
+                    assumptions,
+                    layerWeights,
+                    totalLayerWeight,
+                    normalizedReportMaxScoreForPolygon,
+                    normalizedReportMaxRegions,
+                    selectedPolygon
+                );
+            }
+        }
 
         // 3. Enumerate exact-k combinations and build one candidate region per combination.
         //    Each combination produces a geometry that has EXACTLY those issues and no others,
@@ -534,6 +547,44 @@ export class ReportService {
         }
 
         return result;
+    }
+
+    /**
+     * Estimate total combinations for k = 0..maxK of C(totalItems, k), capped at `limit`.
+     * This lets us bail out before entering a very expensive exact-combination loop.
+     */
+    private estimateCombinationCount(totalItems: number, maxK: number, limit: number): number {
+        if (totalItems <= 0) return 1;
+        const safeMaxK = Math.max(0, Math.min(maxK, totalItems));
+        let total = 0;
+
+        for (let k = 0; k <= safeMaxK; k++) {
+            total += this.combinationCountCapped(totalItems, k, limit - total);
+            if (total >= limit) {
+                return limit;
+            }
+        }
+
+        return total;
+    }
+
+    /** Compute C(n, k) with early exit at `limit` to avoid overflow. */
+    private combinationCountCapped(n: number, k: number, limit: number): number {
+        if (k < 0 || k > n) return 0;
+        if (k === 0 || k === n) return 1;
+        if (limit <= 1) return limit;
+
+        const effectiveK = Math.min(k, n - k);
+        let value = 1;
+
+        for (let i = 1; i <= effectiveK; i++) {
+            value = (value * (n - effectiveK + i)) / i;
+            if (!Number.isFinite(value) || value >= limit) {
+                return limit;
+            }
+        }
+
+        return Math.floor(value);
     }
 
     private generateWeightedFastPathReport(
