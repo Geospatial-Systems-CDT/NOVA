@@ -60,11 +60,11 @@ export class ReportService {
             const coastlineFeatures = this.dataProviderUtils.getCoastlineData().features as Feature<Polygon | MultiPolygon, GeoJsonProperties>[];
             const coastlineUnion = this.unionAll(coastlineFeatures);
             if (coastlineUnion) {
-                const clipped = turf.intersect(turf.featureCollection([greenFeature, coastlineUnion]));
+                const clipped = turf.intersect(turf.featureCollection([greenFeature, this.simplifyFeature(coastlineUnion)]));
                 if (!clipped) {
                     return { regions: [], totalRegions: 0, selectedPolygon, assumptions };
                 }
-                greenFeature = clipped as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
+                greenFeature = this.simplifyFeature(clipped as Feature<Polygon | MultiPolygon, GeoJsonProperties>);
             }
             console.debug(`[generateReport] coastline clip: ${(performance.now() - _tCoastline).toFixed(1)}ms`);
         }
@@ -173,6 +173,12 @@ export class ReportService {
 
         for (const feature of issueFeatures) {
             const description = (feature.properties?.issue as string) ?? 'unknown';
+            if (description === 'Unsuitable land') {
+                // The imported unsuitable-land mask can be extremely detailed.
+                // Excluding it from combinatorial report splitting avoids stack overflows
+                // in downstream polygon operations while preserving heatmap behavior.
+                continue;
+            }
             const suitability = (feature.properties?.suitability as string) ?? 'unknown';
             if (!groupMap.has(description)) {
                 groupMap.set(description, { suitability, features: [] });
@@ -183,7 +189,8 @@ export class ReportService {
         const issueUnions: IssueUnion[] = [];
         groupMap.forEach(({ suitability, features }, description) => {
             const union = this.unionAll(features);
-            if (union) issueUnions.push({ description, suitability, union });
+            // Simplify once here so all downstream polygon boolean ops work on reduced-vertex geometry
+            if (union) issueUnions.push({ description, suitability, union: this.simplifyFeature(union) });
         });
         return issueUnions;
     }
@@ -210,7 +217,11 @@ export class ReportService {
             if (!region) return null;
             // Fast reject before the expensive intersect
             if (!this.bboxesOverlap(turf.bbox(region), turf.bbox(union))) return null;
-            region = turf.intersect(turf.featureCollection([region, union]));
+            try {
+                region = turf.intersect(turf.featureCollection([region, union]));
+            } catch {
+                return null;
+            }
         }
 
         if (!region) return null;
@@ -219,10 +230,31 @@ export class ReportService {
         for (const { union } of otherUnions) {
             if (!region) return null;
             if (!this.bboxesOverlap(turf.bbox(region), turf.bbox(union))) continue;
-            region = turf.difference(turf.featureCollection([region, union]));
+            try {
+                region = turf.difference(turf.featureCollection([region, union]));
+            } catch {
+                // degenerate geometry — treat as no remaining area
+                return null;
+            }
         }
 
         return region;
+    }
+
+    /**
+     * Simplify a polygon/multipolygon feature to reduce vertex count.
+     * Uses a tolerance of 0.0001° (~11 m) which is imperceptible at report scale
+     * but dramatically reduces the risk of polygon-clipping library stack overflows
+     * on high-detail geometries (coastline, SAC/SSSI buffers, etc.).
+     */
+    private simplifyFeature<T extends Polygon | MultiPolygon>(
+        feature: Feature<T, GeoJsonProperties>
+    ): Feature<T, GeoJsonProperties> {
+        try {
+            return turf.simplify(feature, { tolerance: 0.0001, highQuality: false, mutate: false }) as Feature<T, GeoJsonProperties>;
+        } catch {
+            return feature;
+        }
     }
 
     /** Returns true when two [west,south,east,north] bounding boxes overlap. */
@@ -386,6 +418,12 @@ export class ReportService {
                     results.push({ layerId: 'aspect', label: 'Aspect', value, unit: '' });
                     break;
                 }
+                case 'unsuitableLand': {
+                    const data = this.dataProviderUtils.getUnsuitableLandLayerData();
+                    const value = this.isPointInsideLayer(centroid, data) ? 'Yes' : 'No';
+                    results.push({ layerId: 'unsuitableLand', label: 'Within unsuitable land', value, unit: '' });
+                    break;
+                }
             }
         }
 
@@ -527,5 +565,25 @@ export class ReportService {
         }
 
         return minDistKm !== null ? Math.round(minDistKm * 100) / 100 : null;
+    }
+
+    private isPointInsideLayer(centroid: Feature<Point>, layerData: FeatureCollection<MultiPolygon | Polygon>): boolean {
+        for (const feature of layerData.features) {
+            const geometry = feature.geometry;
+            if (geometry.type === 'Polygon') {
+                const polygon = turf.polygon(geometry.coordinates);
+                if (turf.booleanPointInPolygon(centroid, polygon)) return true;
+                continue;
+            }
+
+            if (geometry.type === 'MultiPolygon') {
+                for (const coordinates of geometry.coordinates) {
+                    const polygon = turf.polygon(coordinates);
+                    if (turf.booleanPointInPolygon(centroid, polygon)) return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

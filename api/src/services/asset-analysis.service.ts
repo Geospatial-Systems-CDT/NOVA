@@ -139,6 +139,35 @@ export class AssetAnalysisService {
         return matchedPolygons;
     }
 
+    private getMatchedPolygonsForLayerCompact(
+        layer: FeatureCollection<MultiPolygon | Polygon>,
+        location: Feature<Polygon>,
+        suitability: string,
+        issue?: string
+    ): Feature<Polygon | MultiPolygon, GeoJsonProperties>[] {
+        const matchedPolygons: Feature<Polygon | MultiPolygon, GeoJsonProperties>[] = [];
+        const locationBbox = turf.bbox(location);
+
+        layer.features.forEach((layerFeature) => {
+            if (!AssetAnalysisService.bboxesOverlap(locationBbox, turf.bbox(layerFeature))) return;
+
+            const combinedFeatureCollection = {
+                type: 'FeatureCollection',
+                features: [location, layerFeature],
+            } as FeatureCollection<Polygon | MultiPolygon>;
+
+            const intersection = turf.intersect(combinedFeatureCollection);
+
+            if (intersection) {
+                intersection.properties!.suitability = suitability;
+                if (issue) intersection.properties!.issue = issue;
+                matchedPolygons.push(intersection);
+            }
+        });
+
+        return matchedPolygons;
+    }
+
     /*
      * A helper method to get the matched polygons based on the data layers and location provided. These polygons are ordered with the good layer (suitability rating of green) -> caution layers (suitability rating of amber) -> bad layers (suitability of red) -> exact bad layers (suitability rating of darkRed)
      *
@@ -189,9 +218,10 @@ export class AssetAnalysisService {
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
                     this.getMatchedPolygonsForLayer(solarPotentialBadLayerData, location, 'red', `Low photovoltaic potential - < ${minPotential} kWh/kWp/year`)
                 );
-            } else if (dataLayer.id === 'slope') {
+            } else if (dataLayer.id === 'slope' || dataLayer.id === 'slopeWind') {
+                const defaultMaxSlope = dataLayer.id === 'slopeWind' ? 5.71 : 14.275;
                 const maxSlope =
-                    dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value || 30;
+                    dataLayer.attributes.filter((attribute) => Number(attribute.value) >= 0).find((attribute) => attribute.id === 'maxSlope')?.value || defaultMaxSlope;
                 const slopesLayer = this.dataProviderUtils.getSlopesLayerData();
                 const slopesBadLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
@@ -201,13 +231,13 @@ export class AssetAnalysisService {
                     }),
                 };
 
+                const slopeIssue =
+                    dataLayer.id === 'slopeWind'
+                        ? `Unfavourable wind terrain suitability - steep slope (> ${maxSlope}°)`
+                        : `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`;
+
                 badLayerMatchedPolygons = badLayerMatchedPolygons.concat(
-                    this.getMatchedPolygonsForLayer(
-                        slopesBadLayerData,
-                        location,
-                        'red',
-                        `Unfavourable solar terrain suitability - steep slope (> ${maxSlope}°)`
-                    )
+                    this.getMatchedPolygonsForLayer(slopesBadLayerData, location, 'red', slopeIssue)
                 );
             } else if (dataLayer.id === 'roadBuffer') {
                 const roadBufferLayerData = this.dataProviderUtils.getRoadBufferLayerData();
@@ -239,8 +269,8 @@ export class AssetAnalysisService {
                 const aspectLayer = this.dataProviderUtils.getAspectLayerData();
                 const amberAspect = new Set([3, 7]);
                 const redAspect = new Set([1, 2, 8]);
-                const amberAspectIssue = 'Moderate solar terrain suitability - aspect category East/West (3 or 7)';
-                const redAspectIssue = 'Unfavourable solar terrain suitability - north-facing aspect category (North/North-East/North-West; 1, 2, 8)';
+                const amberAspectIssue = 'Moderate solar terrain suitability - east/west-facing aspect';
+                const redAspectIssue = 'Unfavourable solar terrain suitability - north-facing aspect';
 
                 const aspectAmberLayerData: FeatureCollection<MultiPolygon | Polygon> = {
                     type: 'FeatureCollection',
@@ -525,6 +555,12 @@ export class AssetAnalysisService {
                         this.getMatchedPolygonsForLayer(fuelPovertyBelowAverageLayerData, location, 'red', 'Low priority for minimising fuel poverty')
                     );
                 }
+            } else if (dataLayer.id === 'unsuitableLand') {
+                const unsuitableLandLayerData = this.dataProviderUtils.getUnsuitableLandLayerData();
+
+                exactbadLayerMatchedPolygons = exactbadLayerMatchedPolygons.concat(
+                    this.getMatchedPolygonsForLayerCompact(unsuitableLandLayerData, location, 'darkRed', 'Unsuitable land')
+                );
             }
             console.debug(`[getMatchedPolygonsForLayers] layer "${dataLayer.id}": ${(performance.now() - _tLayer).toFixed(1)}ms`);
         });
