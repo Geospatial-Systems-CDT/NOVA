@@ -133,6 +133,18 @@ Latest refinements (estimation and display):
   - energy below 1 MWh is shown in kWh/year
   - power below 1 MW is shown in kW
 - Updated methods documentation to reflect the current wind/solar estimator methodology, assumptions, fallback behavior, and multi-asset scaling.
+- Added report-region energy potential outputs in the API (`energyPotential`) with:
+    - annual solar potential (MWh/year)
+    - annual wind potential (MWh/year)
+    - theoretical max solar assets
+    - theoretical max wind assets
+- Applied report eligibility rules for potential metrics:
+    - compute only for regions with 1 issue or less
+    - when the only issue is slope suitability for one technology, compute potential only for the other technology
+- Updated solar potential sizing in report calculations to derive per-asset capacity from the solar Farm specification (with safe fallback handling).
+- Improved report generation robustness for large geometry sets by replacing high-risk merge paths with stack-safe geometry merging and guarded fallbacks.
+- Exposed energy potential metrics in frontend report outputs (region slide and report map popup) by extending report types and mapping.
+- Replaced wind max-asset counting from coarse MW/km² density with a more realistic spacing-based siting model (typical 7D x 4D) plus a minimum single-turbine fit check.
 
 ### Notes
 
