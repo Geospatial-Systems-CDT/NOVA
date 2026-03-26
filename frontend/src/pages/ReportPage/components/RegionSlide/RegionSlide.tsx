@@ -25,7 +25,6 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
         contextUrl: null,
         errorMessage: null,
     });
-
     useEffect(() => {
         let cancelled = false;
 
@@ -58,72 +57,140 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
         return unit ? `${formatted} ${unit}` : String(formatted);
     };
 
+    const getLv = (id: string) => layerValues.find((lv) => lv.layerId === id) ?? null;
+
+    const substationName = getLv('nearestSubstationName');
+    const substationDist = getLv('nearestSubstationDistance');
+    const fuelPovertyLv = getLv('fuelPoverty');
+    const fuelPovertyWithin10km = fuelPovertyLv !== null && fuelPovertyLv.value !== null ? (fuelPovertyLv.value as number) <= 10 : null;
+    const windSpeed = getLv('windSpeed');
+    const solarPotential = getLv('solarPotential');
+
+    const snapshotMetrics: { label: string; value: string }[] = [
+        { label: 'Nearest substation', value: substationName ? formatLayerValue(substationName.value, '') : '—' },
+        { label: 'Distance to substation', value: substationDist ? formatLayerValue(substationDist.value, 'km') : '—' },
+        { label: 'Within 10km fuel poverty', value: fuelPovertyWithin10km === null ? '—' : fuelPovertyWithin10km ? 'Yes' : 'No' },
+        { label: 'Wind speed', value: windSpeed ? formatLayerValue(windSpeed.value, 'm/s') : '—' },
+        { label: 'Solar potential', value: solarPotential ? formatLayerValue(solarPotential.value, 'kWh/kWp/yr') : '—' },
+    ];
+
     return (
-        <Slide key={region.id}>
-            <section className="report-slide" data-auto-animate>
-                <h2>Site Screening Report Snapshot</h2>
-                <div className="report-grid">
-                    <div>
-                        <div className="image-wrap">
-                            {satellite.status === 'loading' && <div className="loading">Loading satellite image...</div>}
-                            {satellite.status === 'error' && <div className="loading">Satellite image unavailable ({satellite.errorMessage})</div>}
-                            {satellite.status === 'ready' && satellite.clippedUrl && (
-                                <img className="report-polygon-image" src={satellite.clippedUrl} alt="Satellite view clipped to selected polygon" />
-                            )}
-                            {satellite.status === 'ready' && satellite.contextUrl && (
-                                <img
-                                    className="report-polygon-context-image"
-                                    src={satellite.contextUrl}
-                                    alt="Satellite view of selected area with focused polygon highlighted"
-                                />
-                            )}
-                        </div>
-                        <p className="image-caption">Imagery source: ArcGIS World Imagery API (export endpoint)</p>
-                    </div>
-
-                    <div className="region-slide-right">
-                        <div className="stats-row">
-                            <div className="stat-card">
-                                <div className="stat-label">Area</div>
-                                <div className="stat-value">{formatNumber(region.areaSqKm, 3)} km²</div>
+        <>
+            <Slide key={region.id}>
+                <section className="report-slide" data-auto-animate>
+                    <h2>Site Screening Report Snapshot</h2>
+                    <div className="report-grid">
+                        <div>
+                            <div className="image-wrap">
+                                {satellite.status === 'loading' && <div className="loading">Loading satellite image...</div>}
+                                {satellite.status === 'error' && <div className="loading">Satellite image unavailable ({satellite.errorMessage})</div>}
+                                {satellite.status === 'ready' && satellite.clippedUrl && (
+                                    <img className="report-polygon-image" src={satellite.clippedUrl} alt="Satellite view clipped to selected polygon" />
+                                )}
+                                {satellite.status === 'ready' && satellite.contextUrl && (
+                                    <img
+                                        className="report-polygon-context-image"
+                                        src={satellite.contextUrl}
+                                        alt="Satellite view of selected area with focused polygon highlighted"
+                                    />
+                                )}
                             </div>
-
-                            <div className="issues">
-                                <div className="stat-label">Main Issue</div>
-                                <div>
-                                    {primaryIssue ? (
-                                        <div className="issue-inline">
-                                            <span className={`issue-pill ${primaryIssue.suitability || 'amber'}`}>
-                                                {(primaryIssue.suitability || 'amber').toUpperCase()}
-                                            </span>
-                                            <span className="issue-main-text">{primaryIssue.description}</span>
-                                        </div>
-                                    ) : (
-                                        'No reported issues'
-                                    )}
-                                </div>
-                            </div>
+                            <p className="image-caption">Imagery source: ArcGIS World Imagery API (export endpoint)</p>
                         </div>
 
-                        {layerValues.length > 0 && (
-                            <div className="layer-values">
-                                <div className="stat-label">Layer Values</div>
-                                <div className="layer-values-grid">
-                                    {layerValues.map((lv) => (
-                                        <div key={lv.layerId} className="layer-value-item">
-                                            <span className="layer-value-label" title={lv.label}>
-                                                {getSlideLayerLabel(lv.layerId, lv.label)}
-                                            </span>
-                                            <span className="layer-value-val">{formatLayerValue(lv.value, lv.unit)}</span>
-                                        </div>
-                                    ))}
+                        <div className="region-slide-right">
+                            <div className="stats-row">
+                                <div className="stat-card">
+                                    <div className="stat-label">Area</div>
+                                    <div className="stat-value">{formatNumber(region.areaSqKm, 3)} km²</div>
+                                </div>
+
+                                <div className="issues">
+                                    <div className="stat-label">Main Issue</div>
+                                    <div>
+                                        {primaryIssue ? (
+                                            <div className="issue-inline">
+                                                <span className={`issue-pill ${primaryIssue.suitability || 'amber'}`}>
+                                                    {(primaryIssue.suitability || 'amber').toUpperCase()}
+                                                </span>
+                                                <span className="issue-main-text">{primaryIssue.description}</span>
+                                            </div>
+                                        ) : (
+                                            'No reported issues'
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        )}
+
+                            <div className="snapshot-metrics">
+                                <table>
+                                    <tbody>
+                                        {snapshotMetrics.map(({ label, value }) => (
+                                            <tr key={label}>
+                                                <td className="snapshot-metric-label">{label}</td>
+                                                <td className="snapshot-metric-value">{value}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </section>
-        </Slide>
+                </section>
+            </Slide>
+
+            {layerValues.length > 0 && (
+                <Slide key={`${region.id}-layers`}>
+                    <section className="report-slide table-only" data-auto-animate>
+                        <h2>Layer Values</h2>
+                        {(() => {
+                            const filtered = layerValues.filter(
+                                (lv) => !['nearestSubstationName', 'nearestSubstationDistance', 'solarPotential'].includes(lv.layerId)
+                            );
+                            const mid = Math.ceil(filtered.length / 2);
+                            const left = filtered.slice(0, mid);
+                            const right = filtered.slice(mid);
+                            return (
+                                <div className="layer-table">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Metric</th>
+                                                <th>Value</th>
+                                                <th className="col-divider">Metric</th>
+                                                <th>Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {left.map((lv, i) => {
+                                                const r = right[i];
+                                                return (
+                                                    <tr key={lv.layerId}>
+                                                        <td>{getSlideLayerLabel(lv.layerId, lv.label)}</td>
+                                                        <td>{formatLayerValue(lv.value, lv.unit)}</td>
+                                                        {r ? (
+                                                            <>
+                                                                <td className="col-divider">{getSlideLayerLabel(r.layerId, r.label)}</td>
+                                                                <td>{formatLayerValue(r.value, r.unit)}</td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="col-divider" />
+                                                                <td />
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            );
+                        })()}
+                    </section>
+                </Slide>
+            )}
+        </>
     );
 };
 

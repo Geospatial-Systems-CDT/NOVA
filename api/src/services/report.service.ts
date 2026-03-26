@@ -327,12 +327,6 @@ export class ReportService {
                     results.push({ layerId: 'areasOfOutstandingNaturalBeauty', label: 'Distance to nearest AONB boundary', value, unit: 'km' });
                     break;
                 }
-                case 'ancientWoodlands': {
-                    const data = this.dataProviderUtils.getAncientWoodlandsLayerData() as unknown as FeatureCollection<MultiPolygon>;
-                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
-                    results.push({ layerId: 'ancientWoodlands', label: 'Distance to nearest ancient woodland boundary', value, unit: 'km' });
-                    break;
-                }
                 case 'scheduledAncientMonuments750mBuffer': {
                     const data = this.dataProviderUtils.getScheduledAncientMonuments750mBufferLayerData() as unknown as FeatureCollection<MultiPolygon>;
                     const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
@@ -374,34 +368,16 @@ export class ReportService {
                     results.push({ layerId: 'dissolvedRiverFloodRisk', label: 'Distance to nearest river flood risk zone', value, unit: 'km' });
                     break;
                 }
-                case 'roadBuffer': {
-                    const data = this.dataProviderUtils.getRoadBufferLayerData();
-                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
-                    results.push({ layerId: 'roadBuffer', label: 'Distance to nearest road buffer boundary', value, unit: 'km' });
-                    break;
-                }
                 case 'roadBufferSolar': {
                     const data = this.dataProviderUtils.getRoadBufferSolar7mLayerData();
                     const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
                     results.push({ layerId: 'roadBufferSolar', label: 'Distance to nearest road solar buffer boundary', value, unit: 'km' });
                     break;
                 }
-                case 'railBuffer': {
-                    const data = this.dataProviderUtils.getRailBufferLayerData();
-                    const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
-                    results.push({ layerId: 'railBuffer', label: 'Distance to nearest railway buffer boundary', value, unit: 'km' });
-                    break;
-                }
                 case 'railBufferSolar': {
                     const data = this.dataProviderUtils.getRailBufferSolarLayerData();
                     const value = this.computeDistanceToNearestBoundaryKm(centroid, data);
                     results.push({ layerId: 'railBufferSolar', label: 'Distance to nearest railway solar buffer boundary', value, unit: 'km' });
-                    break;
-                }
-                case 'slope': {
-                    const data = this.dataProviderUtils.getSlopesLayerData() as unknown as FeatureCollection<MultiPolygon>;
-                    const value = this.computeGridValueAtCentroid(centroid, data, 'Slope');
-                    results.push({ layerId: 'slope', label: 'Slope', value, unit: '°' });
                     break;
                 }
                 case 'aspect': {

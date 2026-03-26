@@ -15,6 +15,19 @@ const LAYER_LABEL_OVERRIDES: Record<string, string> = {
     specialAreasOfConservation: 'Distance to SAC',
     builtUpAreas: 'Distance to built-up area',
     areasOfOutstandingNaturalBeauty: 'Distance to AONB',
+    ancientWoodlands: 'Distance to ancient woodland',
+    scheduledAncientMonuments750mBuffer: 'Distance to SAM buffer',
+    specialProtectionAreas2kmBuffer: 'Distance to SPA buffer',
+    ramsarWetlands: 'Distance to Ramsar Wetland',
+    coastalErosionProjection: 'Distance to coastal erosion',
+    fuelPoverty: 'Distance to fuel poverty area',
+    dissolvedRiverFloodRisk: 'Distance to flood risk',
+    roadBuffer: 'Distance to road buffer',
+    roadBufferSolar: 'Distance to road (solar)',
+    railBuffer: 'Distance to rail buffer',
+    railBufferSolar: 'Distance to rail (solar)',
+    slope: 'Slope',
+    aspect: 'Aspect',
 };
 
 export function getSlideLayerLabel(layerId: string, fallback: string): string {

@@ -11,6 +11,13 @@ import novaLogo from '../../assets/nova-logo.svg';
 import RegionSlide from './components/RegionSlide/RegionSlide';
 import { formatNumber } from './utils/satelliteImagery';
 
+const COL_THRESHOLD = 11;
+
+function splitTable<T>(items: T[]): [T[], T[]] {
+    const mid = Math.ceil(items.length / 2);
+    return [items.slice(0, mid), items.slice(mid)];
+}
+
 const loadCachedReport = (): ReportDTO | null => {
     try {
         const raw = localStorage.getItem(CACHED_REPORT_STORAGE_KEY);
@@ -74,53 +81,99 @@ const ReportPage = () => {
                     <Slide>
                         <section className="report-slide table-only" data-auto-animate>
                             <h2>Analysis Constraints</h2>
-                            {assumptions.length > 0 && (
-                                <>
-                                    <div className="layer-table">
-                                        <table>
-                                            <thead>
-                                                <tr>
-                                                    <th>Parameter</th>
-                                                    <th>Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {assumptions.map((assumption) => (
-                                                    <tr key={`${assumption.layerId}-${assumption.attributeId}`}>
-                                                        <td>{assumption.label}</td>
-                                                        <td>{assumption.value}</td>
+                            {assumptions.length > 0 &&
+                                (() => {
+                                    const twoCol = assumptions.length > COL_THRESHOLD;
+                                    const [left, right] = twoCol ? splitTable(assumptions) : [assumptions, []];
+                                    return (
+                                        <div className="layer-table">
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Parameter</th>
+                                                        <th>Value</th>
+                                                        {twoCol && (
+                                                            <>
+                                                                <th className="col-divider">Parameter</th>
+                                                                <th>Value</th>
+                                                            </>
+                                                        )}
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </>
-                            )}
-                            {sharedLayerValues.length > 0 && (
-                                <>
-                                    <h4>Layer Values</h4>
-                                    <div className="layer-table">
-                                        <table>
-                                            <thead>
-                                                <tr>
-                                                    <th>Metric</th>
-                                                    <th>Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {sharedLayerValues.map((layer) => (
-                                                    <tr key={layer.layerId}>
-                                                        <td>{layer.label}</td>
-                                                        <td>
-                                                            {formatNumber(layer.value)} {layer.unit}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </>
-                            )}
+                                                </thead>
+                                                <tbody>
+                                                    {left.map((a, i) => (
+                                                        <tr key={`${a.layerId}-${a.attributeId}`}>
+                                                            <td>{a.label}</td>
+                                                            <td>{a.value}</td>
+                                                            {twoCol && right[i] && (
+                                                                <>
+                                                                    <td className="col-divider">{right[i].label}</td>
+                                                                    <td>{right[i].value}</td>
+                                                                </>
+                                                            )}
+                                                            {twoCol && !right[i] && (
+                                                                <>
+                                                                    <td className="col-divider" />
+                                                                    <td />
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    );
+                                })()}
+                            {sharedLayerValues.length > 0 &&
+                                (() => {
+                                    const twoCol = sharedLayerValues.length > COL_THRESHOLD;
+                                    const [left, right] = twoCol ? splitTable(sharedLayerValues) : [sharedLayerValues, []];
+                                    return (
+                                        <>
+                                            <h4>Layer Values</h4>
+                                            <div className="layer-table">
+                                                <table>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Metric</th>
+                                                            <th>Value</th>
+                                                            {twoCol && (
+                                                                <>
+                                                                    <th className="col-divider">Metric</th>
+                                                                    <th>Value</th>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {left.map((layer, i) => (
+                                                            <tr key={layer.layerId}>
+                                                                <td>{layer.label}</td>
+                                                                <td>
+                                                                    {formatNumber(layer.value)} {layer.unit}
+                                                                </td>
+                                                                {twoCol && right[i] && (
+                                                                    <>
+                                                                        <td className="col-divider">{right[i].label}</td>
+                                                                        <td>
+                                                                            {formatNumber(right[i].value)} {right[i].unit}
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                                {twoCol && !right[i] && (
+                                                                    <>
+                                                                        <td className="col-divider" />
+                                                                        <td />
+                                                                    </>
+                                                                )}
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                         </section>
                     </Slide>
 

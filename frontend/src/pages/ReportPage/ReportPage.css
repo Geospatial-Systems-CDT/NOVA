@@ -209,13 +209,40 @@ body {
 }
 
 .report-slide.table-only table {
-    font-size: 0.5em;
+    font-size: 0.4em;
 }
 
 .report-slide table th,
 .report-slide table td {
     border-bottom: 1px solid #366fb1;
     padding: 6px 0;
+}
+
+.report-slide.table-only table th,
+.report-slide.table-only table td {
+    padding: 3px 0;
+}
+
+.report-slide.table-only .layer-table {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.report-slide .layer-table.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+.report-slide .layer-table.two-col table {
+    width: 100%;
+}
+
+.report-slide table td.col-divider,
+.report-slide table th.col-divider {
+    padding-left: 20px;
+    border-left: 1px solid rgba(54, 111, 177, 0.3);
 }
 
 .report-slide table th {
@@ -236,6 +263,42 @@ body {
     min-height: 0;
     overflow: hidden;
     height: 100%;
+}
+
+/* ---- Snapshot metrics mini-table ---- */
+.report-slide .snapshot-metrics {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid #366fb1;
+    border-radius: 10px;
+    padding: 6px 10px;
+    flex-shrink: 0;
+}
+
+.report-slide .snapshot-metrics table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.report-slide .snapshot-metrics td {
+    padding: 3px 6px;
+    font-size: 1em;
+    border-bottom: 1px solid rgba(54, 111, 177, 0.18);
+}
+
+.report-slide .snapshot-metrics tr:last-child td {
+    border-bottom: none;
+}
+
+.report-slide .snapshot-metric-label {
+    color: #444;
+    width: 60%;
+}
+
+.report-slide .snapshot-metric-value {
+    font-weight: 600;
+    color: #1a3a5c;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .report-slide .stats-row {
