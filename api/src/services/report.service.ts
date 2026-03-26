@@ -113,7 +113,7 @@ export class ReportService {
         selectedPolygon: Feature<Polygon> | null = null
     ): ReportDTO {
         const activeDataLayers = dataLayers.filter((l) => l.analyze);
-        const assumptions = this.buildAssumptions(dataLayers);
+        const assumptions = this.buildAssumptions(activeDataLayers);
         const _t0 = performance.now();
 
         // 1. Separate green baseline from issue features
@@ -207,16 +207,16 @@ export class ReportService {
     }
 
     /**
-     * Build the list of assumptions from all submitted data layers.
-     * - Layers that are constrained (analyze=true) and have labelled attributes → one row per attribute.
-     * - All other layers (not analyzed, or analyzed but no attributes) → one row using the layer's
-     *   display name as the label and an empty string as the value, so they still appear in the report.
+     * Build the list of assumptions from active (analyze=true) data layers only.
+     * - Layers with labelled attributes → one row per attribute.
+     * - Active layers without labelled attributes → one row using the layer's display name
+     *   as the label and an empty string as the value.
      */
     private buildAssumptions(dataLayers: DataLayerDto[]): ReportAssumptionDTO[] {
         const assumptions: ReportAssumptionDTO[] = [];
         for (const layer of dataLayers) {
             const labelledAttrs = layer.attributes.filter((a) => !!a.label);
-            if (layer.analyze && labelledAttrs.length > 0) {
+            if (labelledAttrs.length > 0) {
                 for (const attr of labelledAttrs) {
                     assumptions.push({
                         layerId: layer.id,
