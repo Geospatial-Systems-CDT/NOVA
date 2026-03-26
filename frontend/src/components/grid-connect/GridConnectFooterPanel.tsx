@@ -121,6 +121,10 @@ const toPowerDisplay = (valueMW: number, maxMW: number): DisplayStat => {
     };
 };
 
+const toOrientationLabel = (orientation: string): string => orientation.replace(/_/g, ' ');
+
+const isNorthFacingOrientation = (orientation: string): boolean => orientation === 'north' || orientation === 'north_east' || orientation === 'north_west';
+
 export default function GridConnectFooterPanel({ selectedSubstation }: GridConnectFooterPanelProps) {
     const markerPosition = useMapStore((s) => s.markerPosition);
     const markerVariant = useMapStore((s) => s.markerVariant);
@@ -137,9 +141,6 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
         'south_east',
         'west',
         'east',
-        'north_west',
-        'north_east',
-        'north',
     ]);
 
     const isSolarSelection = getTechnologyFromVariant(markerVariant) === 'solar';
@@ -160,7 +161,7 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
 
                 const payload = (await response.json()) as { orientations?: string[] };
                 if (!cancelled && Array.isArray(payload.orientations) && payload.orientations.length > 0) {
-                    setSolarOrientationOptions(payload.orientations);
+                    setSolarOrientationOptions(payload.orientations.filter((orientation) => !isNorthFacingOrientation(orientation)));
                 }
             } catch {
                 // Keep defaults when endpoint is unavailable.
@@ -173,6 +174,15 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (!isSolarSelection) return;
+
+        const hasSelectedOrientation = solarOrientationOptions.includes(solarOrientation);
+        if (!hasSelectedOrientation || isNorthFacingOrientation(solarOrientation)) {
+            setSolarOrientation('south');
+        }
+    }, [isSolarSelection, solarOrientation, solarOrientationOptions, setSolarOrientation]);
 
     useEffect(() => {
         let cancelled = false;
@@ -292,21 +302,29 @@ export default function GridConnectFooterPanel({ selectedSubstation }: GridConne
                     sx={{ mt: 1, width: 210 }}
                 />
                 {isSolarSelection && (
-                    <FormControl size="small" sx={{ mt: 1, minWidth: 210 }}>
-                        <InputLabel id="solar-orientation-select-label">Panel orientation</InputLabel>
-                        <Select
-                            labelId="solar-orientation-select-label"
-                            value={solarOrientation}
-                            label="Panel orientation"
-                            onChange={(event) => setSolarOrientation(String(event.target.value))}
-                        >
-                            {solarOrientationOptions.map((option) => (
-                                <MenuItem key={option} value={option}>
-                                    {option.replace(/_/g, ' ')}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                    <>
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                            <strong>Ideal panel orientation is south.</strong>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Orientation used in calculation: {toOrientationLabel(solarOrientation)}
+                        </Typography>
+                        <FormControl size="small" sx={{ mt: 1, minWidth: 210 }}>
+                            <InputLabel id="solar-orientation-select-label">Panel orientation</InputLabel>
+                            <Select
+                                labelId="solar-orientation-select-label"
+                                value={solarOrientation}
+                                label="Panel orientation"
+                                onChange={(event) => setSolarOrientation(String(event.target.value))}
+                            >
+                                {solarOrientationOptions.map((option) => (
+                                    <MenuItem key={option} value={option}>
+                                        {toOrientationLabel(option)}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </>
                 )}
             </MainStatSection>
 

@@ -10,10 +10,10 @@ const DEFAULT_SOLAR_ORIENTATION = 'south';
 
 const SOLAR_KK_BY_ORIENTATION: Record<string, number> = {
     south: 1023,
-    south_west: 962,
-    south_east: 962,
-    west: 857,
-    east: 857,
+    south_west: 954,
+    south_east: 970,
+    west: 846,
+    east: 868,
     north_west: 857,
     north_east: 857,
     north: 857,
