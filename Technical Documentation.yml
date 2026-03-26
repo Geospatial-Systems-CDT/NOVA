@@ -1,0 +1,18 @@
+site_name: Technical Documentation
+site_description: Technical documentation for the NOVA platform
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: index.md
+  - System Architecture and Components: system-architecture.md
+  - System Overview:
+      - User Guide: user-guide/estimated-output-mvp-method.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true

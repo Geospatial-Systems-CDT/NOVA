@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>User Guide - Technical Documentation</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Technical Documentation</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../system-architecture/" class="nav-link">System Architecture and Components</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">System Overview</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">User Guide</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../../system-architecture/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" class="nav-link disabled">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#estimated-output-contribution-mvp-method-note" class="nav-link">Estimated Output Contribution - MVP Method Note</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#purpose" class="nav-link">Purpose</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#implementation-location" class="nav-link">Implementation Location</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#inputs-used" class="nav-link">Inputs Used</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#constants-and-assumptions" class="nav-link">Constants and Assumptions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#calculation-logic" class="nav-link">Calculation Logic</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#worked-example-from-observed-ui-output" class="nav-link">Worked Example (from observed UI output)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#known-limitations" class="nav-link">Known Limitations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#recommended-next-step-to-reach-production-grade-estimation" class="nav-link">Recommended Next Step to Reach Production-Grade Estimation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="estimated-output-contribution-mvp-method-note">Estimated Output Contribution - MVP Method Note<a class="headerlink" href="#estimated-output-contribution-mvp-method-note" title="Permanent link">&para;</a></h1>
+<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
+<p>This note describes how NOVA currently computes the Estimated output contribution values after an asset is connected to a selected substation.</p>
+<p>The current implementation is deterministic and assumption-based, with calculations performed on the backend and returned to the UI. It is suitable for screening and demonstration, not for investment-grade engineering decisions.</p>
+<h2 id="implementation-location">Implementation Location<a class="headerlink" href="#implementation-location" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Core calculation logic: api/src/services/energy-estimation.service.ts</li>
+<li>Estimation API endpoint: POST /api/ui/asset/estimate</li>
+<li>API controller wiring: api/src/controllers/ui.controller.ts and api/src/routes/ui.routes.ts</li>
+<li>UI consumer of backend result: frontend/src/components/grid-connect/GridConnectFooterPanel.tsx</li>
+<li>Frontend fallback utility (used only if API call fails): frontend/src/utils/energyEstimation.ts</li>
+</ul>
+<h2 id="inputs-used">Inputs Used<a class="headerlink" href="#inputs-used" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Selected asset variant (wind or solar metadata and specification text)</li>
+<li>Marker location (latitude, longitude)</li>
+<li>Selected substation (name, id, connection distance)</li>
+<li>Solar potential at location (pv_annual_kwh_kwp from pvout.geojson), when available</li>
+<li>Wind speed at location (seasonal fields from windspeed.geojson), when available</li>
+</ol>
+<h2 id="constants-and-assumptions">Constants and Assumptions<a class="headerlink" href="#constants-and-assumptions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Hours per year: 8760</li>
+<li>Availability factor: 0.97</li>
+<li>Losses factor: 0.12</li>
+<li>Default capacity factor:</li>
+<li>Wind: 0.34</li>
+<li>Solar: 0.14</li>
+<li>Unknown: 0.22</li>
+<li>Default installed capacity (fallback):</li>
+<li>Wind: 5 MW</li>
+<li>Solar: 1 MW</li>
+<li>Unknown: 2 MW</li>
+<li>Assumed substation headroom: 60 MW</li>
+<li>Assumed local demand: 8 MW</li>
+</ul>
+<h2 id="calculation-logic">Calculation Logic<a class="headerlink" href="#calculation-logic" title="Permanent link">&para;</a></h2>
+<h3 id="data-source-precedence">Data source precedence<a class="headerlink" href="#data-source-precedence" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Solar capacity factor source order:</li>
+<li>Location lookup from pvout.geojson (pv_annual_kwh_kwp)</li>
+<li>Fallback to latitude-adjusted default solar capacity factor</li>
+<li>Wind capacity factor source order:</li>
+<li>Location lookup from windspeed.geojson (seasonal windspeed fields)</li>
+<li>Fallback to latitude-adjusted default wind capacity factor</li>
+</ul>
+<h3 id="1-determine-technology-and-capacity">1) Determine technology and capacity<a class="headerlink" href="#1-determine-technology-and-capacity" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Technology is inferred from selected variant metadata (keywords in name/spec text/icon paths).</li>
+<li>Installed capacity is parsed from specification fields such as Capacity, Rated Power, or Wattage.</li>
+<li>If solar values look module-level only (for example 500 Wp), fallback capacity is used:</li>
+<li>Farm = 5 MW</li>
+<li>Roof = 0.35 MW</li>
+</ul>
+<h3 id="2-compute-resource-adjusted-capacity-factor">2) Compute resource-adjusted capacity factor<a class="headerlink" href="#2-compute-resource-adjusted-capacity-factor" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Solar uses location-specific pvout first, when available:</li>
+</ul>
+<p>CF_solar = clamp(pv_annual_kwh_kwp / 8760, 0.08, 0.25)</p>
+<ul>
+<li>
+<p>If pvout is not available, solar falls back to latitude-adjusted default capacity factor.</p>
+</li>
+<li>
+<p>Wind uses location-specific windspeed first, when available:</p>
+</li>
+<li>Annualized windspeed is derived from seasonal values:</li>
+</ul>
+<p>v_wind = mean(ws_spring1, ws_summer1, ws_autumn1, ws_winter1)</p>
+<ul>
+<li>If all seasonal values are not available, ws_spring1 is used as fallback.</li>
+<li>Capacity factor is then estimated with a bounded planning curve:</li>
+</ul>
+<p>CF_wind = clamp(0.02 + 0.0065 x v_wind^2, 0.15, 0.60)</p>
+<ul>
+<li>If windspeed is not available, wind falls back to latitude-adjusted default capacity factor.</li>
+<li>Unknown technology uses bounded default behavior.</li>
+</ul>
+<h3 id="3-compute-annual-delivered-energy">3) Compute annual delivered energy<a class="headerlink" href="#3-compute-annual-delivered-energy" title="Permanent link">&para;</a></h3>
+<p>Gross annual energy:</p>
+<p>E_gross = P_installed x 8760 x CF</p>
+<p>Availability adjustment:</p>
+<p>E_available = E_gross x 0.97</p>
+<p>Losses adjustment:</p>
+<p>E_net = E_available x (1 - 0.12)</p>
+<p>Distance delivery factor:</p>
+<p>deliveryFactor = clamp(1 - 0.004 x distance_km, 0.75, 1.0)</p>
+<p>Delivered annual energy:</p>
+<p>E_delivered = E_net x deliveryFactor</p>
+<h3 id="4-convert-to-displayed-metrics">4) Convert to displayed metrics<a class="headerlink" href="#4-convert-to-displayed-metrics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>To local distribution network (MW):</li>
+</ul>
+<p>outputMW = E_delivered / 8760</p>
+<ul>
+<li>Grid support (MW):</li>
+</ul>
+<p>gridSupportFactor = clamp(1 - 0.012 x distance_km, 0.35, 1.0)</p>
+<p>gridSupportMW = outputMW x gridSupportFactor</p>
+<ul>
+<li>Boost to substation capacity (%):</li>
+</ul>
+<p>boostPercent = clamp((gridSupportMW / 60) x 100, 0, 100)</p>
+<ul>
+<li>Local self-sufficiency (%):</li>
+</ul>
+<p>localBoostPercent = clamp((outputMW / 8) x 100, 0, 100)</p>
+<ul>
+<li>Values are rounded for display.</li>
+</ul>
+<h2 id="worked-example-from-observed-ui-output">Worked Example (from observed UI output)<a class="headerlink" href="#worked-example-from-observed-ui-output" title="Permanent link">&para;</a></h2>
+<p>Inputs:</p>
+<ul>
+<li>Asset ID: SP-515</li>
+<li>Location: 50.6663, -1.3171</li>
+<li>Connected Substation: SEPD</li>
+<li>Connection distance: 2.71 km</li>
+</ul>
+<p>Observed output:</p>
+<ol>
+<li>Projected into SEPD load: +5,157 MWh/year</li>
+<li>To local distribution network: +0.6 MW</li>
+<li>Grid support: +0.6 MW</li>
+<li>Boost to substation capacity: +0.9%</li>
+<li>Local self-sufficiency: +7.4%</li>
+</ol>
+<p>Interpretation:</p>
+<ul>
+<li>The asset is treated as solar.</li>
+<li>A scenario-scale installed capacity and solar capacity factor are used.</li>
+<li>Availability, losses, and short-distance penalties are applied.</li>
+<li>MWh/year is converted to MW and then normalized against assumed headroom and local demand to get percentages.</li>
+</ul>
+<h2 id="known-limitations">Known Limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h2>
+<ol>
+<li>No hourly weather time series or plant-specific performance model</li>
+<li>No explicit network power-flow or operational constraints</li>
+<li>No measured substation headroom/load profile in this MVP</li>
+<li>Some asset specs are text-only and parsed heuristically</li>
+<li>Solar uses annual specific yield (pvout), not sub-hourly irradiance and temperature dynamics</li>
+<li>Wind uses seasonal-average speed and a simplified CF curve, not turbine-specific power curves or hub-height correction</li>
+</ol>
+<h2 id="recommended-next-step-to-reach-production-grade-estimation">Recommended Next Step to Reach Production-Grade Estimation<a class="headerlink" href="#recommended-next-step-to-reach-production-grade-estimation" title="Permanent link">&para;</a></h2>
+<p>Replace the fixed assumptions with data-driven inputs:</p>
+<ol>
+<li>Real asset engineering parameters (per variant)</li>
+<li>Location-specific resource datasets (wind/solar time series)</li>
+<li>Substation/network headroom and constraint data</li>
+<li>Explicit curtailment and losses model</li>
+<li>Validation against measured generation where available</li>
+</ol></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
