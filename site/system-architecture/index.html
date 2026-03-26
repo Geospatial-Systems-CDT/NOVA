@@ -17,6 +17,7 @@
         <link href="../css/base.css" rel="stylesheet">
         <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
         <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
         <script>hljs.highlightAll();</script> 
     </head>
@@ -148,29 +149,32 @@
 <h2 id="layers">Layers<a class="headerlink" href="#layers" title="Permanent link">&para;</a></h2>
 <p>The system uses a series of GeoJSON vector tiles that contain proximity and contextual information for geographic features intersecting the user-selected polygon.</p>
 <p>The following layers are currently used:</p>
-<p>Areas of Outstanding Natural Beauty </p>
-<p>Sites of Special Scientific Interest </p>
-<p>Special Areas of Conservation </p>
-<p>Ancient Woodland </p>
-<p>Scheduled Ancient Monuments </p>
-<p>Special Protection Areas </p>
-<p>Ramsar Wetlands </p>
-<p>Coastal Erosion </p>
-<p>Built Up Areas  </p>
-<p>Fuel Poverty Areas </p>
-<p>Dissolved Rivers (Flood Risk Areas) </p>
-<p>Agricultural Land Classification  </p>
-<p>Roads within 100m </p>
-<p>Roads within 5/7m </p>
-<p>Railways within 100m </p>
-<p>Railways within 5m </p>
-<p>Mean Wind Speed </p>
-<p>Photovoltaic Potential </p>
-<p>Terrain Slope </p>
-<p>Terrain Aspect</p>
+<ul>
+<li>Areas of Outstanding Natural Beauty</li>
+<li>Sites of Special Scientific Interest</li>
+<li>Special Areas of Conservation</li>
+<li>Ancient Woodland</li>
+<li>Scheduled Ancient Monuments</li>
+<li>Special Protection Areas</li>
+<li>Ramsar Wetlands</li>
+<li>Coastal Erosion</li>
+<li>Built Up Areas</li>
+<li>Fuel Poverty Areas</li>
+<li>Dissolved Rivers (Flood Risk Areas)</li>
+<li>Agricultural Land Classification</li>
+<li>Roads within 100m</li>
+<li>Roads within 5/7m</li>
+<li>Railways within 100m</li>
+<li>Railways within 5m</li>
+<li>Mean Wind Speed</li>
+<li>Photovoltaic Potential</li>
+<li>Terrain Slope</li>
+<li>Terrain Aspect</li>
+<li>Unsuitable Land</li>
+</ul>
 <p>These layers can be selected by using the layer panel checkboxes in the UI.</p>
 <h2 id="frontend-frontend">Frontend (<code>frontend/</code>)<a class="headerlink" href="#frontend-frontend" title="Permanent link">&para;</a></h2>
-<p><strong>Technology stack:</strong> TypeScript, React 18, Vite, Material UI (MUI), MapLibre GL JS, Deck.gl, Zustand, Turf.js.</p>
+<p><strong>Technology stack:</strong> TypeScript, React 19, Vite, Material UI (MUI), MapLibre GL JS, Deck.gl, Zustand, Turf.js.</p>
 <table>
 <thead>
 <tr>
@@ -308,6 +312,263 @@
 </tr>
 </tbody>
 </table>
+<h3 id="endpoint-reference">Endpoint reference<a class="headerlink" href="#endpoint-reference" title="Permanent link">&para;</a></h3>
+<h4 id="get-apihealth"><code>GET /api/health</code><a class="headerlink" href="#get-apihealth" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: lightweight liveness probe used by local development checks and deployment health probes.</li>
+<li>Inputs: none.</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code>: service health payload.</li>
+</ul>
+</li>
+</ul>
+<h4 id="get-apiuisearch"><code>GET /api/ui/search</code><a class="headerlink" href="#get-apiuisearch" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: returns location matches for the search box.</li>
+<li>Inputs:<ul>
+<li>query parameter <code>location: string</code>.</li>
+</ul>
+</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code>: <code>SearchOptionDTO[]</code><ul>
+<li><code>name: string</code></li>
+<li><code>latitude: number</code></li>
+<li><code>longitude: number</code></li>
+<li><code>zoom: number</code></li>
+</ul>
+</li>
+<li><code>400 Bad Request</code>: missing <code>location</code>.</li>
+</ul>
+</li>
+<li>Example:</li>
+</ul>
+<pre><code class="language-json">[
+    {
+        &quot;name&quot;: &quot;Newport, Isle of Wight&quot;,
+        &quot;latitude&quot;: 50.701,
+        &quot;longitude&quot;: -1.291,
+        &quot;zoom&quot;: 12
+    }
+]
+</code></pre>
+<h4 id="get-apiuilayers"><code>GET /api/ui/layers</code><a class="headerlink" href="#get-apiuilayers" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: returns the layer catalogue shown in the layer-selection panel.</li>
+<li>Inputs: none.</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code>: <code>LayersDTO</code><ul>
+<li><code>categories: CategoryDTO[]</code></li>
+<li>each category contains <code>items</code>, and each item contains <code>id</code>, <code>name</code>, and <code>attributes</code></li>
+</ul>
+</li>
+<li><code>500 Internal Server Error</code>: layer catalogue could not be loaded.</li>
+</ul>
+</li>
+<li>Example:</li>
+</ul>
+<pre><code class="language-json">{
+    &quot;categories&quot;: [
+        {
+            &quot;name&quot;: &quot;Rural constraints&quot;,
+            &quot;items&quot;: [
+                {
+                    &quot;id&quot;: &quot;unsuitableLand&quot;,
+                    &quot;name&quot;: &quot;Unsuitable Land&quot;,
+                    &quot;attributes&quot;: []
+                }
+            ]
+        }
+    ]
+}
+</code></pre>
+<h4 id="post-apiuilocationanalyse"><code>POST /api/ui/location/analyse</code><a class="headerlink" href="#post-apiuilocationanalyse" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: performs suitability analysis over a user-selected polygon.</li>
+<li>Inputs:<ul>
+<li><code>location: FeatureCollection&lt;Polygon&gt;</code></li>
+<li><code>dataLayers: DataLayerDto[]</code></li>
+<li><code>maxIssues?: number</code></li>
+</ul>
+</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code><ul>
+<li><code>heatmap: FeatureCollection</code></li>
+<li><code>jobId: string | null</code></li>
+</ul>
+</li>
+<li><code>400 Bad Request</code>: invalid GeoJSON payload.</li>
+<li><code>500 Internal Server Error</code>: analysis failed.</li>
+</ul>
+</li>
+<li>Notes:<ul>
+<li><code>jobId</code> is only created when <code>maxIssues</code> is supplied.</li>
+<li>the report itself is not returned here; the client must poll using the returned <code>jobId</code>.</li>
+</ul>
+</li>
+<li>Example:</li>
+</ul>
+<pre><code class="language-json">{
+    &quot;heatmap&quot;: {
+        &quot;type&quot;: &quot;FeatureCollection&quot;,
+        &quot;features&quot;: []
+    },
+    &quot;jobId&quot;: &quot;1f6b4d02-6ddf-45ec-a9d6-4cb00d8f4f31&quot;
+}
+</code></pre>
+<h4 id="get-apiuilocationreportjobid"><code>GET /api/ui/location/report/:jobId</code><a class="headerlink" href="#get-apiuilocationreportjobid" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: polls an asynchronous report-generation job.</li>
+<li>Inputs:<ul>
+<li>path parameter <code>jobId: string</code></li>
+</ul>
+</li>
+<li>Outputs:<ul>
+<li><code>202 Accepted</code>: <code>{ "status": "pending" }</code></li>
+<li><code>200 OK</code>: <code>{ "status": "complete", "report": ReportDTO }</code></li>
+<li><code>404 Not Found</code>: <code>{ "error": "Report job not found or expired" }</code></li>
+<li><code>500 Internal Server Error</code>: <code>{ "status": "error", "message": string }</code></li>
+</ul>
+</li>
+<li>Report shape:<ul>
+<li><code>regions: ReportRegionDTO[]</code></li>
+<li><code>totalRegions: number</code></li>
+<li><code>selectedPolygon: Feature&lt;Polygon&gt; | null</code></li>
+<li><code>assumptions: ReportAssumptionDTO[]</code></li>
+</ul>
+</li>
+<li>Example:</li>
+</ul>
+<pre><code class="language-json">{
+    &quot;status&quot;: &quot;complete&quot;,
+    &quot;report&quot;: {
+        &quot;regions&quot;: [
+            {
+                &quot;id&quot;: &quot;region-1&quot;,
+                &quot;bbox&quot;: [-1.33, 50.65, -1.31, 50.67],
+                &quot;areaSqKm&quot;: 0.42,
+                &quot;issueCount&quot;: 1,
+                &quot;issues&quot;: [
+                    {
+                        &quot;description&quot;: &quot;Too close to built up areas&quot;,
+                        &quot;suitability&quot;: &quot;amber&quot;
+                    }
+                ],
+                &quot;layerValues&quot;: []
+            }
+        ],
+        &quot;totalRegions&quot;: 1,
+        &quot;selectedPolygon&quot;: null,
+        &quot;assumptions&quot;: []
+    }
+}
+</code></pre>
+<h4 id="get-apiuisolar-potential"><code>GET /api/ui/solar-potential</code><a class="headerlink" href="#get-apiuisolar-potential" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: returns solar potential at a coordinate.</li>
+<li>Inputs:<ul>
+<li>query parameter <code>longitude: number</code></li>
+<li>query parameter <code>latitude: number</code></li>
+</ul>
+</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code>: <code>{ "pvAnnualKwhPerKwp": number | null }</code></li>
+<li><code>400 Bad Request</code>: invalid or missing coordinates.</li>
+<li><code>500 Internal Server Error</code>: solar-potential lookup failed.</li>
+</ul>
+</li>
+</ul>
+<h4 id="get-apiuisolar-orientations"><code>GET /api/ui/solar-orientations</code><a class="headerlink" href="#get-apiuisolar-orientations" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: returns the allowed solar orientation values used by the estimator.</li>
+<li>Inputs: none.</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code>: <code>{ "orientations": string[] }</code></li>
+<li><code>500 Internal Server Error</code>: orientation lookup failed.</li>
+</ul>
+</li>
+</ul>
+<h4 id="post-apiuiassetestimate"><code>POST /api/ui/asset/estimate</code><a class="headerlink" href="#post-apiuiassetestimate" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: estimates annual energy contribution and derived grid metrics for a selected asset/substation pairing.</li>
+<li>Inputs:<ul>
+<li><code>variant: EstimationVariationDto | null</code></li>
+<li><code>selectedSubstation</code><ul>
+<li><code>id: number</code></li>
+<li><code>name: string</code></li>
+<li><code>distanceFromTurbine: string | number</code></li>
+<li><code>coordinates: number[]</code></li>
+</ul>
+</li>
+<li><code>latitude: number</code></li>
+<li><code>longitude: number</code></li>
+<li><code>solarOrientation?: string</code></li>
+<li><code>assetCount?: number</code></li>
+</ul>
+</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code>: <code>AssetEstimationResponseDto</code><ul>
+<li><code>assetId</code></li>
+<li><code>technology</code></li>
+<li><code>location</code></li>
+<li><code>connectedSubstation</code></li>
+<li><code>connectionDistanceKm</code></li>
+<li><code>outputMWh</code></li>
+<li><code>outputMW</code></li>
+<li><code>gridSupportMW</code></li>
+<li><code>boostPercent</code></li>
+<li><code>localBoostPercent</code></li>
+<li><code>maxOutputMWh</code></li>
+<li><code>maxOutputMW</code></li>
+<li><code>maxGridSupportMW</code></li>
+<li><code>maxBoostPercent</code></li>
+<li><code>maxLocalBoostPercent</code></li>
+</ul>
+</li>
+<li><code>400 Bad Request</code>: invalid estimation payload.</li>
+<li><code>500 Internal Server Error</code>: estimation failed.</li>
+</ul>
+</li>
+<li>Example:</li>
+</ul>
+<pre><code class="language-json">{
+    &quot;assetId&quot;: &quot;SP-515&quot;,
+    &quot;technology&quot;: &quot;solar&quot;,
+    &quot;location&quot;: &quot;50.6663, -1.3171&quot;,
+    &quot;connectedSubstation&quot;: &quot;SEPD&quot;,
+    &quot;connectionDistanceKm&quot;: 2.71,
+    &quot;outputMWh&quot;: 5157.0,
+    &quot;outputMW&quot;: 0.5887,
+    &quot;gridSupportMW&quot;: 0.5696,
+    &quot;boostPercent&quot;: 0.9,
+    &quot;localBoostPercent&quot;: 7.4,
+    &quot;maxOutputMWh&quot;: 6961.95,
+    &quot;maxOutputMW&quot;: 0.8242,
+    &quot;maxGridSupportMW&quot;: 0.7974,
+    &quot;maxBoostPercent&quot;: 100,
+    &quot;maxLocalBoostPercent&quot;: 100
+}
+</code></pre>
+<h4 id="post-apiuisubstations"><code>POST /api/ui/substations</code><a class="headerlink" href="#post-apiuisubstations" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Purpose: returns nearby substations for a supplied point.</li>
+<li>Inputs:<ul>
+<li>either <code>{ "latitude": number, "longitude": number }</code></li>
+<li>or a valid GeoJSON payload representing a point geometry</li>
+</ul>
+</li>
+<li>Outputs:<ul>
+<li><code>200 OK</code>: <code>LocationsDTO[]</code><ul>
+<li><code>id: number</code></li>
+<li><code>location: Feature</code></li>
+<li><code>name: string</code></li>
+<li><code>distance: number</code></li>
+</ul>
+</li>
+<li><code>400 Bad Request</code>: invalid geometry or unresolved point.</li>
+<li><code>500 Internal Server Error</code>: substation lookup failed.</li>
+</ul>
+</li>
+</ul>
 <p><strong>Analysis flow:</strong></p>
 <ol>
 <li><code>UIController</code> receives a polygon and active layer list via <code>POST /api/ui/location/analyse</code>.</li>
@@ -343,7 +604,7 @@
 </table>
 <hr />
 <h2 id="deployment-deployment">Deployment (<code>deployment/</code>)<a class="headerlink" href="#deployment-deployment" title="Permanent link">&para;</a></h2>
-<p>NOVA is containerised and can be run locally with Docker Compose or deployed to a Kubernetes cluster.</p>
+<p>NOVA is containerised and can be built as separate frontend and backend images, then deployed via Kustomize-managed Kubernetes overlays. Local development is primarily driven by the workspace npm scripts rather than a repository-level Docker Compose definition.</p>
 <table>
 <thead>
 <tr>
@@ -370,6 +631,58 @@
 </tr>
 </tbody>
 </table>
+<h3 id="local-build-and-run-flow">Local build and run flow<a class="headerlink" href="#local-build-and-run-flow" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Install workspace dependencies from the repository root.</li>
+<li>Build both applications with <code>npm run build</code>.</li>
+<li>Run <code>npm run start</code> for the normal local development workflow.</li>
+<li>Build images separately when validating container packaging.</li>
+</ol>
+<h3 id="what-the-docker-files-do">What the Docker files do<a class="headerlink" href="#what-the-docker-files-do" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>Dockerfile.backend</code><ul>
+<li>starts from <code>node:24-alpine</code></li>
+<li>installs production dependencies from <code>api/package*.json</code></li>
+<li>copies built server output from <code>api/dist</code></li>
+<li>runs as the non-root <code>node</code> user on port <code>3000</code></li>
+</ul>
+</li>
+<li><code>Dockerfile.frontend</code><ul>
+<li>starts from <code>nginxinc/nginx-unprivileged</code></li>
+<li>copies <code>frontend/dist</code> into the nginx web root</li>
+<li>serves the static frontend bundle</li>
+</ul>
+</li>
+</ul>
+<h3 id="what-the-helper-scripts-do">What the helper scripts do<a class="headerlink" href="#what-the-helper-scripts-do" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>deployment/docker/backend/build.sh</code>: builds the backend image as <code>nova/api</code></li>
+<li><code>deployment/docker/backend/publish.sh</code>: logs into AWS ECR, tags the backend image, and pushes it to the <code>nova/api</code> repository in <code>eu-west-2</code></li>
+<li><code>deployment/docker/frontend/build.sh</code>: builds the frontend image as <code>nova/frontend</code></li>
+<li><code>deployment/docker/frontend/publish.sh</code>: logs into AWS ECR, tags the frontend image, and pushes it to the <code>nova/frontend</code> repository in <code>eu-west-2</code></li>
+</ul>
+<h3 id="kubernetes-structure">Kubernetes structure<a class="headerlink" href="#kubernetes-structure" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>deployment/k8s/backend/base</code>: backend deployment, service, service account, Vault integration, and ingress authorization policy</li>
+<li><code>deployment/k8s/frontend/base</code>: frontend deployment, service, service account, and ingress authorization policy</li>
+<li><code>deployment/k8s/bootstrap/base</code>: namespace, gateway, request-authentication, peer-authentication, and shared virtual-service resources</li>
+<li><code>deployment/k8s/*/overlays/{dev,staging,prod}</code>: environment-specific Kustomize overlays and patches</li>
+</ul>
+<h3 id="typical-deployment-sequence">Typical deployment sequence<a class="headerlink" href="#typical-deployment-sequence" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Build frontend and backend artifacts.</li>
+<li>Build versioned container images.</li>
+<li>Push images to the target registry.</li>
+<li>Update overlay references or pipeline-supplied image values.</li>
+<li>Apply the <code>bootstrap</code>, <code>backend</code>, and <code>frontend</code> Kustomize overlays for the target environment.</li>
+<li>Validate gateway routing, authentication, pod health, and service reachability.</li>
+</ol>
+<h3 id="operational-notes">Operational notes<a class="headerlink" href="#operational-notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>backend deployment assumes supporting platform services such as Vault and Istio are available</li>
+<li>authentication behavior differs between local development and cluster deployment because production-style auth relies on injected proxy headers</li>
+<li>image publishing is handled by shell scripts or CI/CD automation rather than by Kubernetes manifests directly</li>
+</ul>
 <h3 id="local-development-ports">Local development ports<a class="headerlink" href="#local-development-ports" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -412,6 +725,9 @@
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
         <script src="../js/base.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+        <script src="../javascripts/katex.js"></script>
         <script src="../search/main.js"></script>
 
         <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
