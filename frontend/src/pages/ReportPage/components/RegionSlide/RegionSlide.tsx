@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Slide } from '@revealjs/react';
 import type { ReportRegionDTO } from '../../../../types/report';
 import { clipSatelliteToPolygon, formatNumber, renderSatelliteBboxWithPolygonHighlight } from '../../utils/satelliteImagery';
+import { getSlideLayerLabel } from './layerLabelOverrides';
 
 interface RegionSlideProps {
     region: ReportRegionDTO;
@@ -49,6 +50,13 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
     }, [region]);
 
     const primaryIssue = region.issues?.[0];
+    const layerValues = region.layerValues ?? [];
+
+    const formatLayerValue = (value: string | number | null, unit: string): string => {
+        if (value === null) return '—';
+        const formatted = typeof value === 'number' ? formatNumber(value) : value;
+        return unit ? `${formatted} ${unit}` : String(formatted);
+    };
 
     return (
         <Slide key={region.id}>
@@ -73,29 +81,45 @@ const RegionSlide = ({ region }: RegionSlideProps) => {
                         <p className="image-caption">Imagery source: ArcGIS World Imagery API (export endpoint)</p>
                     </div>
 
-                    <div>
-                        <div className="stats">
+                    <div className="region-slide-right">
+                        <div className="stats-row">
                             <div className="stat-card">
                                 <div className="stat-label">Area</div>
                                 <div className="stat-value">{formatNumber(region.areaSqKm, 3)} km²</div>
                             </div>
-                        </div>
 
-                        <div className="issues">
-                            <div className="stat-label">Main Issue</div>
-                            <div>
-                                {primaryIssue ? (
-                                    <>
-                                        <span className={`issue-pill ${primaryIssue.suitability || 'amber'}`}>
-                                            {(primaryIssue.suitability || 'amber').toUpperCase()}
-                                        </span>
-                                        <div className="issue-main-text">{primaryIssue.description}</div>
-                                    </>
-                                ) : (
-                                    'No reported issues'
-                                )}
+                            <div className="issues">
+                                <div className="stat-label">Main Issue</div>
+                                <div>
+                                    {primaryIssue ? (
+                                        <div className="issue-inline">
+                                            <span className={`issue-pill ${primaryIssue.suitability || 'amber'}`}>
+                                                {(primaryIssue.suitability || 'amber').toUpperCase()}
+                                            </span>
+                                            <span className="issue-main-text">{primaryIssue.description}</span>
+                                        </div>
+                                    ) : (
+                                        'No reported issues'
+                                    )}
+                                </div>
                             </div>
                         </div>
+
+                        {layerValues.length > 0 && (
+                            <div className="layer-values">
+                                <div className="stat-label">Layer Values</div>
+                                <div className="layer-values-grid">
+                                    {layerValues.map((lv) => (
+                                        <div key={lv.layerId} className="layer-value-item">
+                                            <span className="layer-value-label" title={lv.label}>
+                                                {getSlideLayerLabel(lv.layerId, lv.label)}
+                                            </span>
+                                            <span className="layer-value-val">{formatLayerValue(lv.value, lv.unit)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>

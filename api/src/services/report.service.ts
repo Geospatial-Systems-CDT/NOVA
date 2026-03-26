@@ -253,19 +253,13 @@ export class ReportService {
 
     /**
      * Compute layer-specific values for the given candidate region polygon.
-     * The ALC grade is always included when a data provider is available.
-     * Additional values are computed for each active data layer.
+     * Values are computed only for active data layers.
      */
     private computeLayerValuesForRegion(region: Feature<Polygon>, activeDataLayers: DataLayerDto[]): ReportRegionLayerValueDTO[] {
         if (!this.dataProviderUtils) return [];
 
         const centroid = turf.centroid(region) as Feature<Point>;
         const results: ReportRegionLayerValueDTO[] = [];
-
-        // Always include agricultural land classification
-        const alcData = this.dataProviderUtils.getAgriculturalLandClassificationData();
-        const alcValue = this.computeAlcGradeAtCentroid(centroid, alcData);
-        results.push({ layerId: 'agriculturalLandClassification', label: 'Agricultural land classification', value: alcValue, unit: '' });
 
         // Always include nearest substation name and distance
         const substationData = this.dataProviderUtils.readGridSupplyPointData();
@@ -280,6 +274,12 @@ export class ReportService {
 
         for (const layer of activeDataLayers) {
             switch (layer.id) {
+                case 'agriculturalLandClassification': {
+                    const alcData = this.dataProviderUtils.getAgriculturalLandClassificationData();
+                    const alcValue = this.computeAlcGradeAtCentroid(centroid, alcData);
+                    results.push({ layerId: 'agriculturalLandClassification', label: 'Agricultural land classification', value: alcValue, unit: '' });
+                    break;
+                }
                 case 'windSpeed': {
                     const data = this.dataProviderUtils.getWindspeedLayerData();
                     const value = this.computeGridValueAtCentroid(centroid, data, 'ws_spring1');
