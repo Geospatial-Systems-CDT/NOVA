@@ -64,7 +64,7 @@ The current implementation uses calculations performed on the backend and return
 
 - Technology is inferred from selected variant metadata (keywords in name/spec text/icon paths).
 - Installed capacity is parsed from specification fields such as Capacity, Rated Power, or Wattage.
-- The parsed specification value is used directly when it is a valid positive power value (including small installations, for example 250 W or 5 kW).
+- The parsed specification value is used directly when it is a valid positive power value (for example 250 W roof modules or 1 MW farm units).
 - Fallback capacity is only used when capacity cannot be parsed (or is non-positive):
   - Wind fallback: 5 MW
   - Solar fallback by variant label: Farm = 5 MW, Roof = 0.35 MW
@@ -257,7 +257,7 @@ Each report region includes:
 
 - Per-asset solar capacity is derived from the Farm solar variation specification when available (with safe fallback).
 - Annual solar energy per asset uses the same orientation-based Kk method with south orientation and SF = 1.0.
-- Max solar assets use a simple area-density rule:
+- Max solar assets use a specification-driven area-density rule (derived from solar land-use intensity when available, with safe default fallback):
 
 solarMaxAssets = floor((area_km2 x solarDensity_MW_per_km2) / solarAssetCapacity_MW)
 
@@ -266,8 +266,8 @@ solarMaxAssets = floor((area_km2 x solarDensity_MW_per_km2) / solarAssetCapacity
 - Wind turbine model uses the best available wind variation currently loaded from asset data.
 - Annual wind energy per turbine uses the same seasonal physics approach where data is available, with fallback to capacity factor when needed.
 - Max wind assets use a spacing-based siting approximation (more realistic than simple MW/km2):
-  - Typical spacing: 7D downwind x 4D crosswind (D = rotor diameter)
-  - Minimum one-turbine fit check uses a conservative circular footprint threshold
+  - Typical spacing: 6D downwind x 3D crosswind (D = rotor diameter)
+  - Minimum one-turbine fit check uses a 250 m radius circular footprint threshold
   - Counts are integer-floor based on region area and spacing cell area
 
 ### Interpretation notes
