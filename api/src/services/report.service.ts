@@ -191,10 +191,37 @@ export class ReportService {
             GeoJsonProperties
         >[];
 
-        if (analysisMethod === 'weighted' && issueFeatures.length > WEIGHTED_FAST_PATH_FEATURE_THRESHOLD) {
+        // Keep unsuitable land out of scoring while still enforcing it as an exclusion mask.
+        const unsuitableLandFeatures = issueFeatures.filter((feature) => (feature.properties?.issue as string) === 'Unsuitable land');
+        const scoredIssueFeatures = issueFeatures.filter((feature) => (feature.properties?.issue as string) !== 'Unsuitable land');
+
+        if (unsuitableLandFeatures.length > 0) {
+            const unsuitableUnion = this.mergeGeometryFeatures(unsuitableLandFeatures);
+            if (unsuitableUnion) {
+                try {
+                    const greenWithoutUnsuitable = turf.difference(turf.featureCollection([greenFeature, this.simplifyFeature(unsuitableUnion)]));
+                    if (!greenWithoutUnsuitable) {
+                        return {
+                            regions: [],
+                            totalRegions: 0,
+                            selectedPolygon,
+                            assumptions,
+                            analysisMethod,
+                            reportMaxScoreForPolygonUsed: analysisMethod === 'weighted' ? normalizedReportMaxScoreForPolygon : null,
+                            reportMaxRegionsUsed: analysisMethod === 'weighted' ? normalizedReportMaxRegions : null,
+                        };
+                    }
+                    greenFeature = this.simplifyFeature(greenWithoutUnsuitable as Feature<Polygon | MultiPolygon, GeoJsonProperties>);
+                } catch {
+                    // If geometry clipping fails, preserve current green geometry rather than failing report generation.
+                }
+            }
+        }
+
+        if (analysisMethod === 'weighted' && scoredIssueFeatures.length > WEIGHTED_FAST_PATH_FEATURE_THRESHOLD) {
             return this.generateWeightedFastPathReport(
                 greenFeature,
-                issueFeatures,
+                scoredIssueFeatures,
                 activeDataLayers,
                 assumptions,
                 layerWeights,
@@ -207,7 +234,7 @@ export class ReportService {
 
         // 2. Build one unioned polygon per distinct issue description
         const _tUnions = performance.now();
-        const issueUnions = this.buildIssueUnions(issueFeatures);
+        const issueUnions = this.buildIssueUnions(scoredIssueFeatures);
         console.debug(`[generateReport] buildIssueUnions (${issueUnions.length} distinct issues): ${(performance.now() - _tUnions).toFixed(1)}ms`);
 
         if (analysisMethod === 'weighted') {
@@ -218,7 +245,7 @@ export class ReportService {
                 );
                 return this.generateWeightedFastPathReport(
                     greenFeature,
-                    issueFeatures,
+                    scoredIssueFeatures,
                     activeDataLayers,
                     assumptions,
                     layerWeights,
@@ -622,17 +649,29 @@ export class ReportService {
             });
         };
 
-        // Keep a baseline green candidate so report can still return suitable areas when available.
-        const flattenedGreen = turf.flatten(greenFeature as Feature<Polygon | MultiPolygon>);
-        for (const green of flattenedGreen.features) {
-            pushRegion(green as Feature<Polygon>, 0, 0, 0, []);
+        // Build issue-free baseline by subtracting all scored issue geometry from green first.
+        let issueFreeGreen: Feature<Polygon | MultiPolygon, GeoJsonProperties> | null = greenFeature;
+        const mergedIssues = this.mergeGeometryFeatures(issueFeatures);
+        if (mergedIssues) {
+            try {
+                issueFreeGreen = turf.difference(turf.featureCollection([greenFeature, this.simplifyFeature(mergedIssues)]));
+            } catch {
+                issueFreeGreen = null;
+            }
+        }
+
+        if (issueFreeGreen) {
+            const flattenedGreen = turf.flatten(issueFreeGreen as Feature<Polygon | MultiPolygon>);
+            for (const green of flattenedGreen.features) {
+                pushRegion(green as Feature<Polygon>, 0, 0, 0, []);
+            }
         }
 
         for (const feature of issueFeatures) {
             const sourceLayerId = feature.properties?.sourceLayerId as string | undefined;
             const description = (feature.properties?.issue as string) ?? 'Issue';
             const suitability = (feature.properties?.suitability as string) ?? 'red';
-            const weightedIssueSum = sourceLayerId ? (layerWeights.get(sourceLayerId) ?? 1) : 1;
+            const weightedIssueSum = sourceLayerId ? (layerWeights.get(sourceLayerId) ?? 0) : 0;
             const suitabilityScore = totalLayerWeight > 0 ? weightedIssueSum / totalLayerWeight : 0;
             const issues: ReportIssueDTO[] = [{ description, suitability, sourceLayerId }];
 

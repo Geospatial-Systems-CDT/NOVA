@@ -267,7 +267,12 @@ export class MapVisualHelper {
                 type: 'fill',
                 source: id,
                 paint: {
-                    'fill-color': ['match', ['get', 'suitability'], 'darkRed', '#620d05', 'red', '#d64333', 'amber', '#d18910', 'green', '#198754', '#666666'],
+                    'fill-color': [
+                        'case',
+                        ['==', ['get', 'analysisMethod'], 'weighted'],
+                        ['interpolate', ['linear'], ['coalesce', ['get', 'suitabilityScore'], 0], 0, '#198754', 1, '#f1c40f'],
+                        ['match', ['get', 'suitability'], 'darkRed', '#620d05', 'red', '#d64333', 'amber', '#d18910', 'green', '#198754', '#666666'],
+                    ],
                     'fill-opacity': 0.5,
                     'fill-outline-color': '#1f1f1f',
                 },
@@ -742,7 +747,7 @@ export class MapVisualHelper {
                 <div style="font-weight: bold;">
                     ${count === 0 ? 'No issues found' : `${count} issue${count > 1 ? 's' : ''} found`}
                 </div>
-                <div style="margin: 4px 0 8px;">Overall suitability value: ${overallSuitabilityValue.toFixed(2)} (0 best, 1 worst)</div>
+                <div style="margin: 4px 0 8px;">Overall suitability risk: ${overallSuitabilityValue.toFixed(2)} (0 best, 1 worst)</div>
                 ${
                     count > 0
                         ? uniqueIssueDetails
@@ -823,15 +828,15 @@ export class MapVisualHelper {
                 <div style="margin-bottom: 8px;">Issue count: ${issueCount}</div>
                 <div style="margin-bottom: 4px;">Weighted issue sum: ${weightedIssueSum.toFixed(3)}</div>
                 <div style="margin-bottom: 4px;">Total layer weight: ${totalLayerWeight.toFixed(3)}</div>
-                <div style="margin-bottom: 8px;">Suitability score: ${suitabilityScore.toFixed(3)}</div>
+                <div style="margin-bottom: 8px;">Suitability risk: ${suitabilityScore.toFixed(3)}</div>
                 ${
                     analysisMethod === 'weighted' && weightedThresholdText
-                        ? `<div style="margin-bottom: 4px;">Computed weighted threshold: ${weightedThresholdText}</div>`
+                        ? `<div style="margin-bottom: 4px;">Computed weighted risk threshold: ${weightedThresholdText}</div>`
                         : ''
                 }
                 ${
                     analysisMethod === 'weighted' && reportMaxScoreForPolygonUsed !== null
-                        ? `<div style="margin-bottom: 8px;">Weighted polygon cutoff: ${reportMaxScoreForPolygonUsed.toFixed(3)}</div>`
+                        ? `<div style="margin-bottom: 8px;">Weighted polygon risk cutoff: ${reportMaxScoreForPolygonUsed.toFixed(3)}</div>`
                         : ''
                 }
                 <div style="font-weight: 600; margin-bottom: 4px;">Issues</div>

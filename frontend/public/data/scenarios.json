@@ -15,41 +15,6 @@
                     ]
                 },
                 {
-                    "layerId": "windSpeed",
-                    "attributes": [
-                        {
-                            "id": "minSpeed",
-                            "value": 5
-                        },
-                        {
-                            "id": "layerWeight",
-                            "value": 0.1812
-                        }
-                    ]
-                },
-                {
-                    "layerId": "slope",
-                    "attributes": [
-                        {
-                            "id": "maxSlope",
-                            "value": 15
-                        },
-                        {
-                            "id": "layerWeight",
-                            "value": 0.0559
-                        }
-                    ]
-                },
-                {
-                    "layerId": "aspect",
-                    "attributes": [
-                        {
-                            "id": "layerWeight",
-                            "value": 0.0011
-                        }
-                    ]
-                },
-                {
                     "layerId": "agriculturalLandClassification",
                     "attributes": [
                         {
@@ -58,7 +23,7 @@
                         },
                         {
                             "id": "layerWeight",
-                            "value": 0.01149
+                            "value": 0.1149
                         }
                     ]
                 },
@@ -67,20 +32,7 @@
                     "attributes": [
                         {
                             "id": "layerWeight",
-                            "value": 0.0482
-                        }
-                    ]
-                },
-                {
-                    "layerId": "builtUpAreas",
-                    "attributes": [
-                        {
-                            "id": "minDistance",
-                            "value": 0.2
-                        },
-                        {
-                            "id": "layerWeight",
-                            "value": 0.0807
+                            "value": 0.482
                         }
                     ]
                 },
@@ -102,7 +54,7 @@
                     "attributes": [
                         {
                             "id": "layerWeight",
-                            "value": 0.1195
+                            "value": 1.195
                         }
                     ]
                 },
@@ -111,7 +63,7 @@
                     "attributes": [
                         {
                             "id": "layerWeight",
-                            "value": 0.1195
+                            "value": 1.195
                         }
                     ]
                 },
@@ -120,7 +72,7 @@
                     "attributes": [
                         {
                             "id": "layerWeight",
-                            "value": 0.01149
+                            "value": 0.1149
                         }
                     ]
                 },
@@ -133,7 +85,7 @@
                         },
                         {
                             "id": "layerWeight",
-                            "value": 0.0079
+                            "value": 0.079
                         }
                     ]
                 }
@@ -145,46 +97,11 @@
             "description": "Onshore wind suitability scenario based on Friends of the Earth 2025 criteria, incorporating environmental and ecological. Layer weights are normalised values derived from a literature synthesis across Döker et al. (2025), Şahin et al. (2025), Triantafyllidou and Vagiona (2026), Spyridonidou and Vagiona (2020), Ifkirne et al. (2022), and Watson and Hudson (2015), with supplementary literature-derived estimates for criteria not covered in the primary synthesis.",
             "layers": [
                 {
-                    "layerId": "windSpeed",
-                    "attributes": [
-                        {
-                            "id": "minSpeed",
-                            "value": 5
-                        },
-                        {
-                            "id": "layerWeight",
-                            "value": 0.5066
-                        }
-                    ]
-                },
-                {
                     "layerId": "unsuitableLand",
                     "attributes": [
                         {
                             "id": "layerWeight",
                             "value": 1
-                        }
-                    ]
-                },
-                {
-                    "layerId": "slope",
-                    "attributes": [
-                        {
-                            "id": "maxSlope",
-                            "value": 15
-                        },
-                        {
-                            "id": "layerWeight",
-                            "value": 0.1563
-                        }
-                    ]
-                },
-                {
-                    "layerId": "aspect",
-                    "attributes": [
-                        {
-                            "id": "layerWeight",
-                            "value": 0.0031
                         }
                     ]
                 },

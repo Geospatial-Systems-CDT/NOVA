@@ -666,7 +666,7 @@ const LayerControlPanel = ({ mapRef, drawRef, resetLayers, setResetLayers }: Lay
                             <Divider sx={{ my: 2, opacity: 0.3 }} />
                             <Box className="layer-panel-footer" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                 <Button variant="contained" onClick={() => handleGenerateAnalysis('legacy')} sx={{ px: 4 }}>
-                                    Generate Legacy Analysis
+                                    Generate Simple Analysis
                                 </Button>
                                 <Button variant="contained" onClick={() => handleGenerateAnalysis('weighted')} sx={{ px: 4 }}>
                                     Generate Weighted Analysis
